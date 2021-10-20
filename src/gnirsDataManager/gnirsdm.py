@@ -50,27 +50,40 @@ class GnirsDataManagerProcessor:
         self.shutting_down = True
 
     def process_task(self, file_path):
+        fname = file_path.parts[-1].rpartition('.')[0]
+        label = None
         try:
-            fname = file_path.parts[-1].rpartition('.')[0]
             rpath, header = manager.decode_header(self.dp.datamov.new, fname)
-            asyncio.run(self.ioc.currentLabel.write(header['PDU']['DATALABE']))
+            label = header['PDU']['DATALABE']
+            asyncio.run(self.ioc.currentLabel.write(label))
             self.dp.process_file(fname)
-            asyncio.run(self.ioc.done_task(f"Done processing {file_path.parts[-1]}"))
         except Exception as exc:
             self.logger.error(f"Processing {file_path}: {exc}")
+            if label is None:
+                asyncio.run(self.set_error(fname, "Illegal header"))
+            else:
+                asyncio.run(self.set_error(label, str(exc)))
+        finally:
+            asyncio.run(self.ioc.done_task(f"Done processing {file_path.parts[-1]}"))
+
 
     def process_queue(self):
         self.ready.wait()
         while not self.shutting_down:
             try:
                 next_task = self.queue.get(timeout=0.5)
-                print(f"Processing task {next_task}")
+                asyncio.run(self.ioc.state.write(StateEnum.PROCESSING))
                 self.process_task(next_task)
+                asyncio.run(self.ioc.currentLabel.write(''))
+                asyncio.run(self.ioc.state.write(StateEnum.RUNNING))
             except queue.Empty:
                 ...
 
+    async def set_error(self, label, message):
+        await self.ioc.lastErrorLabel.write(label)
+        await self.ioc.lastError.write(message)
+
     async def new_file(self, fpath):
-        print(f"New file: {fpath}")
         filename = fpath.parts[-1]
         if filename.endswith('.header'):
             await self.ioc.push_task(f"Queueing new file: {filename}")
@@ -97,7 +110,7 @@ class GnirsDataManagerIOC(PVGroup):
     lastErrorLabel = pvproperty(
             value="",
             dtype=ChannelType.STRING,
-            doc="Last processed image label"
+            doc="Last processed image label with errors"
             )
 
     lastProcessed = pvproperty(
@@ -130,15 +143,13 @@ class GnirsDataManagerIOC(PVGroup):
         await self.log_array.write(current)
 
     async def done_task(self, log):
-        await asyncio.wait([self.queued.write(self.queued.value - 1),
-                            self.append_log_string(log)])
+        await wait_for(self.queued.write(self.queued.value - 1),
+                       self.append_log_string(log))
 
 async def inotify_task(ioc, proc, data_dir):
     with Inotify() as inotify:
         inotify.add_watch(data_dir, Mask.CLOSE_WRITE | Mask.MOVED_TO)
         async for event in inotify:
-            print(f"{event.path}")
-            print(f"Event at inotify")
             await proc.new_file(event.path)
 
 async def create_inotify_task(ioc, proc, data_dir, **kw):
