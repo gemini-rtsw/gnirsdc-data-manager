@@ -11,6 +11,7 @@ import time
 from concurrent import futures
 from functools import partial
 from pathlib import Path
+from logging import getLogger
 
 from gnirs_data import manager
 
@@ -30,11 +31,13 @@ class StateEnum(enum.IntEnum):
     PROCESSING = 3
 
 class GnirsDataManagerProcessor:
-    def __init__(self, ioc):
+    def __init__(self, ioc, processor):
         self.ioc = ioc
+        self.dp = processor
         self.queue = queue.Queue()
         self.ready = threading.Event()
         self.shutting_down = False
+        self.logger = getLogger('GnirsDataManagerProcessor')
 
     def set_ready(self):
         self.ready.set()
@@ -43,8 +46,14 @@ class GnirsDataManagerProcessor:
         self.shutting_down = True
 
     def process_task(self, file_path):
-        time.sleep(5)
-        asyncio.run(self.ioc.done_task(f"Done processing {file_path.parts[-1]}"))
+        try:
+            fname = file_path.parts[-1].rpartition('.')[0]
+            rpath, header = manager.decode_header(self.dp.datamov.new, fname)
+            asyncio.run(self.ioc.currentLabel.write(header['DATALAB']))
+            self.dp.process_file(fname)
+            asyncio.run(self.ioc.done_task(f"Done processing {file_path.parts[-1]}"))
+        except Exception as exc:
+            self.logger.error(f"Processing {file_path}: {exc}")
 
     def process_queue(self):
         self.ready.wait()
@@ -120,16 +129,16 @@ class GnirsDataManagerIOC(PVGroup):
         await asyncio.wait([self.queued.write(self.queued.value - 1),
                             self.append_log_string(log)])
 
-async def inotify_task(ioc, proc, data_dir, dm):
+async def inotify_task(ioc, proc, data_dir):
     with Inotify() as inotify:
-        inotify.add_watch(data_dir, Mask.CLOSE_WRITE)
+        inotify.add_watch(data_dir, Mask.CLOSE_WRITE | Mask.MOVED_TO)
         async for event in inotify:
+            print(f"{event.path}")
             print(f"Event at inotify")
             await proc.new_file(event.path)
 
-async def create_inotify_task(ioc, proc, data_dir, output_dir, **kw):
-    dm = manager.DataMover(data_dir, output_dir)
-    return asyncio.create_task(inotify_task(ioc, proc, f"{data_dir}/new", dm), name="inotify_task")
+async def create_inotify_task(ioc, proc, data_dir, **kw):
+    return asyncio.create_task(inotify_task(ioc, proc, f"{data_dir}/new"), name="inotify_task")
 
 async def create_ioc_task(pvdb, *, module_name="caproto.asyncio.server",
         interfaces=None, log_pv_names=False, startup_hook=None, **kw):
@@ -158,11 +167,11 @@ async def create_ioc_task(pvdb, *, module_name="caproto.asyncio.server",
     return await module.start_server(pvdb, interfaces=interfaces,
             log_pv_names=log_pv_names, startup_hook=startup_hook)
 
-async def startup(ioc, proc, async_lib, *, data_dir, output_dir, **kw):
+async def startup(ioc, proc, async_lib, *, data_dir, **kw):
     await ioc.state.write(StateEnum.INITIALIZING)
-    await create_inotify_task(ioc, proc, data_dir, output_dir)
+    await create_inotify_task(ioc, proc, data_dir)
     proc.set_ready()
-    print("Done startup")
+    await ioc.state.write(StateEnum.RUNNING)
 
 def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
                           supported_async_libs=None,
@@ -214,7 +223,10 @@ async def main():
             desc=''
             )
     ioc = GnirsDataManagerIOC(**ioc_options)
-    proc = GnirsDataManagerProcessor(ioc)
+    dm = manager.DataMover(run_options['data_dir'], run_options['output_dir'])
+    # TODO: "Keep should be configured via command line"
+    processor = manager.DataProcessor(dm, keep=True)
+    proc = GnirsDataManagerProcessor(ioc, processor)
     thrd = threading.Thread(target = proc.process_queue)
     thrd.start()
     prt = partial(startup, ioc, proc, **run_options)
