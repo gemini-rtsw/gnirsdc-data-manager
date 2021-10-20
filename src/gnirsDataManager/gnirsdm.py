@@ -24,6 +24,10 @@ DEFAULT_PREFIX = "gnirsdm:"
 DEFAULT_DATADIR = '/home/readout_data'
 MAX_LOG_SIZE = 5
 
+async def wait_for(*awaitables):
+    loop = asyncio.get_event_loop()
+    await asyncio.wait(tuple(loop.create_task(aw) for aw in awaitables))
+
 class StateEnum(enum.IntEnum):
     BOOTING = 0,
     INITIALIZING = 1,
@@ -49,7 +53,7 @@ class GnirsDataManagerProcessor:
         try:
             fname = file_path.parts[-1].rpartition('.')[0]
             rpath, header = manager.decode_header(self.dp.datamov.new, fname)
-            asyncio.run(self.ioc.currentLabel.write(header['DATALAB']))
+            asyncio.run(self.ioc.currentLabel.write(header['PDU']['DATALABE']))
             self.dp.process_file(fname)
             asyncio.run(self.ioc.done_task(f"Done processing {file_path.parts[-1]}"))
         except Exception as exc:
@@ -115,8 +119,8 @@ class GnirsDataManagerIOC(PVGroup):
             )
 
     async def push_task(self, log):
-        await asyncio.wait([self.queued.write(self.queued.value + 1),
-                            self.append_log_string(log)])
+        await wait_for(self.queued.write(self.queued.value + 1),
+                       self.append_log_string(log))
 
     async def append_log_string(self, string):
         current = self.log_array.value
