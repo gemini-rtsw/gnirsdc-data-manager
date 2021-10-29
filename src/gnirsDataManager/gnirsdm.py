@@ -20,6 +20,7 @@ from caproto.server import PVGroup, template_arg_parser, pvproperty
 from caproto.asyncio.server import start_server
 from caproto import ChannelType
 
+INSTRUMENT_NAME = "GNIRS"
 DEFAULT_PREFIX = "gnirsdm:"
 DEFAULT_DATADIR = '/home/readout_data'
 MAX_LOG_SIZE = 5
@@ -94,6 +95,10 @@ class GnirsDataManagerIOC(PVGroup):
             value = StateEnum.BOOTING,
             record="mbbo"
             )
+
+    @pvproperty(dtype=ChannelType.STRING, doc="Name of the instrument")
+    async def instrument(self, instance):
+        return INSTRUMENT_NAME
 
     currentLabel = pvproperty(
             value="",
