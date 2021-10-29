@@ -194,9 +194,7 @@ async def startup(ioc, proc, async_lib, *, data_dir, **kw):
     await ioc.state.write(StateEnum.RUNNING)
 
 def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
-                          supported_async_libs=None,
-                          default_datadir=DEFAULT_DATADIR,
-                          default_outputdir=f"{DEFAULT_DATADIR}/fits"):
+                          supported_async_libs=None):
     """
     Custom ArgumentParser for the Gemini NIRS Data Manager IOC.
 
@@ -227,14 +225,15 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
                                              argv=argv, macros=macros,
                                              supported_async_libs=supported_async_libs)
 
-    parser.add_argument('--data-dir', '-D', type=str, default=default_datadir,
-                        help=f"Working data directory, default: {default_datadir}")
-    parser.add_argument('--output-dir', '-o', type=str, default=default_outputdir,
-                        help=f"FITS output directory, default: {default_outputdir}")
+    parser.add_argument('--data-dir', '-D', type=str, required=True,
+                        help="Working data directory,")
+    parser.add_argument('--output-dir', '-o', type=str,
+                        help="FITS output directory, default: {data-dir}/fits")
     args = parser.parse_args()
     ioc_options, run_options = split_args(args)
     run_options['data_dir'] = args.data_dir
-    run_options['output_dir'] = args.output_dir
+    run_options['output_dir'] = f'{args.data_dir}/fits' if args.output_dir is None else args.output_dir
+
     return ioc_options, run_options
 
 async def main():
