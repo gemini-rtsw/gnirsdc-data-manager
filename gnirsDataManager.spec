@@ -46,6 +46,13 @@ cp -r *.cfg $RPM_BUILD_ROOT/%{_prefix}/%{name}
 cp -r src $RPM_BUILD_ROOT/%{_prefix}/%{name}
 
 %post
+mkdir /home/readout_data
+mkdir /home/readout_data/log
+mkdir /home/readout_data/error
+mkdir /home/readout_data/unscrambled
+mkdir /home/readout_data/processing
+mkdir /home/readout_data/fits
+mkdir /home/readout_data/new
 cd %{_prefix}/%{name}/
 source /home/gnirsdc-env/bin/activate
 pip install --no-cache-dir --upgrade pip
