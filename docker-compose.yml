@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
         unstable-2022q1-hstecher:
-                image: registry.gitlab.com/nsf-noirlab/gemini/rtsw/epics-base/epics-base/unstable/2022q1
+                image: registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdatamanager/unstable/2022q1:latest
                 hostname: epics-base/epics-base/stable-CONTAINER
                 stdin_open: true
                 tty: true
