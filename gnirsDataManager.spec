@@ -20,7 +20,7 @@
 Summary: %{name} gnirs Python Data Manager
 Name: %{name}
 Version: 0.1.0
-Release: 2%{?dist}
+Release: 3%{?dist}
 License: Proprietary
 Group: Applications/Engineering
 Source0: %{name}-%{version}.tar.gz
@@ -63,4 +63,7 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Tue Feb 08 2022 Hawi Stecher <hstecher@gemini.edu> 0.1.0-3
+- new package built with tito
+
 
