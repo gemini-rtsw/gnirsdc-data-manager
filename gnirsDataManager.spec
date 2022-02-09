@@ -43,6 +43,8 @@ mkdir -p $RPM_BUILD_ROOT/%{_prefix}/%{name}
 cp -r *.toml $RPM_BUILD_ROOT/%{_prefix}/%{name}
 cp -r *.py $RPM_BUILD_ROOT/%{_prefix}/%{name}
 cp -r *.cfg $RPM_BUILD_ROOT/%{_prefix}/%{name}
+cp -r *.sh $RPM_BUILD_ROOT/%{_prefix}/%{name}
+cp -r *.service $RPM_BUILD_ROOT/%{_prefix}/%{name}
 cp -r src $RPM_BUILD_ROOT/%{_prefix}/%{name}
 
 %post
