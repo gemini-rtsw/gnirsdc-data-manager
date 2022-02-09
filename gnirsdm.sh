@@ -1,5 +1,5 @@
 #!/bin/bash
 
-source /usr/local/etc/gnirsdc-env/bin/activate
+source /gem_base/usr/share/gnirsdc-env/bin/activate
 
 gnirsdm "$@"

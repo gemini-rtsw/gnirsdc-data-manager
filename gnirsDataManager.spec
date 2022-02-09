@@ -56,11 +56,12 @@ mkdir /home/readout_data/processing
 mkdir /home/readout_data/fits
 mkdir /home/readout_data/new
 cd %{_prefix}/%{name}/
-source /usr/local/etc/gnirsdc-env/bin/activate
+source /gem_base/usr/share/gnirsdc-env/bin/activate
 pip install --no-cache-dir --upgrade pip
 pip install --no-cache-dir .
 cp gnirsdm.service /etc/systemd/system/
-
+systemctl enable gnirsdm
+systemctl start gnirsdm
 
 %postun
 
