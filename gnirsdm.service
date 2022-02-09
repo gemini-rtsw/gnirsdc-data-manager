@@ -1,0 +1,12 @@
+[Unit]
+Description=GNIRS Data Manager
+After=network.target
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=dcuser
+ExecStart=/home/dcuser/gnirsdm.sh -D /home/readout_data -o /home/readout_data/fits
+
+[Install]
+WantedBy=multi-user.target

@@ -57,6 +57,8 @@ cd %{_prefix}/%{name}/
 source /usr/local/etc/gnirsdc-env/bin/activate
 pip install --no-cache-dir --upgrade pip
 pip install --no-cache-dir .
+cp gnirsdm.service /etc/systemd/system/
+
 
 %postun
 
