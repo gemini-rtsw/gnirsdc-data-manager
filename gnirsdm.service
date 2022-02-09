@@ -5,7 +5,7 @@ After=network.target
 Type=simple
 Restart=always
 RestartSec=1
-User=dcuser
+User=root
 ExecStart=/gem_base/epics/ioc/gnirsdcDataManager/gnirsdm.sh -D /home/readout_data -o /home/readout_data/fits
 
 [Install]
