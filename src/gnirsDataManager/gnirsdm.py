@@ -16,9 +16,12 @@ from logging import getLogger
 from gnirs_data import manager
 
 from asyncinotify import Inotify, Mask
-from caproto.server import PVGroup, template_arg_parser, pvproperty
+from caproto.server import PVGroup, template_arg_parser, pvproperty, SubGroup, ioc_arg_parser, run
 from caproto.asyncio.server import start_server
 from caproto import ChannelType
+
+import gnirssdsu
+from gnirssdsu import GnirsSDSUController
 
 INSTRUMENT_NAME = "GNIRS"
 DEFAULT_PREFIX = "gnirsdm:"
@@ -91,6 +94,9 @@ class GnirsDataManagerProcessor:
             self.queue.put(fpath)
 
 class GnirsDataManagerIOC(PVGroup):
+
+    SDSUController = SubGroup(GnirsSDSUController, prefix='dc:')
+
     state = pvproperty(
             value = StateEnum.BOOTING,
             record="mbbo"
@@ -229,6 +235,7 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
                         help="Working data directory,")
     parser.add_argument('--output-dir', '-o', type=str,
                         help="FITS output directory, default: {data-dir}/fits")
+#    parser.add_argument('--list-pvs', action='store_true', help='List Process Variables')
     args = parser.parse_args()
     ioc_options, run_options = split_args(args)
     run_options['data_dir'] = args.data_dir
