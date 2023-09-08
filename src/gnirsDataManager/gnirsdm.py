@@ -95,6 +95,10 @@ class GnirsDataManagerProcessor:
 
 class GnirsDataManagerIOC(PVGroup):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        print(f'{self.SDSUController.apply.prefix} Apply sub recs: {len(self.SDSUController.apply.sub_records)}')
+
     SDSUController = SubGroup(GnirsSDSUController, prefix='dc:')
 
     state = pvproperty(
