@@ -21,7 +21,10 @@ from caproto.asyncio.server import start_server
 from caproto import ChannelType
 
 import gnirssdsu
-from gnirssdsu import GnirsSDSUController
+from gnirssdsu import GnirsCADCARController
+
+import gnirsgiapi
+from gnirsgiapi import GiapiInterface
 
 INSTRUMENT_NAME = "GNIRS"
 DEFAULT_PREFIX = "gnirsdm:"
@@ -95,11 +98,14 @@ class GnirsDataManagerProcessor:
 
 class GnirsDataManagerIOC(PVGroup):
 
+    CADInterface = SubGroup(GnirsCADCARController, prefix='dc:')
+    GIAPIInterface = GiapiInterface()
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print(f'{self.SDSUController.apply.prefix} Apply sub recs: {len(self.SDSUController.apply.sub_records)}')
 
-    SDSUController = SubGroup(GnirsSDSUController, prefix='dc:')
+        print(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.sub_records)}')
+
 
     state = pvproperty(
             value = StateEnum.BOOTING,
@@ -252,6 +258,7 @@ async def main():
             default_prefix=DEFAULT_PREFIX,
             desc=''
             )
+    print ("create IOC")
     ioc = GnirsDataManagerIOC(**ioc_options)
     dm = manager.DataMover(run_options['data_dir'], run_options['output_dir'])
     # TODO: "Keep should be configured via command line"

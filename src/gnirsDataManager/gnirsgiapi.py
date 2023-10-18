@@ -7,7 +7,18 @@ import time
 
 
 
-giapi_root="/home/hstecher/work/gnirsdc-data-manager/giapi-gluecc"
+
+#giapi_root="/home/hstecher/work/gnirsdc-data-manager/giapi-gluecc"
+
+#os.environ['LD_LIBRARY_PATH'] = f"{os.environ.get('LD_LIBRARY_PATH')}:{giapi_root}/home/hstecher/work/gnirsdc-data-manager/giapi-gluecc/external/apr-util/lib/"
+
+print(f"GIAPI_ROOT: {os.environ.get('GIAPI_ROOT')}")
+print(f"LD_LIBRARY_PATH: {os.environ.get('LD_LIBRARY_PATH')}")
+
+giapi_root = os.environ.get('GIAPI_ROOT')
+
+#these might not be working 
+#still need to export LD_LIBRARY_PATH
 cppyy.add_library_path(f"{giapi_root}/external/curlpp/lib64")
 cppyy.add_library_path(f"{giapi_root}/install/lib")
 cppyy.add_library_path(f"{giapi_root}/external/log4cxx/lib")
@@ -16,12 +27,16 @@ cppyy.add_library_path(f"{giapi_root}/external/apr/lib")
 cppyy.add_library_path(f"{giapi_root}/external/apr-util/lib")
 cppyy.add_include_path(f"{giapi_root}/install/include")
 cppyy.add_library_path(f"{giapi_root}/install/lib")
+
 cppyy.include("giapi/StatusUtil.h")
 cppyy.include("giapi/SequenceCommandHandler.h")
 cppyy.include("giapi/CommandUtil.h")
 cppyy.include("giapi/HandlerResponse.h")
 cppyy.include("giapi/DataUtil.h")
-#cppyy.include("giapi/GeminiUtil.h")
+
+cppyy.include("giapi/GeminiUtil.h")
+cppyy.include("giapi/ServicesUtil.h")
+
 cppyy.load_library(f"libapr-1.so.0")
 cppyy.load_library(f"libexpat.so.0")
 cppyy.load_library(f"libaprutil-1.so.0")
@@ -34,16 +49,86 @@ cppyy.include("InstCmdHandler.h")
 from cppyy.gbl import giapi
 from cppyy.gbl import instDummy
 
-
 class GiapiInterface:
 
+    dataLabel = None
+
     def __init__(self):
-        self._callback_giapi = self.callback_giapi
-        self.subscribe_commands()
+        print("GIAPI init")
+        self._callback_giapi = self.giapiCallback
+        self.subscribeCommands()
 
 
 
-    def subscribe_commands(self):
+
+    def getTCSContext(self):
+        print("Getting TCS Context")
+        ctx = giapi.TcsContext()
+
+        try: 
+            giapi.GeminiUtil.getTcsContext(ctx, 1000)
+        except Exception as e:
+            print(f"Exception while trying to get TCS Context from Gemini {e}")
+
+        return ctx
+    
+    def printTCSContext(self, ctx):
+
+        print("=================")
+        print("Raw Time    :", ctx.time)
+        print("Mount Flexure X :", ctx.x)
+        print("Mount Flexure Y :", ctx.y)
+        print("Mount Flexure Z :", ctx.z)
+        print("=================\nTelescope Parameters ")
+        print("Telescope focal length (mm)          :", ctx.tel.fl)
+        print("Rotator mechanical angle (rads)        :", ctx.tel.rma)
+        print("Azimuth axis tilt NS (rads)          :", ctx.tel.an)
+        print("Azimuth axis tilt EW (rads)          :", ctx.tel.aw)
+        print("Az/El nonperpendicularity (rads)       :", ctx.tel.pnpae)
+        print("Net left-right(horizontal) collimation (rads) :", ctx.tel.ca)
+        print("Net up-down(vertical) collimation (rads)   :", ctx.tel.ce)
+        print("Pointing origin x-component (mm)       :", ctx.tel.pox)
+        print("Pointing origin y-component (mm)       :", ctx.tel.poy)
+        print("=================\nApparent to Observed Parameters ")
+
+        for i in range(15):
+            if i % 5 == 0:
+                print()
+
+            print( ctx.aoprms[i], end=" ")
+
+        print()
+
+        print("=================\nM2 tip/tilt (3 chop states) ")
+        for x in range(3):
+            for y in range(2):
+                print( ctx.m2xy[x][y], end=" ")
+            
+            print()
+
+        print("=================\nPoint Origins ")
+        print("Mount point origin in X      :", ctx.po.mx)
+        print("Mount point origin in Y      :", ctx.po.my)
+        print("Source chop A pointing origin in X :", ctx.po.ax)
+        print("Source chop A pointing origin in Y :", ctx.po.ay)
+        print("Source chop B pointing origin in X :", ctx.po.bx)
+        print("Source chop B pointing origin in Y :", ctx.po.by)
+        print("Source chop C pointing origin in X :", ctx.po.cx)
+        print("Source chop C pointing origin in Y :", ctx.po.cy)
+        print("=================\nOptical Distortions ")
+        for i in range(6):
+            print(ctx.ao2t[i], end="   ")
+
+        print()
+
+
+
+
+
+
+
+    def subscribeCommands(self):
+        print("GIAPI subscribe")
 
         self._handler = instDummy.InstCmdHandler.create(self._callback_giapi)
         giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.TEST, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
@@ -53,7 +138,55 @@ class GiapiInterface:
         giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.OBSERVE, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
         giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.ABORT, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
 
-    def callback_giapi(self, action_id, seq_cmd, activity, config):
+
+        print("---------------TESTING STUFF---------------")
+        self.getTCSContext()
+
+
+        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_PREP, "test label")
+
+        try: 
+            hostname = giapi.ServicesUtil.getProperty("GMP_HOST_NAME", 2000)
+            print(f"GMP_HOST_NAME: {path}")
+        except Exception as e:
+            print(f"Exception while trying to get GMP_HOST_NAME from Gemini: {e}")
+        
+        try: 
+            path = giapi.ServicesUtil.getProperty("DHS_SCIENCE_DATA_PATH", 2000)
+            print(f"PATH: {path}")
+        except Exception as e:
+            print(f"Exception while trying to get DHS_SCIENCE_DATA_PATH from Gemini: {e}")
+        
+        print("---------------DONE TESTING STUFF---------------")
+
+
+    def setDataLabel(self, label):
+        self.dataLabel = label
+
+    def observePrep(self):
+        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_PREP, self.dataLabel)
+
+    def observeStartAcq(self):
+        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_START_ACQ, self.dataLabel)
+
+    def observeEndAcq(self):
+        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_END_ACQ, self.dataLabel)
+
+    def observeStartReadout(self):
+        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_START_READOUT, self.dataLabel)
+
+    def observeEndReadout(self):
+        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_END_READOUT, self.dataLabel)
+
+    def observeStartWrite(self):
+        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_START_DSET_WRITE, self.dataLabel)
+
+    def observeEndWrite(self):
+        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_END_DSET_WRITE, self.dataLabel)
+
+
+
+    def giapiCallback(self, action_id, seq_cmd, activity, config):
         t = time.time()
         try:
             self.cur_action_id = action_id  # check!!! whether integer or not

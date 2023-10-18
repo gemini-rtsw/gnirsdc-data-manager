@@ -9,40 +9,63 @@ import asyncio
 from libgnirsioc import controllerInterface
 from libgnirsioc import controllerInterfaceDebug
 
+class GnirsCAD(CADRecord):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)  # Call parent constructor if it does anything
+        self.controller = self.parent.sdsuController
+        self.giapi = self.parent.parent.GIAPIInterface
+        self.p = self.parent
 
-class InitCAD(CADRecord):
+
+class InitCAD(GnirsCAD):
     async def start(self):
         print("InitCAD start")
-        self.parent.sdsuController.init()
+        controller.init()
 
 
-class DCConfigCAD(CADRecord):
+class DCConfigCAD(GnirsCAD):
     async def start(self):
-        controller  = self.parent.sdsuController 
-        p           = self.parent
-
         print(f'{self.prefix} START DC Config')
-        controller.setExposure(p.lnrNum.value, p.digitalAvgs.value, p.exposureTime.value, p.sequence.value)
+        self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.sequence.value)
 
 
-class EndObserveCAD(CADRecord):
+class EndObserveCAD(GnirsCAD):
     async def start(self):
         print("endObserve start")
 
-class AbortCAD(CADRecord):
+class AbortCAD(GnirsCAD):
     async def start(self):
         print("AbortCAD start")        
 
-class ObserveCAD(CADRecord):
+class ObserveCAD(GnirsCAD):
     async def start(self):
-        print("ObserveCAD start")
+        print(f'{self.prefix} ObserveCAD start')
 
-class StopCAD(CADRecord):
+        self.giapi.setDataLabel(self.p.dataLabel.value)
+        print(f'{self.prefix} DataLabel: {self.giapi.dataLabel}')
+        
+        self.giapi.observePrep()
+        self.giapi.observeStartAcq()
+        self.giapi.observeEndAcq()
+
+        self.giapi.observeStartReadout()
+
+        self.controller.startExposure(self.p.detectorTemp1.value, self.p.detectorTemp1.value, False);	
+        
+        self.giapi.observeEndReadout()
+        self.giapi.observeStartWrite()
+
+        print(f'{self.prefix} sync this code to the descrambling method')
+
+        self.giapi.observeEndWrite()
+
+
+class StopCAD(GnirsCAD):
     async def start(self):
         print("StopCAD start")
 
 
-class GnirsSDSUController(PVGroup):
+class GnirsCADCARController(PVGroup):
 
     sdsuController = controllerInterfaceDebug()
 
@@ -70,7 +93,11 @@ class GnirsSDSUController(PVGroup):
     numcoadds       = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="numcoadds", doc = "Number of Coadds") 
     sequence        = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="sequence", doc = "Sequence Count") 
 
-    observeLabel    = pvproperty(value='', dtype=caproto.ChannelType.STRING, name="observe.A", doc = "Data Label") 
+    dataLabel    = pvproperty(value='GN20231011S1800', dtype=caproto.ChannelType.STRING, name="observe.A", doc = "Data Label") 
+
+
+    detectorTemp1   = pvproperty(value=0.0, dtype=caproto.ChannelType.DOUBLE, name="detectorTemp1", doc = "Detector Temperature 1")
+    detectorTemp2   = pvproperty(value=0.0, dtype=caproto.ChannelType.DOUBLE, name="detectorTemp2", doc = "Detector Temperature 2")
 
 
     def __init__(self, *args, **kwargs):
