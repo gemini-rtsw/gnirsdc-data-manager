@@ -139,25 +139,25 @@ class GiapiInterface:
         giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.ABORT, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
 
 
-        print("---------------TESTING STUFF---------------")
-        self.getTCSContext()
+        #print("---------------TESTING STUFF---------------")
+        #self.getTCSContext()
 
 
-        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_PREP, "test label")
+        #giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_PREP, "test label")
 
-        try: 
-            hostname = giapi.ServicesUtil.getProperty("GMP_HOST_NAME", 2000)
-            print(f"GMP_HOST_NAME: {path}")
-        except Exception as e:
-            print(f"Exception while trying to get GMP_HOST_NAME from Gemini: {e}")
+        #try: 
+        #    hostname = giapi.ServicesUtil.getProperty("GMP_HOST_NAME", 2000)
+        #    print(f"GMP_HOST_NAME: {path}")
+        #except Exception as e:
+        #    print(f"Exception while trying to get GMP_HOST_NAME from Gemini: {e}")
         
-        try: 
-            path = giapi.ServicesUtil.getProperty("DHS_SCIENCE_DATA_PATH", 2000)
-            print(f"PATH: {path}")
-        except Exception as e:
-            print(f"Exception while trying to get DHS_SCIENCE_DATA_PATH from Gemini: {e}")
+        #try: 
+        #    path = giapi.ServicesUtil.getProperty("DHS_SCIENCE_DATA_PATH", 2000)
+        #    print(f"PATH: {path}")
+        #except Exception as e:
+        #    print(f"Exception while trying to get DHS_SCIENCE_DATA_PATH from Gemini: {e}")
         
-        print("---------------DONE TESTING STUFF---------------")
+        #print("---------------DONE TESTING STUFF---------------")
 
 
     def setDataLabel(self, label):

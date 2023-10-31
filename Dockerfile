@@ -9,6 +9,8 @@ LABEL maintainer="hawi.stecher@noirlab.edu"
 # git clone gnirsdc-data-manager
 # untar giapi and gmp tar files from IGRINS2 project into gnirsdc-data-manager dir
 # build this Docker file
+# in the container pip3 install . int the following repos:
+# gnirsdc-tools, pycadcar, gnirsdc-lib
 # in the container source giapi/defineGiapiglueEnv.sh
 # cd src/gnirsDataManager
 # python3.9 gnirsdm.py --list-pvs --data-dir /readout_data/
@@ -17,7 +19,7 @@ LABEL maintainer="hawi.stecher@noirlab.edu"
 # Run package updates
 RUN dnf -y update
 RUN dnf -y install python3.9
-RUN dnf -y install gcc-c++ make cmake libstdc++ libgcc python39-devel
+RUN dnf -y install gcc-c++ make cmake libstdc++ libgcc python39-devel java-1.8.0
 RUN STDCXX=11 MAKE_NPROCS=12 python3 -m pip install cppyy==2.4.0 --verbose --no-binary=cppyy-cling
 RUN ln -s /usr/local/lib64/python3.9/site-packages/cppyy_backend/lib/libcppyy_backend.so /usr/local/lib/python3.9/site-packages/cppyy_backend/lib/libcppyy_backend.so
 

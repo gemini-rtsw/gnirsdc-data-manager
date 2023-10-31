@@ -14,13 +14,22 @@ class GnirsCAD(CADRecord):
         super().__init__(*args, **kwargs)  # Call parent constructor if it does anything
         self.controller = self.parent.sdsuController
         self.giapi = self.parent.parent.GIAPIInterface
+        self.logMessage = self.parent.parent.logMessage
         self.p = self.parent
 
 
 class InitCAD(GnirsCAD):
     async def start(self):
         print("InitCAD start")
-        controller.init()
+        
+
+class InitSDSUCAD(GnirsCAD):
+    async def start(self):
+        print("InitSDSUCAD start")
+        self.controller.setAladdinIII(True)
+        self.controller.init()
+
+        await self.logMessage("SDSU Initialized")
 
 
 class DCConfigCAD(GnirsCAD):
@@ -71,7 +80,8 @@ class GnirsCADCARController(PVGroup):
 
     #------ CAD commands --------
     # dc:init
-    dcInit = SubGroup(InitCAD, prefix='initSDSU.')
+    init = SubGroup(InitCAD, prefix='init.')
+    initSDSU = SubGroup(InitSDSUCAD, prefix='initSDSU.')
 
     # dc:apply
     dcconfig = SubGroup(DCConfigCAD, prefix='dcconfig.')
@@ -93,7 +103,7 @@ class GnirsCADCARController(PVGroup):
     numcoadds       = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="numcoadds", doc = "Number of Coadds") 
     sequence        = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="sequence", doc = "Sequence Count") 
 
-    dataLabel    = pvproperty(value='GN20231011S1800', dtype=caproto.ChannelType.STRING, name="observe.A", doc = "Data Label") 
+    dataLabel       = pvproperty(value='GN20231011S1800', dtype=caproto.ChannelType.STRING, name="observe.A", doc = "Data Label") 
 
 
     detectorTemp1   = pvproperty(value=0.0, dtype=caproto.ChannelType.DOUBLE, name="detectorTemp1", doc = "Detector Temperature 1")
@@ -111,7 +121,7 @@ class GnirsCADCARController(PVGroup):
         self.stop.car_record = self.applyC
 
         # Apply command connects to CAD records
-        self.apply.sub_records = [self.dcconfig,self.endObserve, self.abort, self.observe, self.stop]
+        self.apply.sub_records = [self.dcconfig,self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU]
 
 
 

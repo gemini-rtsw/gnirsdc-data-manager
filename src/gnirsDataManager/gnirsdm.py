@@ -13,12 +13,18 @@ from functools import partial
 from pathlib import Path
 from logging import getLogger
 
+from gemUtilities import checkCAConnection
+
 from gnirs_data import manager
 
 from asyncinotify import Inotify, Mask
 from caproto.server import PVGroup, template_arg_parser, pvproperty, SubGroup, ioc_arg_parser, run
 from caproto.asyncio.server import start_server
 from caproto import ChannelType
+from caproto.sync.client import read
+
+from datetime import datetime
+
 
 import gnirssdsu
 from gnirssdsu import GnirsCADCARController
@@ -104,9 +110,84 @@ class GnirsDataManagerIOC(PVGroup):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+
+        self.logMessage(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.sub_records)}')
+
         print(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.sub_records)}')
 
+#-----------------------------------------------------------------------------
+    uptime = pvproperty(value=0, dtype=int)
 
+    @uptime.startup
+    async def uptime(self, instance, async_lib):
+        while True:
+            await instance.write(instance.value + 1) # Increment the uptime counter
+            await async_lib.library.sleep(1.0)
+
+
+#-----------------------------------------------------------------------------
+    health = pvproperty(value=0, dtype=ChannelType.STRING)
+
+    @health.startup
+    async def health(self, instance, async_lib):
+            await instance.write("GOOD")
+
+    async def set_health(self, value):
+        await self.health.write(value)
+
+#-----------------------------------------------------------------------------
+    heartbeat = pvproperty(value=0, dtype=int)
+
+    @heartbeat.startup
+    async def heartbeat(self, instance, async_lib):
+        while True:
+            if instance.value == 0:
+                await instance.write(1)
+            else:
+                await instance.write(0)
+            await instance.write(instance.value)
+            await async_lib.library.sleep(0.5)
+
+#-----------------------------------------------------------------------------
+    tcs_connection = pvproperty(value=0, dtype = ChannelType.STRING) 
+
+    @tcs_connection.startup
+    async def tcs_connection(self, instance, async_lib):
+        while True:
+            connected = checkCAConnection("tcs:ak:astCtx", 1.0)
+
+            await instance.write("CONNECTED" if connected else "DISCONNECTED")
+            await async_lib.library.sleep(1)  # check every second        
+
+            if not connected:
+                await self.set_health("BAD")
+                await self.logMessage("TCS disconnected")
+            else:
+                await self.set_health("GOOD")
+                await self.logMessage("TCS connected")
+
+
+#-----------------------------------------------------------------------------
+    log_message = pvproperty( value = "", dtype=ChannelType.STRING, doc="Record the last log message" )
+
+    async def logMessage(self, message):
+
+        #log the new message only if it differs from last message
+        old_message_parts = self.log_message.value.split(": ", 1)
+    
+        if len(old_message_parts) > 1:
+            old_message = old_message_parts[1]
+        else:
+            old_message = self.log_message.value
+            
+        if old_message != message:
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Create a timestamp
+            message_with_date = f"{current_time}: {message}"  # Append the timestamp to the message
+            await self.log_message.write(message_with_date)
+
+
+
+#-----------------------------------------------------------------------------
     state = pvproperty(
             value = StateEnum.BOOTING,
             record="mbbo"
@@ -116,30 +197,35 @@ class GnirsDataManagerIOC(PVGroup):
     async def instrument(self, instance):
         return INSTRUMENT_NAME
 
+#-----------------------------------------------------------------------------
     currentLabel = pvproperty(
             value="",
             dtype=ChannelType.STRING,
             doc="Label of image being processed"
             )
 
+#-----------------------------------------------------------------------------
     lastError = pvproperty(
             value="",
             dtype=ChannelType.STRING,
             doc="Last error message"
             )
 
+#-----------------------------------------------------------------------------
     lastErrorLabel = pvproperty(
             value="",
             dtype=ChannelType.STRING,
             doc="Last processed image label with errors"
             )
 
+#-----------------------------------------------------------------------------
     lastProcessed = pvproperty(
             value="",
             dtype=ChannelType.STRING,
             doc="Last processed image name"
             )
 
+#-----------------------------------------------------------------------------
     log_array = pvproperty(
             value=[],
             max_length=MAX_LOG_SIZE,
@@ -147,11 +233,13 @@ class GnirsDataManagerIOC(PVGroup):
             doc="Last log messages"
             )
 
+#-----------------------------------------------------------------------------
     queued = pvproperty(
             value = 0,
             doc="Number of images queued for processing"
             )
 
+#-----------------------------------------------------------------------------
     async def push_task(self, log):
         await wait_for(self.queued.write(self.queued.value + 1),
                        self.append_log_string(log))
