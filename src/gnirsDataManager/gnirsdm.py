@@ -104,7 +104,7 @@ class GnirsDataManagerProcessor:
 
 class GnirsDataManagerIOC(PVGroup):
 
-    CADInterface = SubGroup(GnirsCADCARController, prefix='dc:')
+    CADInterface = SubGroup(GnirsCADCARController, prefix="")
     GIAPIInterface = GiapiInterface()
 
     def __init__(self, *args, **kwargs):
@@ -169,21 +169,13 @@ class GnirsDataManagerIOC(PVGroup):
 
 #-----------------------------------------------------------------------------
     log_message = pvproperty( value = "", dtype=ChannelType.STRING, doc="Record the last log message" )
+    log_datetime = pvproperty( value = "", dtype=ChannelType.STRING, doc="Record the last log date" )
+
 
     async def logMessage(self, message):
-
-        #log the new message only if it differs from last message
-        old_message_parts = self.log_message.value.split(": ", 1)
-    
-        if len(old_message_parts) > 1:
-            old_message = old_message_parts[1]
-        else:
-            old_message = self.log_message.value
-            
-        if old_message != message:
-            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Create a timestamp
-            message_with_date = f"{current_time}: {message}"  # Append the timestamp to the message
-            await self.log_message.write(message_with_date)
+        if self.log_message.value != message:
+            await self.log_datetime.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")  # Create a timestamp
+            await self.log_message.write(message)
 
 
 
@@ -240,6 +232,24 @@ class GnirsDataManagerIOC(PVGroup):
             )
 
 #-----------------------------------------------------------------------------
+    restart_ioc = pvproperty(value=0)
+
+    @restart_ioc.putter
+    async def restart_ioc(self, instance, value):
+        if value == 1:
+            # Logic to stop the current IOC
+            self._context.stop()
+            # New logic to restart the IOC
+            await restart()
+
+#-----------------------------------------------------------------------------
+
+
+    def start_ioc():
+        ioc = SimpleIOC(**self.ioc_options)
+        run(ioc.pvdb, **self.run_options)
+
+
     async def push_task(self, log):
         await wait_for(self.queued.write(self.queued.value + 1),
                        self.append_log_string(log))
@@ -357,11 +367,38 @@ async def main():
     prt = partial(startup, ioc, proc, **run_options)
     prt.__name__ = 'startup'
     try:
-        await create_ioc_task(ioc.pvdb, startup_hook=prt, **run_options)
+        server_context = await create_ioc_task(ioc.pvdb, startup_hook=prt, **run_options)
     finally:
         proc.shutdown()
         thrd.join()
 
+async def shutdown(proc, thrd):
+    """Shut down the IOC components."""
+    proc.shutdown()
+    thrd.join()
+
+async def restart():
+    """Restart the IOC by shutting down and then starting again."""
+    # Extract existing IOC components (e.g., proc, thrd) here, if needed
+    await shutdown(proc, thrd)
+    await main()
+
+def entry_point():
+    try:
+        return asyncio.run(main())
+    except KeyboardInterrupt:
+        return 0
+
+def restart_entry_point():
+    try:
+        return asyncio.run(restart())
+    except KeyboardInterrupt:
+        return 0
+
+if __name__ == '__main__':
+    sys.exit(entry_point())
+
+    '''
 def entry_point():
     try:
         return asyncio.run(main())
@@ -370,3 +407,4 @@ def entry_point():
 
 if __name__ == '__main__':
     sys.exit(entry_point())
+    '''
