@@ -21,3 +21,4 @@ WORKDIR /usr/local/share/gmp-server-0.2.6-SNAPSHOT
 # Command to start the gmp-server
 CMD ["/usr/local/bin/start-gmp-server.sh"]
 
+#docker run -d --network=host --name gmp gmp-server
