@@ -9,6 +9,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 from time import sleep
 
+import time
+
+import os
+
+
 
 from libgnirsioc import controllerInterface
 from libgnirsioc import controllerInterfaceDebug
@@ -43,8 +48,6 @@ class BiasCAD(GnirsCAD):
         else:
             await self.logMessage("Invalid bias voltage value. Leaving bias at: " + str(biasVal))
             
-            
-
 
 class TDL0CAD(GnirsCAD):
     async def start(self):
@@ -69,7 +72,7 @@ class InitSDSUCAD(GnirsCAD):
 class DCConfigCAD(GnirsCAD):
     async def start(self):
         print(f'{self.prefix} START DC Config')
-        self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.sequence.value)
+        self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.sequence.value * self.p.coadds)
         await self.logMessage("f'{self.prefix} START DC Config'")
 
 class EndObserveCAD(GnirsCAD):
@@ -82,55 +85,157 @@ class AbortCAD(GnirsCAD):
         print("AbortCAD start")        
         await self.logMessage("AbortCAD start")
 
+
 class ObserveCAD(GnirsCAD):
     async def start(self):
         if (int(self.p.rdout.value) == 0):
-            loop = asyncio.get_event_loop()
-            executor = ThreadPoolExecutor()
-            loop.run_in_executor(executor, asyncio.run, self.start_async())
+            #begin readout
+            await self.p.rdout.write(1)
+
+
+            # Run the blocking function in a separate thread
+            self.loop = asyncio.get_event_loop()
+
+            exposure_task = asyncio.create_task(
+                asyncio.to_thread(self.start_async_exposure)
+            )
+            countdown_task = asyncio.create_task(
+                self.countdown_timer(self.p.exposureTime.value)
+            )
+
+#            loop = asyncio.get_event_loop()
+#            executor = ThreadPoolExecutor()
+#            loop.run_in_executor(executor, asyncio.run, self.start_async_exposure())
+#            loop.run_in_executor(executor, asyncio.run, self.countdown_timer(self.p.exposureTime.value))    
         else:
             await self.logMessage(f'Readout in progress')
 
-    async def start_async(self):
+    def start_async_exposure(self):
+        """
+        Manages the process of starting an asynchronous exposure sequence, including logging, readout, and archiving.
 
-            await self.p.rdout.write(1)
+        This function handles various tasks such as logging messages, starting and ending the exposure,
+        sending notifications to different systems (like GMP and SDSU), and managing data archival processes.
+        It uses asyncio for concurrency, running coroutines in a specified event loop.
 
-            await self.logMessage(f'{self.prefix} ObserveCAD start')
-            print(f'{self.prefix} ObserveCAD start')
+        Parameters:
+        self: Reference to the class instance where methods like 'logMessage', 'write_coadds_header', and attributes
+            like 'p.exposureTime', 'p.detectorTemp1', 'giapi' are defined.
+        loop: The asyncio event loop in which to run asynchronous tasks.
 
+        The function performs different actions based on the 'archive_fits' value and the exposure time.
+        It's designed to work with a specific system setup, handling both the observational and data handling aspects.
+        """
+        asyncio.run_coroutine_threadsafe(self.logMessage(f'{self.prefix} ObserveCAD start'), self.loop)
+        print(f'{self.prefix} ObserveCAD start')
+
+        self.write_coadds_header()
+
+        # if sending to archive let GDS know
+        if (self.p.parent.archive_fits.value):
             self.giapi.setDataLabel(self.p.dataLabel.value)
-            await self.logMessage(f'DataLabel: {self.giapi.dataLabel}')
-            
-            await self.logMessage(f'sending observe prep to GMP')
+            asyncio.run_coroutine_threadsafe(self.logMessage(f'DataLabel: {self.giapi.dataLabel}'), self.loop)
+        
+            asyncio.run_coroutine_threadsafe(self.logMessage(f'sending observe prep to GMP'), self.loop)
 
             self.giapi.observePrep()
             self.giapi.observeStartAcq()
             self.giapi.observeEndAcq()
 
-            await self.logMessage(f'sending start readout to GMP')
+            asyncio.run_coroutine_threadsafe(self.logMessage(f'sending start readout to GMP'), self.loop)
 
             self.giapi.observeStartReadout()
 
-            await self.logMessage(f'sending start readout to SDSU')
-
-            self.controller.startExposure(self.p.detectorTemp1.value, self.p.detectorTemp1.value, False);	
-            sleep(self.p.exposureTime.value)
+            asyncio.run_coroutine_threadsafe(self.logMessage(f'sending start readout to SDSU'), self.loop)
 
 
-            await self.logMessage(f'SDSU readout complete')
-            await self.logMessage(f'descrambling raw data')
+        # readout SDSU
+        sleep(self.p.exposureTime.value/2)        
+        self.controller.startExposure(self.p.detectorTemp1.value, self.p.detectorTemp1.value, False)	
+        sleep(self.p.exposureTime.value/2)        
 
+
+        asyncio.run_coroutine_threadsafe(self.logMessage(f'SDSU readout complete'), self.loop)
+        asyncio.run_coroutine_threadsafe(self.logMessage(f'descrambling raw data'), self.loop)
+
+        # if sending to archive let GDS know
+        if (self.p.parent.archive_fits.value):
             self.giapi.observeEndReadout()
 
-            await self.logMessage(f'GDS writing fits')
+            asyncio.run_coroutine_threadsafe(self.logMessage(f'GDS writing fits'), self.loop)
 
             self.giapi.observeStartWrite()
 
             self.giapi.observeEndWrite()
 
-            await self.logMessage(f'ObserveCAD end')
+        #complete readout
+        asyncio.run_coroutine_threadsafe(self.logMessage(f'ObserveCAD end'), self.loop)
 
-            await self.p.rdout.write(0)
+        # set write to fits archive by default don't want a test write to affect a seqexec readout
+        asyncio.run_coroutine_threadsafe(self.p.parent.archive_fits.write(1), self.loop)
+        asyncio.run_coroutine_threadsafe(self.p.rdout.write(0), self.loop)
+
+
+
+
+    async def countdown_timer(self, total_time):
+        """
+        Asynchronously runs a countdown timer for the specified total time.
+
+        This function periodically updates the remaining time and prints it,
+        along with a specific prefix, to the console. It also writes the remaining time and 
+        observation progress as percentages to their respective properties in the class.
+
+        Parameters:
+        self: Reference to the class instance where 'p.rdout', 'p.timeLeft', and 'p.obsProgress' are defined.
+        total_time: The total time for the countdown in seconds.
+
+        The countdown stops when the remaining time reaches zero or when 'self.p.rdout' is False.
+        """
+        print("countdown_timer start")
+        start_time = time.time()  # Get the current time in seconds
+        remaining_time = total_time
+        
+        while remaining_time > 0 and self.p.rdout:
+            current_time = time.time()  # Get the current time in seconds
+            elapsed_time = current_time - start_time  # Calculate elapsed time
+            remaining_time -= elapsed_time  # Subtract elapsed time from remaining time
+            start_time = current_time  # Update the start time
+            
+            print(f'{self.prefix} countdown_timer: {remaining_time:.1f}')
+            await asyncio.sleep(0.1)  # You can keep a constant sleep interval here
+            await self.p.timeLeft.write(str(remaining_time))
+            await self.p.obsProgress.write(100 - (remaining_time/total_time)*100)
+
+
+
+    def write_coadds_header(self):
+        """
+        Writes content to a file with a '.coadds' extension.
+        The file is named based on the 'dataLabel' attribute and saved in the directory specified by 'data_dir'.
+        The file specifies the number of fits that will be coadded.
+
+        Parameters:
+        self: Reference to the class instance where 'p.parent.data_dir.value' and 'p.dataLabel.value' are defined.
+        content: The content to be written to the file.
+        """
+        directory = self.p.parent.data_dir.value
+        file_name = self.p.dataLabel.value + ".coadds"
+
+        # Create the full path
+        full_path = os.path.join(directory + "/new", file_name)
+
+        # Write to the file
+        with open(full_path, 'w') as file:
+            file.write(f"coadds: {self.p.numcoadds.value}\n")
+            file.write(f"sequence: {self.p.sequence.value}\n")
+            file.write(f"eng: {self.p.parent.include_eng.value}\n")
+
+    
+        #run thread safe async to set the eng write false after every fits
+        asyncio.run_coroutine_threadsafe(self.p.parent.include_eng.write(0), self.loop)
+
+
 
 
 
@@ -181,7 +286,9 @@ class GnirsCADCARController(PVGroup):
     detectorTemp1   = pvproperty(value=0.0, dtype=caproto.ChannelType.DOUBLE, name="dc:detectorTemp1", doc = "Detector Temperature 1")
     detectorTemp2   = pvproperty(value=0.0, dtype=caproto.ChannelType.DOUBLE, name="dc:detectorTemp2", doc = "Detector Temperature 2")
 
-    timeLeft        = pvproperty(value='', dtype=caproto.ChannelType.STRING, name="sad:dc:timeLeft", doc = "Exposure time left") 
+    timeLeft        = pvproperty(value='0', dtype=caproto.ChannelType.STRING, name="sad:dc:timeLeft", doc = "Exposure time left") 
+    obsProgress     = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:obsProgress", doc = "Exposure percent complete") 
+
     rdout           = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="sad:dc:rdout", doc = "Reading out") 
 
     def __init__(self, *args, **kwargs):

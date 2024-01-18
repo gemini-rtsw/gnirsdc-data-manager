@@ -14,6 +14,8 @@ from pathlib import Path
 from logging import getLogger
 
 from gemUtilities import checkCAConnection
+from diskSpaceMonitor import DiskSpacePVGroup
+
 
 from gnirs_data import manager
 
@@ -24,6 +26,7 @@ from caproto import ChannelType
 from caproto.sync.client import read
 
 from datetime import datetime
+
 
 
 import gnirssdsu
@@ -69,7 +72,7 @@ class GnirsDataManagerProcessor:
             rpath, header = manager.decode_header(self.dp.datamov.new, fname)
             label = header['PDU']['DATALABE']
             asyncio.run(self.ioc.currentLabel.write(label))
-            self.dp.process_file(fname)
+            self.dp.process_file(fname, self.ioc.include_eng.value)
         except Exception as exc:
             self.logger.error(f"Processing {file_path}: {exc}")
             if label is None:
@@ -81,6 +84,16 @@ class GnirsDataManagerProcessor:
 
 
     def process_queue(self):
+        '''Process tasks from the queue.
+
+        This method continuously processes tasks from the queue. It repeatedly checks 
+        for tasks, with a brief wait (timeout of 0.5 seconds) between checks. If a task 
+        is found, it is processed, and the system's state and current label are updated.
+        If the queue is empty, it catches the 'queue.Empty' exception, allowing the loop 
+        to continue checking for new tasks. This process continues unless the system is 
+        shutting down.
+        '''
+
         self.ready.wait()
         while not self.shutting_down:
             try:
@@ -97,6 +110,16 @@ class GnirsDataManagerProcessor:
         await self.ioc.lastError.write(message)
 
     async def new_file(self, fpath):
+        '''Queue a new file for processing.
+
+        This asynchronous method checks if the provided file path ends with '.header'.
+        If it does, the file is considered for queuing. It logs the action of queuing 
+        the new file and then adds the file path to the processing queue. This method 
+        is designed to handle '.header' files specifically.
+        
+        Args:
+        fpath (Path): The file path of the file to be queued.
+        '''
         filename = fpath.parts[-1]
         if filename.endswith('.header'):
             await self.ioc.push_task(f"Queueing new file: {filename}")
@@ -106,6 +129,7 @@ class GnirsDataManagerIOC(PVGroup):
 
     CADInterface = SubGroup(GnirsCADCARController, prefix="")
     GIAPIInterface = GiapiInterface()
+    DiskSpaceMonitor = SubGroup(DiskSpacePVGroup, prefix="")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -176,8 +200,13 @@ class GnirsDataManagerIOC(PVGroup):
         if self.log_message.value != message:
             await self.log_datetime.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")  # Create a timestamp
             await self.log_message.write(message)
+            print(message)
 
+#-----------------------------------------------------------------------------
+    archive_fits = pvproperty(value=1, dtype = ChannelType.INT) 
 
+#-----------------------------------------------------------------------------
+    data_dir = pvproperty(value=1, dtype = ChannelType.STRING) 
 
 #-----------------------------------------------------------------------------
     state = pvproperty(
@@ -230,7 +259,10 @@ class GnirsDataManagerIOC(PVGroup):
             value = 0,
             doc="Number of images queued for processing"
             )
-
+    
+#-----------------------------------------------------------------------------
+    include_eng = pvproperty(value=0, dtype = ChannelType.INT, doc="Include engineering images in fits")
+    
 #-----------------------------------------------------------------------------
     restart_ioc = pvproperty(value=0)
 
@@ -266,6 +298,19 @@ class GnirsDataManagerIOC(PVGroup):
                        self.append_log_string(log))
 
 async def inotify_task(ioc, proc, data_dir):
+    '''
+    Asynchronously monitor a directory for new files.
+
+    This function sets up an inotify watch on the specified data directory. It
+    listens for file creation and move events. When such an event occurs, the 
+    function processes the new file by calling `proc.new_file` with the path 
+    of the new or moved file.
+    
+    Args:
+    ioc: The IO Controller used in the monitoring process.
+    proc: The processor object responsible for handling new files.
+    data_dir: The directory to monitor for file events.
+    '''
     with Inotify() as inotify:
         inotify.add_watch(data_dir, Mask.CLOSE_WRITE | Mask.MOVED_TO)
         async for event in inotify:
@@ -358,6 +403,7 @@ async def main():
             )
     print ("create IOC")
     ioc = GnirsDataManagerIOC(**ioc_options)
+    await ioc.data_dir.write(run_options['data_dir'])
     dm = manager.DataMover(run_options['data_dir'], run_options['output_dir'])
     # TODO: "Keep should be configured via command line"
     processor = manager.DataProcessor(dm, keep=True)
