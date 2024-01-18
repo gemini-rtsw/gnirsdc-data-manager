@@ -1,0 +1,23 @@
+# Use Rocky Linux 9 as the base image
+FROM rockylinux:9
+
+# Install Java 8
+RUN dnf install -y java-1.8.0-openjdk
+
+# Set the JAVA_HOME environment variable
+ENV JAVA_HOME /usr/lib/jvm/jre
+
+# Copy the gmp-server tar.gz file and the custom script into the container
+COPY gmp-server-0.2.6-SNAPSHOT.tar.gz /tmp
+COPY start-gmp-server.sh /usr/local/bin/
+
+# Extract the tar.gz file into /usr/local/share
+RUN tar -xzvf /tmp/gmp-server-0.2.6-SNAPSHOT.tar.gz -C /usr/local/share \
+    && chmod +x /usr/local/bin/start-gmp-server.sh
+
+# Set the working directory to the extraction directory
+WORKDIR /usr/local/share/gmp-server-0.2.6-SNAPSHOT
+
+# Command to start the gmp-server
+CMD ["/usr/local/bin/start-gmp-server.sh"]
+
