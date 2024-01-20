@@ -13,10 +13,22 @@ import time
 
 import os
 
-
-
 from libgnirsioc import controllerInterface
 from libgnirsioc import controllerInterfaceDebug
+
+
+
+
+DEBUG_MODE = True
+
+def DebugMode(value):
+    global DEBUG_MODE
+    DEBUG_MODE = value
+    print(f"Value: {DEBUG_MODE}")
+
+
+
+
 
 class GnirsCAD(CADRecord):
     def __init__(self, *args, **kwargs):
@@ -30,6 +42,7 @@ class GnirsCAD(CADRecord):
 class InitCAD(GnirsCAD):
     async def start(self):
         print("InitCAD start")
+
         await self.logMessage("InitCAD start")
 
 
@@ -246,7 +259,34 @@ class StopCAD(GnirsCAD):
 
 class GnirsCADCARController(PVGroup):
 
-    sdsuController = controllerInterfaceDebug()
+    def __init__(self, *args, **kwargs):
+
+        print (f"Debug mode: {DEBUG_MODE}")
+
+        if (DEBUG_MODE):
+            print("DEBUG MODE ENABLED")
+            self.sdsuController = controllerInterfaceDebug()
+        else:
+            print("SDSU Initializing")
+            self.sdsuController = controllerInterface()
+
+        super().__init__(*args, **kwargs)
+
+
+        # CAD commands connect to top level CAR record
+        self.dcconfig.car_record = self.applyC
+        self.endObserve.car_record = self.applyC
+        self.abort.car_record = self.applyC
+        self.observe.car_record = self.applyC
+        self.stop.car_record = self.applyC
+
+        # Apply command connects to CAD records
+        self.apply.sub_records = [self.dcconfig,self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL0, self.TDL1, self.bias]
+
+
+
+
+
 
     #------ CAD commands --------
     # dc:TDL
@@ -266,7 +306,7 @@ class GnirsCADCARController(PVGroup):
     abort = SubGroup(AbortCAD, prefix='dc:abort.')
     observe = SubGroup(ObserveCAD, prefix='dc:observe.')
     stop = SubGroup(StopCAD, prefix='dc:stop.')
-    
+        
 
     applyC = SubGroup(CARRecord, prefix='dc:applyC.')
     apply = SubGroup(ApplyRecord, prefix='dc:apply.')
@@ -290,19 +330,6 @@ class GnirsCADCARController(PVGroup):
     obsProgress     = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:obsProgress", doc = "Exposure percent complete") 
 
     rdout           = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="sad:dc:rdout", doc = "Reading out") 
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # CAD commands connect to top level CAR record
-        self.dcconfig.car_record = self.applyC
-        self.endObserve.car_record = self.applyC
-        self.abort.car_record = self.applyC
-        self.observe.car_record = self.applyC
-        self.stop.car_record = self.applyC
-
-        # Apply command connects to CAD records
-        self.apply.sub_records = [self.dcconfig,self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL0, self.TDL1, self.bias]
 
 
 

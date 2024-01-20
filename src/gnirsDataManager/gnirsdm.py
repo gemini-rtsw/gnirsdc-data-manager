@@ -32,6 +32,8 @@ from datetime import datetime
 import gnirssdsu
 from gnirssdsu import GnirsCADCARController
 
+from gnirssdsu import DebugMode
+
 import gnirsgiapi
 from gnirsgiapi import GiapiInterface
 
@@ -39,6 +41,8 @@ INSTRUMENT_NAME = "GNIRS"
 DEFAULT_PREFIX = "gnirsdm:"
 DEFAULT_DATADIR = '/home/readout_data'
 MAX_LOG_SIZE = 5
+
+
 
 async def wait_for(*awaitables):
     loop = asyncio.get_event_loop()
@@ -127,17 +131,21 @@ class GnirsDataManagerProcessor:
 
 class GnirsDataManagerIOC(PVGroup):
 
-    CADInterface = SubGroup(GnirsCADCARController, prefix="")
-    GIAPIInterface = GiapiInterface()
-    DiskSpaceMonitor = SubGroup(DiskSpacePVGroup, prefix="")
-
     def __init__(self, *args, **kwargs):
+
         super().__init__(*args, **kwargs)
 
 
         self.logMessage(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.sub_records)}')
 
         print(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.sub_records)}')
+
+
+
+    CADInterface = SubGroup(GnirsCADCARController, prefix="")
+    GIAPIInterface = GiapiInterface()
+    DiskSpaceMonitor = SubGroup(DiskSpacePVGroup, prefix="")
+
 
 #-----------------------------------------------------------------------------
     uptime = pvproperty(value=0, dtype=int)
@@ -384,15 +392,29 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
                                              argv=argv, macros=macros,
                                              supported_async_libs=supported_async_libs)
 
-    parser.add_argument('--data-dir', '-D', type=str, required=True,
+    parser.add_argument('--data-dir', '-d', type=str, required=True,
                         help="Working data directory,")
     parser.add_argument('--output-dir', '-o', type=str,
                         help="FITS output directory, default: {data-dir}/fits")
+    parser.add_argument('--debug', '-D', action='store_true', 
+                        help="Set Debug mode - no SDSU")    
 #    parser.add_argument('--list-pvs', action='store_true', help='List Process Variables')
     args = parser.parse_args()
     ioc_options, run_options = split_args(args)
     run_options['data_dir'] = args.data_dir
     run_options['output_dir'] = f'{args.data_dir}/fits' if args.output_dir is None else args.output_dir
+    run_options['debug'] = args.debug
+
+    if (args.debug == True):
+        DebugMode(True)
+        print (f"Debug mode: True")
+    else:
+        DebugMode(False)
+        print (f"Debug mode: False")
+
+
+
+#    run_options['list_pvs'] = args.list_pvs
 
     return ioc_options, run_options
 
@@ -403,6 +425,7 @@ async def main():
             )
     print ("create IOC")
     ioc = GnirsDataManagerIOC(**ioc_options)
+    print ("IOC created")
     await ioc.data_dir.write(run_options['data_dir'])
     dm = manager.DataMover(run_options['data_dir'], run_options['output_dir'])
     # TODO: "Keep should be configured via command line"
