@@ -62,16 +62,11 @@ class BiasCAD(GnirsCAD):
             await self.logMessage("Invalid bias voltage value. Leaving bias at: " + str(biasVal))
             
 
-class TDL0CAD(GnirsCAD):
+class TDLCAD(GnirsCAD):
     async def start(self):
-        print("TDL0 start")
-        await self.logMessage("TDL0 start")
+        print("TDL start")
+        await self.logMessage("TDL start")
 
-class TDL1CAD(GnirsCAD):
-    async def start(self):
-        print("TDL1 start")   
-        await self.logMessage("TDL1 start")
-        
 
 class InitSDSUCAD(GnirsCAD):
     async def start(self):
@@ -281,7 +276,7 @@ class GnirsCADCARController(PVGroup):
         self.stop.car_record = self.applyC
 
         # Apply command connects to CAD records
-        self.apply.sub_records = [self.dcconfig,self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL0, self.TDL1, self.bias]
+        self.apply.sub_records = [self.dcconfig,self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL, self.bias]
 
 
 
@@ -290,8 +285,7 @@ class GnirsCADCARController(PVGroup):
 
     #------ CAD commands --------
     # dc:TDL
-    TDL0 = SubGroup(TDL0CAD, prefix='dc:TDL0.')
-    TDL1 = SubGroup(TDL1CAD, prefix='dc:TDL1.')
+    TDL = SubGroup(TDLCAD, prefix='dc:TDL.')
 
     # dc:bias  
     bias = SubGroup(BiasCAD, prefix='dc:bias.')
