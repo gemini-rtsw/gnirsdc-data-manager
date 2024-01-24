@@ -263,7 +263,7 @@ class GnirsCADCARController(PVGroup):
             self.sdsuController = controllerInterfaceDebug()
         else:
             print("SDSU Initializing")
-            self.sdsuController = controllerInterface()
+            self.sdsuController = controllerInterface("/readout_data", "./firmware")
 
         super().__init__(*args, **kwargs)
 
