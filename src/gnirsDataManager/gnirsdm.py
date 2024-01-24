@@ -39,7 +39,7 @@ from gnirsgiapi import GiapiInterface
 
 INSTRUMENT_NAME = "GNIRS"
 DEFAULT_PREFIX = "gnirsdm:"
-DEFAULT_DATADIR = '/home/readout_data'
+DEFAULT_DATADIR = '/readout_data'
 MAX_LOG_SIZE = 5
 
 
@@ -319,6 +319,9 @@ async def inotify_task(ioc, proc, data_dir):
     proc: The processor object responsible for handling new files.
     data_dir: The directory to monitor for file events.
     '''
+    
+    os.makedirs(data_dir, exist_ok=True)  # Create the 'new' directory if it doesn't exist
+
     with Inotify() as inotify:
         inotify.add_watch(data_dir, Mask.CLOSE_WRITE | Mask.MOVED_TO)
         async for event in inotify:
@@ -427,6 +430,10 @@ async def main():
     ioc = GnirsDataManagerIOC(**ioc_options)
     print ("IOC created")
     await ioc.data_dir.write(run_options['data_dir'])
+
+
+
+
     dm = manager.DataMover(run_options['data_dir'], run_options['output_dir'])
     # TODO: "Keep should be configured via command line"
     processor = manager.DataProcessor(dm, keep=True)
