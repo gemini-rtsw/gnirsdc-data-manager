@@ -24,7 +24,7 @@ LABEL maintainer="hawi.stecher@noirlab.edu"
 # docker run -itd --name gnirsdc --privileged --network=host -v `pwd`:/work registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run-img bash -l
 # in the container source giapi/defineGiapiglueEnv.sh
 # cd src/gnirsDataManager
-# python3.9 gnirsdm.py [--list-pvs] --data-dir /readout_data/
+# python3.9 gnirsdm.py [--list-pvs] --data-dir /readout_data
 
 
 # Run package updates
