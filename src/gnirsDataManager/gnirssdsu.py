@@ -65,6 +65,7 @@ class BiasCAD(GnirsCAD):
 class TDLCAD(GnirsCAD):
     async def start(self):
         print("TDL start")
+        self.controller.testDataLink()
         await self.logMessage("TDL start")
 
 
