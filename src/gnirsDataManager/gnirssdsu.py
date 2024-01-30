@@ -80,9 +80,9 @@ class InitSDSUCAD(GnirsCAD):
 
 class DCConfigCAD(GnirsCAD):
     async def start(self):
-        print(f'{self.prefix} START DC Config')
-        self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.sequence.value * self.p.coadds)
-        await self.logMessage("f'{self.prefix} START DC Config'")
+        print("START DC Config")
+        self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.sequence.value * self.p.numcoadds.value)
+        await self.logMessage("START DC Config")
 
 class EndObserveCAD(GnirsCAD):
     async def start(self):

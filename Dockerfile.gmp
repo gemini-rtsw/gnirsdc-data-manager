@@ -1,6 +1,8 @@
 # Use Rocky Linux 9 as the base image
 FROM rockylinux:9
 
+RUN dnf -y update && dnf -y install procps
+
 # Install Java 8
 RUN dnf install -y java-1.8.0-openjdk
 
