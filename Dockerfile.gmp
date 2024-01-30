@@ -21,4 +21,5 @@ WORKDIR /usr/local/share/gmp-server-0.2.6-SNAPSHOT
 # Command to start the gmp-server
 CMD ["/usr/local/bin/start-gmp-server.sh"]
 
-#docker run -d --network=host --name gmp gmp-server
+#run from the root dir of the gnirsdc-data-manager repo
+#docker run -d --network=host --name gmp registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
