@@ -82,7 +82,7 @@ class DCConfigCAD(GnirsCAD):
     async def start(self):
         print("START DC Config")
         self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.numcoadds.value)
-        await self.logMessage(f"DC Config set to lnr: {self.p.lnrNum.value} adc: {self.p.digitalAvgs.value} exp: {self.p.exposureTime.value} coadds: {self.p.numcoadds.value}")
+        await self.logMessage(f"Config lnr: {self.p.lnrNum.value} adc: {self.p.digitalAvgs.value} exp: {self.p.exposureTime.value} coadds: {self.p.numcoadds.value}")
 
 class EndObserveCAD(GnirsCAD):
     async def start(self):
