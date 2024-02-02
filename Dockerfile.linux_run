@@ -6,6 +6,8 @@
 # git clone pycadcar
 # git clone gnirsdc-tools
 # git clone gnirsdc-lib
+#
+# Note: you will need two switch to the appropriate branches
 
 # ---- build image
 # docker build --no-cache -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run -f gnirsdc-data-manager/Dockerfile.linux_run .
@@ -18,7 +20,7 @@
 
 
 # Base image
-FROM registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-cppyy-img
+FROM registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-base
 
 # Maintainer label
 LABEL maintainer="hawi.stecher@noirlab.edu"

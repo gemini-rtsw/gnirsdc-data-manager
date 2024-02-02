@@ -5,26 +5,15 @@ FROM rockylinux/rockylinux:8
 # Maintainer label
 LABEL maintainer="hawi.stecher@noirlab.edu"
 
-# -- Instructions 
-# ---- DC 
-# git clone gnirsdc-data-manager
-
-# ---- GIAPI GLUE and GMP
-# untar giapi and gmp tar files from IGRINS2 project into gnirsdc-data-manager dir 
-# for gmp you can also run registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
-#      see: Dockerfile.gmp
-
-# ---- DC runtime environment build
-# build this Dockerfile (it doesn't build on MacOS as of 2023) 
-# in the container pip3 install . in the following repos:
-# gnirsdc-tools, pycadcar, gnirsdc-lib
-
-# ---- DC runtime enironment pull
-# or pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run-img
-# docker run -itd --name gnirsdc --privileged --network=host -v `pwd`:/work registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run-img bash -l
-# in the container source giapi/defineGiapiglueEnv.sh
-# cd src/gnirsDataManager
-# python3.9 gnirsdm.py [--list-pvs] --data-dir /readout_data
+# -- To build the base evironment image
+# 
+#   git clone git@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git
+#   git switch irdcioc
+#   docker build -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-base
+#   docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-base
+#
+# -- To build the runtime environment follow Dockerfile.linux_run 
+#
 
 
 # Run package updates
