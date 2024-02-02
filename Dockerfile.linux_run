@@ -1,0 +1,55 @@
+
+
+# -- Instructions 
+# ---- Repos
+# git clone gnirsdc-data-manager
+# git clone pycadcar
+# git clone gnirsdc-tools
+# git clone gnirsdc-lib
+
+# ---- build image
+# docker build --no-cache -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run -f gnirsdc-data-manager/Dockerfile.linux_run .
+
+# ---- run DC
+# or pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run
+# docker run -itd --name gnirsdc --privileged --network=host registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run
+
+
+
+
+# Base image
+FROM registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-cppyy-img
+
+# Maintainer label
+LABEL maintainer="hawi.stecher@noirlab.edu"
+
+
+COPY ./gnirsdc-data-manager /gnirsdc
+COPY ./pycadcar /pycadcar
+COPY ./gnirsdc-tools /gnirsdc-tools
+COPY ./gnirsdc-lib /gnirsdc-lib
+
+RUN python3 -m pip install caproto
+RUN python3 -m pip install asyncinotify
+RUN dnf install -y procps-ng
+
+WORKDIR /pycadcar
+RUN python3 -m pip install .
+
+WORKDIR /gnirsdc-tools
+RUN python3 -m pip install .
+
+WORKDIR /gnirsdc-lib
+RUN python3 -m pip install .
+
+
+
+WORKDIR /gnirsdc
+
+
+
+# Start bash
+CMD ["/gnirsdc/start-dc.sh"]
+
+
+

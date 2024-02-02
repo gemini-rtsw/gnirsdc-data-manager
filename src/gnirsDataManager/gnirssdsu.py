@@ -64,18 +64,41 @@ class BiasCAD(GnirsCAD):
 
 class TDLCAD(GnirsCAD):
     async def start(self):
-        print("TDL start")
-        self.controller.testDataLink()
-        await self.logMessage("TDL start")
+        result = self.controller.testDataLink()
+        await self.logMessage(f"TDL: {result}")
 
 
 class InitSDSUCAD(GnirsCAD):
     async def start(self):
-        print("InitSDSUCAD start")
-        self.controller.setAladdinIII(True)
-        self.controller.init()
+        await self.logMessage("Initializing SDSU")
 
-        await self.logMessage("SDSU Initialized")
+
+        try:
+            # Your code that calls the C++ function through PyBind11
+            # For example, initializing or connecting to a device
+
+            if (DEBUG_MODE):
+                await self.logMessage("DEBUG MODE ENABLED")
+                self.sdsuController = controllerInterfaceDebug()
+            else:
+                await self.logMessage("SDSU Initializing")
+                self.sdsuController = controllerInterface("/readout_data", "./firmware")
+        except Exception as e:
+                print("CAUGHT EXCEPTION")
+                error_message = str(e)
+                await self.logMessage(f"An exception occurred: {error_message}")
+
+
+        result = self.controller.testDataLink()
+
+        if (result == True):
+            self.controller.setAladdinIII(True)
+            self.controller.init()
+
+            await self.logMessage("SDSU Initialization successful")
+
+        else: 
+            await self.logMessage("SDSU Initialization failed")
 
 
 class DCConfigCAD(GnirsCAD):
@@ -237,7 +260,6 @@ class ObserveCAD(GnirsCAD):
         # Write to the file
         with open(full_path, 'w') as file:
             file.write(f"coadds: {self.p.numcoadds.value}\n")
-            file.write(f"sequence: {self.p.sequence.value}\n")
             file.write(f"eng: {self.p.parent.include_eng.value}\n")
 
     
@@ -259,12 +281,9 @@ class GnirsCADCARController(PVGroup):
 
         print (f"Debug mode: {DEBUG_MODE}")
 
-        if (DEBUG_MODE):
-            print("DEBUG MODE ENABLED")
-            self.sdsuController = controllerInterfaceDebug()
-        else:
-            print("SDSU Initializing")
-            self.sdsuController = controllerInterface("/readout_data", "./firmware")
+
+        self.sdsuController = None
+
 
         super().__init__(*args, **kwargs)
 
