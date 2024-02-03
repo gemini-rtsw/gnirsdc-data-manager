@@ -11,6 +11,6 @@ def checkCAConnection(channel_name, timeout=1.0):
         print(f"An unexpected error occurred: {e}")
         return False
 
-# Example usage
-result = checkCAConnection("tcs:ak:astCtx")
-print(f"Connection successful: {result}")
+
+
+
