@@ -55,24 +55,30 @@ class InitCAD(GnirsCAD):
 
 class BiasCAD(GnirsCAD):
     async def start(self):
-        print("BiasCAD start")
-        
-        biasVal = self.parent.detBias.value
-
-        if (biasVal == -3.6):
-            self.controller.biasLow()
-            await self.logMessage("Bias set to shallow: -3.6")
-        elif (biasVal == -3.2):
-            self.controller.biasHigh()
-            await self.logMessage("Bias set to deep: -3.2")
+        if (self.controller == None):
+            await self.logMessage(f"Controller not initialized")
         else:
-            await self.logMessage("Invalid bias voltage value. Leaving bias at: " + str(biasVal))
+            print("BiasCAD start")
             
+            biasVal = self.parent.detBias.value
+
+            if (biasVal == -3.6):
+                self.controller.biasLow()
+                await self.logMessage("Bias set to shallow: -3.6")
+            elif (biasVal == -3.2):
+                self.controller.biasHigh()
+                await self.logMessage("Bias set to deep: -3.2")
+            else:
+                await self.logMessage("Invalid bias voltage value. Leaving bias at: " + str(biasVal))
+                
 
 class TDLCAD(GnirsCAD):
     async def start(self):
-        result = self.controller.testDataLink()
-        await self.logMessage(f"TDL: {result}")
+        if (self.controller == None):
+            await self.logMessage(f"Controller not initialized")
+        else: 
+            result = self.controller.testDataLink()
+            await self.logMessage(f"TDL: {result}")
 
 
 class InitSDSUCAD(GnirsCAD):
@@ -114,9 +120,12 @@ class InitSDSUCAD(GnirsCAD):
 
 class DCConfigCAD(GnirsCAD):
     async def start(self):
-        print("START DC Config")
-        self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.numcoadds.value)
-        await self.logMessage(f"Config lnr: {self.p.lnrNum.value} adc: {self.p.digitalAvgs.value} exp: {self.p.exposureTime.value} coadds: {self.p.numcoadds.value}")
+        if (self.controller == None):
+            await self.logMessage(f"Controller not initialized")
+        else:
+            print("START DC Config")
+            self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.numcoadds.value)
+            await self.logMessage(f"Config lnr: {self.p.lnrNum.value} adc: {self.p.digitalAvgs.value} exp: {self.p.exposureTime.value} coadds: {self.p.numcoadds.value}")
 
 class EndObserveCAD(GnirsCAD):
     async def start(self):
@@ -131,27 +140,30 @@ class AbortCAD(GnirsCAD):
 
 class ObserveCAD(GnirsCAD):
     async def start(self):
-        if (int(self.p.rdout.value) == 0):
-            #begin readout
-            await self.p.rdout.write(1)
+        if (self.controller == None):
+            await self.logMessage(f"Controller not initialized")
+        else:
+            if (int(self.p.rdout.value) == 0):
+                #begin readout
+                await self.p.rdout.write(1)
 
 
-            # Run the blocking function in a separate thread
-            self.loop = asyncio.get_event_loop()
+                # Run the blocking function in a separate thread
+                self.loop = asyncio.get_event_loop()
 
-            exposure_task = asyncio.create_task(
-                asyncio.to_thread(self.start_async_exposure)
-            )
-            countdown_task = asyncio.create_task(
-                self.countdown_timer(self.p.exposureTime.value)
-            )
+                exposure_task = asyncio.create_task(
+                    asyncio.to_thread(self.start_async_exposure)
+                )
+                countdown_task = asyncio.create_task(
+                    self.countdown_timer(self.p.exposureTime.value)
+                )
 
 #            loop = asyncio.get_event_loop()
 #            executor = ThreadPoolExecutor()
 #            loop.run_in_executor(executor, asyncio.run, self.start_async_exposure())
 #            loop.run_in_executor(executor, asyncio.run, self.countdown_timer(self.p.exposureTime.value))    
-        else:
-            await self.logMessage(f'Readout in progress')
+            else:
+                await self.logMessage(f'Readout in progress')
 
     def start_async_exposure(self):
         """
