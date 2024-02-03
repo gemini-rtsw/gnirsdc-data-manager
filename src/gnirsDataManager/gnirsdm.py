@@ -319,8 +319,9 @@ async def inotify_task(ioc, proc, data_dir):
     proc: The processor object responsible for handling new files.
     data_dir: The directory to monitor for file events.
     '''
-    
-    os.makedirs(data_dir, exist_ok=True)  # Create the 'new' directory if it doesn't exist
+   
+    os.makedirs(data_dir, exist_ok=True)  # Create the directory if it doesn't exist
+    print(data_dir) 
 
     with Inotify() as inotify:
         inotify.add_watch(data_dir, Mask.CLOSE_WRITE | Mask.MOVED_TO)
@@ -359,6 +360,7 @@ async def create_ioc_task(pvdb, *, module_name="caproto.asyncio.server",
 
 async def startup(ioc, proc, async_lib, *, data_dir, **kw):
     await ioc.state.write(StateEnum.INITIALIZING)
+    print(data_dir)
     await create_inotify_task(ioc, proc, data_dir)
     proc.set_ready()
     await ioc.state.write(StateEnum.RUNNING)
