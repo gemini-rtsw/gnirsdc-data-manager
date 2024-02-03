@@ -33,10 +33,17 @@ def DebugMode(value):
 class GnirsCAD(CADRecord):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)  # Call parent constructor if it does anything
-        self.controller = self.parent.sdsuController
         self.giapi = self.parent.parent.GIAPIInterface
         self.logMessage = self.parent.parent.logMessage
         self.p = self.parent
+
+    @property
+    def controller(self):
+        return self.parent.sdsuController
+
+    @controller.setter
+    def controller(self, value):
+        self.parent.sdsuController = value
 
 
 class InitCAD(GnirsCAD):
@@ -72,33 +79,37 @@ class InitSDSUCAD(GnirsCAD):
     async def start(self):
         await self.logMessage("Initializing SDSU")
 
+        result = False
 
-        try:
-            # Your code that calls the C++ function through PyBind11
-            # For example, initializing or connecting to a device
 
-            if (DEBUG_MODE):
-                await self.logMessage("DEBUG MODE ENABLED")
-                self.sdsuController = controllerInterfaceDebug()
-            else:
+        if (DEBUG_MODE):
+            await self.logMessage("DEBUG MODE ENABLED")
+            self.controller = controllerInterfaceDebug()
+
+            await self.logMessage("SDSU Debug Mode initialization successful")
+
+        else:
+            try:
                 await self.logMessage("SDSU Initializing")
-                self.sdsuController = controllerInterface("/readout_data", "./firmware")
-        except Exception as e:
-                print("CAUGHT EXCEPTION")
-                error_message = str(e)
-                await self.logMessage(f"An exception occurred: {error_message}")
+                self.controller = controllerInterface("/readout_data", "./firmware")
+
+                result = self.controller.testDataLink()
+
+                if (result == True):
+                    self.controller.setAladdinIII(True)
+                    self.controller.init()
+
+                    await self.logMessage("SDSU Initialization successful")
+
+                else: 
+                    await self.logMessage("SDSU Initialization failed")
+
+            except Exception as e:
+                    print("CAUGHT EXCEPTION")
+                    error_message = str(e)
+                    await self.logMessage(f"An exception occurred: {error_message}")
 
 
-        result = self.controller.testDataLink()
-
-        if (result == True):
-            self.controller.setAladdinIII(True)
-            self.controller.init()
-
-            await self.logMessage("SDSU Initialization successful")
-
-        else: 
-            await self.logMessage("SDSU Initialization failed")
 
 
 class DCConfigCAD(GnirsCAD):
