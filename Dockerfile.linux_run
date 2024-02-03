@@ -51,7 +51,7 @@ WORKDIR /gnirsdc
 
 
 # Start bash
-CMD ["/gnirsdc/start-dc.sh"]
+CMD ["/gnirsdc/entrypoint.sh"]
 
 
 
