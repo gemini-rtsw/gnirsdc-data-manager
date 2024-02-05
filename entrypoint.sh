@@ -7,7 +7,7 @@ source defineGiapiglueEnv.sh
 cd /gnirsdc/src/gnirsDataManager
 
 # Execute your Python script with any required arguments
-python3.9 gnirsdm.py --data-dir /readout_data
+python3.9 gnirsdm.py --data-dir /readout_data >> /readout_data/log/gnirsdc-$(date +"%Y-%m-%d").log
 
 # Keep the container running if needed
 exec "$@"
