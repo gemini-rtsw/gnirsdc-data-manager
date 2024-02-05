@@ -76,6 +76,7 @@ class GnirsDataManagerProcessor:
             rpath, header = manager.decode_header(self.dp.datamov.new, fname)
             label = header['PDU']['DATALABE']
             asyncio.run(self.ioc.currentLabel.write(label))
+            print(f"TEST =======>  {self.ioc.include_eng.value}")
             self.dp.process_file(fname, self.ioc.include_eng.value)
         except Exception as exc:
             self.logger.error(f"Processing {file_path}: {exc}")
@@ -130,6 +131,8 @@ class GnirsDataManagerProcessor:
             self.queue.put(fpath)
 
 class GnirsDataManagerIOC(PVGroup):
+
+    processor = None      
 
     def __init__(self, *args, **kwargs):
 
@@ -270,8 +273,17 @@ class GnirsDataManagerIOC(PVGroup):
     
 #-----------------------------------------------------------------------------
     include_eng = pvproperty(value=0, dtype = ChannelType.INT, doc="Include engineering images in fits")
-    
+    @include_eng.putter
+    async def include_eng(self, instance, value):
+        if value == 1:
+            print("Saving Eng Data")
+        else:
+            print("Not Saving Eng Data")
+            
+        GnirsDataManagerIOC.processor.include_eng = value
+
 #-----------------------------------------------------------------------------
+        
     restart_ioc = pvproperty(value=0)
 
     @restart_ioc.putter
@@ -438,8 +450,8 @@ async def main():
 
     dm = manager.DataMover(run_options['data_dir'], run_options['output_dir'])
     # TODO: "Keep should be configured via command line"
-    processor = manager.DataProcessor(dm, keep=True)
-    proc = GnirsDataManagerProcessor(ioc, processor)
+    GnirsDataManagerIOC.processor = manager.DataProcessor(dm, keep=True)
+    proc = GnirsDataManagerProcessor(ioc, GnirsDataManagerIOC.processor)
     thrd = threading.Thread(target = proc.process_queue)
     thrd.start()
     prt = partial(startup, ioc, proc, **run_options)
