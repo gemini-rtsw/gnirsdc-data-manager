@@ -132,12 +132,13 @@ class GnirsDataManagerProcessor:
 
 class GnirsDataManagerIOC(PVGroup):
 
-    processor = None      
+         
 
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
 
+        self.processor = None 
 
         self.logMessage(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.sub_records)}')
 
@@ -280,7 +281,7 @@ class GnirsDataManagerIOC(PVGroup):
         else:
             print("Not Saving Eng Data")
             
-        GnirsDataManagerIOC.processor.include_eng = value
+        self.processor.include_eng = value
 
 #-----------------------------------------------------------------------------
         
@@ -450,8 +451,8 @@ async def main():
 
     dm = manager.DataMover(run_options['data_dir'], run_options['output_dir'])
     # TODO: "Keep should be configured via command line"
-    GnirsDataManagerIOC.processor = manager.DataProcessor(dm, keep=True)
-    proc = GnirsDataManagerProcessor(ioc, GnirsDataManagerIOC.processor)
+    ioc.processor = manager.DataProcessor(dm, keep=True)
+    proc = GnirsDataManagerProcessor(ioc, ioc.processor)
     thrd = threading.Thread(target = proc.process_queue)
     thrd.start()
     prt = partial(startup, ioc, proc, **run_options)
