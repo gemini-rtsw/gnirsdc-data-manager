@@ -184,7 +184,7 @@ class ObserveCAD(GnirsCAD):
         asyncio.run_coroutine_threadsafe(self.logMessage(f'{self.prefix} ObserveCAD start'), self.loop)
         print(f'{self.prefix} ObserveCAD start')
 
-        self.write_coadds_header()
+        #self.write_coadds_header()
 
         # if sending to archive let GDS know
         if (self.p.parent.archive_fits.value):
@@ -206,7 +206,7 @@ class ObserveCAD(GnirsCAD):
 
         # readout SDSU
         sleep(self.p.exposureTime.value/2)        
-        self.controller.startExposure(self.p.detectorTemp1.value, self.p.detectorTemp1.value, False)	
+        self.controller.startExposure(self.p.detectorTemp1.value, self.p.detectorTemp1.value, self.p.parent.include_eng.value)	
         sleep(self.p.exposureTime.value/2)        
 
 
@@ -228,7 +228,13 @@ class ObserveCAD(GnirsCAD):
 
         # set write to fits archive by default don't want a test write to affect a seqexec readout
         asyncio.run_coroutine_threadsafe(self.p.parent.archive_fits.write(1), self.loop)
+        # and turn off raw data
+        asyncio.run_coroutine_threadsafe(self.p.parent.include_eng.write(0), self.loop)
+
+
         asyncio.run_coroutine_threadsafe(self.p.rdout.write(0), self.loop)
+
+
 
 
 

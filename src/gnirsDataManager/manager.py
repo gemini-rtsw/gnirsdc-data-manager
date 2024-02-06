@@ -237,7 +237,7 @@ def extract_timing(samples_header):
                                              names='series,order,offset'),
                             header=header)
 
-def create_hdulist(header, raw_path, include_eng=False):
+def create_hdulist(header, raw_path): #, include_eng=False):
     raw_name = os.path.basename(raw_path)
     try:
         pdu = header['PDU']
@@ -299,6 +299,12 @@ def create_hdulist(header, raw_path, include_eng=False):
         raw_data_path = f'{raw_path}.raw'
         raw_data = np.memmap(raw_data_path, dtype=np.uint16).reshape((raw_rows, raw_cols))
     hdulist = fits.HDUList([pdu])
+
+    if p_mode == 'SEP':
+        include_eng = True
+    else:
+        include_eng = False
+        
     save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, include_eng)
     # hdulist = fits.HDUList([pdu, procimage])
     if 'TIME_SAMPLES' in header:
@@ -322,7 +328,7 @@ class DataProcessor:
         self.keep = keep
         self.logger = getLogger('DataProcessor')
 
-        self.include_eng = False
+        #self.include_eng = False
 
     
 
@@ -338,12 +344,12 @@ class DataProcessor:
 
         # Create an output file and start populating it
             
-            print(f"HAWI remove this TEST: include eng set to: {val}") 
-            self.include_eng = True
+            #print(f"HAWI remove this TEST: include eng set to: {val}") 
+            #self.include_eng = True
 
 
 
-            fitsname, hdulist = create_hdulist(header, rpath, self.include_eng )
+            fitsname, hdulist = create_hdulist(header, rpath) #, self.include_eng )
             fits_path = dm.processing.full_path(fitsname)
             if os.access(fits_path, os.F_OK):
                 raise ProcessingError(f"{fitsname} exists already")
