@@ -78,7 +78,6 @@ class GnirsDataManagerProcessor:
             rpath, header = manager.decode_header(self.dp.datamov.new, fname)
             label = header['PDU']['DATALABE']
             asyncio.run(self.ioc.currentLabel.write(label))
-            #print(f"TEST =======>  {self.ioc.include_eng.value}")
             self.dp.process_file(fname)
         except Exception as exc:
             self.logger.error(f"Processing {file_path}: {exc}")
@@ -276,16 +275,6 @@ class GnirsDataManagerIOC(PVGroup):
     
 #-----------------------------------------------------------------------------
     include_eng = pvproperty(value=0, dtype = ChannelType.INT, doc="Include engineering images in fits")
-
-
-#    @include_eng.putter
-#    async def include_eng(self, instance, value):
-#        if value == 1:
-#            print("Saving Eng Data")
-#        else:
-#            print("Not Saving Eng Data")
-#            
-#        self.processor.include_eng = value
 
 #-----------------------------------------------------------------------------
         

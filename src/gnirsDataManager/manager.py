@@ -237,7 +237,7 @@ def extract_timing(samples_header):
                                              names='series,order,offset'),
                             header=header)
 
-def create_hdulist(header, raw_path): #, include_eng=False):
+def create_hdulist(header, raw_path): 
     raw_name = os.path.basename(raw_path)
     try:
         pdu = header['PDU']
@@ -328,7 +328,6 @@ class DataProcessor:
         self.keep = keep
         self.logger = getLogger('DataProcessor')
 
-        #self.include_eng = False
 
     
 
@@ -343,13 +342,8 @@ class DataProcessor:
             rpath, header = decode_header(dm.processing, fname)
 
         # Create an output file and start populating it
-            
-            #print(f"HAWI remove this TEST: include eng set to: {val}") 
-            #self.include_eng = True
 
-
-
-            fitsname, hdulist = create_hdulist(header, rpath) #, self.include_eng )
+            fitsname, hdulist = create_hdulist(header, rpath) 
             fits_path = dm.processing.full_path(fitsname)
             if os.access(fits_path, os.F_OK):
                 raise ProcessingError(f"{fitsname} exists already")
