@@ -17,7 +17,9 @@ from gemUtilities import checkCAConnection
 from diskSpaceMonitor import DiskSpacePVGroup
 
 
-from gnirs_data import manager
+#from gnirs_data import manager
+
+import manager
 
 from asyncinotify import Inotify, Mask
 from caproto.server import PVGroup, template_arg_parser, pvproperty, SubGroup, ioc_arg_parser, run
