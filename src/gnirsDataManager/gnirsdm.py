@@ -141,8 +141,6 @@ class GnirsDataManagerIOC(PVGroup):
 
         self.processor = None 
 
-        self.logMessage(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.sub_records)}')
-
         print(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.sub_records)}')
 
 
@@ -371,23 +369,23 @@ async def startup(ioc, proc, async_lib, *, data_dir, **kw):
     proc.set_ready()
     await ioc.state.write(StateEnum.RUNNING)
 
-def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
-                          supported_async_libs=None):
+def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None, supported_async_libs=None):
     """
     Custom ArgumentParser for the Gemini NIRS Data Manager IOC.
 
     Parameters
     ----------
-    description : string
+    desc : string
         Human-friendly description of what that IOC does
     default_prefix : string
-    args : list, optional
+        The default EPICS prefix to use if not overridden by command-line arguments
+    argv : list, optional
         Defaults to sys.argv
     macros : dict, optional
-        Maps macro names to default value (string) or None (indicating that
+        Maps macro names to default values (string) or None (indicating that
         this macro parameter is required).
     supported_async_libs : list, optional
-        "White list" of supported server implementations. The first one will
+        "Whitelist" of supported server implementations. The first one will
         be the default. If None specified, the parser will accept all of the
         (hard-coded) choices.
 
@@ -411,25 +409,34 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
                         help="EPICS top name")
     parser.add_argument('--debug', '-D', action='store_true', 
                         help="Set Debug mode - no SDSU")    
-#    parser.add_argument('--list-pvs', action='store_true', help='List Process Variables')
+    # parser.add_argument('--list-pvs', action='store_true', help='List Process Variables')
+    
     args = parser.parse_args()
+    
+    # Split the args into ioc_options and run_options
     ioc_options, run_options = split_args(args)
+
+    # Update default_prefix based on args.top if provided
+    if args.top is not None:
+        default_prefix = args.top
+        print(f"Top name: {default_prefix}")
+
+    # Include the updated default_prefix in ioc_options for further use
+    ioc_options['default_prefix'] = default_prefix
+
     run_options['data_dir'] = args.data_dir
     run_options['output_dir'] = f'{args.data_dir}/fits' if args.output_dir is None else args.output_dir
     run_options['debug'] = args.debug
 
-    if (args.top is not None):
-        DEFAULT_PREFIX = args.top
-        print (f"Top name: {DEFAULT_PREFIX}")
-
-    if (args.debug == True):
+    if args.debug:
         DebugMode(True)
-        print (f"Debug mode: True")
+        print("Debug mode: True")
     else:
         DebugMode(False)
-        print (f"Debug mode: False")
+        print("Debug mode: False")
 
     return ioc_options, run_options
+
 
 async def main():
     ioc_options, run_options = custom_ioc_arg_parser(
