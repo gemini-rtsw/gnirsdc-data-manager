@@ -407,6 +407,8 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
                         help="Working data directory,")
     parser.add_argument('--output-dir', '-o', type=str,
                         help="FITS output directory, default: {data-dir}/fits")
+    parser.add_argument('--top', '-t', type=str,
+                        help="EPICS top name")
     parser.add_argument('--debug', '-D', action='store_true', 
                         help="Set Debug mode - no SDSU")    
 #    parser.add_argument('--list-pvs', action='store_true', help='List Process Variables')
@@ -416,16 +418,16 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
     run_options['output_dir'] = f'{args.data_dir}/fits' if args.output_dir is None else args.output_dir
     run_options['debug'] = args.debug
 
+    if (args.top is not None):
+        DEFAULT_PREFIX = args.top
+        print (f"Top name: {DEFAULT_PREFIX}")
+
     if (args.debug == True):
         DebugMode(True)
         print (f"Debug mode: True")
     else:
         DebugMode(False)
         print (f"Debug mode: False")
-
-
-
-#    run_options['list_pvs'] = args.list_pvs
 
     return ioc_options, run_options
 

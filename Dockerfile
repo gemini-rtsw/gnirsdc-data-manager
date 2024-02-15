@@ -27,20 +27,6 @@ RUN ln -s /usr/local/lib64/python3.9/site-packages/cppyy_backend/lib/libcppyy_ba
 RUN python3.9 -m pip install caproto
 RUN python3.9 -m pip install asyncinotify
 
-RUN git clone pycadcar
-RUN cd pycadcar
-RUN python3.9 -m pip install .
-RUN cd ..
-
-RUN git clone gnirsdc-lib
-RUN cd gnirsdc-lib
-RUN python3.9 -m pip install .
-RUN cd ..
-
-RUN git clone gnirsdc-tools
-RUN cd gnirsdc-tools
-RUN python3.9 -m pip install .
-RUN cd ..
 
 RUN mkdir -p /readout_data/new
 

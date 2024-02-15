@@ -53,6 +53,7 @@ class InitCAD(GnirsCAD):
         await self.logMessage("InitCAD start")
 
 
+
 class BiasCAD(GnirsCAD):
     async def start(self):
         if (self.controller == None):
@@ -123,19 +124,17 @@ class DCConfigCAD(GnirsCAD):
         if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
         else:
-            print("START DC Config")
             self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.numcoadds.value)
             await self.logMessage(f"Config lnr: {self.p.lnrNum.value} adc: {self.p.digitalAvgs.value} exp: {self.p.exposureTime.value} coadds: {self.p.numcoadds.value}")
 
-class EndObserveCAD(GnirsCAD):
-    async def start(self):
-        print("endObserve start")
-        await self.logMessage("endObserve start")
 
 class AbortCAD(GnirsCAD):
     async def start(self):
-        print("AbortCAD start")        
-        await self.logMessage("AbortCAD start")
+        if (self.controller == None):
+            await self.logMessage(f"Controller not initialized")
+        else:
+            self.controller.abortExposure()
+            await self.logMessage(f"Aborting Exposure")
 
 
 class ObserveCAD(GnirsCAD):
@@ -345,10 +344,10 @@ class GnirsCADCARController(PVGroup):
 
     # dc:apply
     dcconfig = SubGroup(DCConfigCAD, prefix='dc:dcconfig.')
-    endObserve = SubGroup(EndObserveCAD, prefix='dc:endObserve.')
+    endObserve = SubGroup(AbortCAD, prefix='dc:endObserve.')
     abort = SubGroup(AbortCAD, prefix='dc:abort.')
     observe = SubGroup(ObserveCAD, prefix='dc:observe.')
-    stop = SubGroup(StopCAD, prefix='dc:stop.')
+    stop = SubGroup(AbortCAD, prefix='dc:stop.')
         
 
     applyC = SubGroup(CARRecord, prefix='dc:applyC.')
@@ -356,12 +355,52 @@ class GnirsCADCARController(PVGroup):
 
     #------ DC configuration values --------
     lnrNum          = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:lnrNum", doc = "Low Noise Reads") 
+    @lnrNum.putter
+    async def lnrNum(self, instance, value):
+        if (self.sdsuController == None):
+            await self.parent.logMessage(f"Controller not initialized")
+        else: 
+            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, self.numcoadds.value)
+            await self.parent.logMessage(f"Config lnr: {value} adc: {self.digitalAvgs.value} exp: {self.exposureTime.value} coadds: {self.numcoadds.value}")
+
+
     exposureTime    = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:exposureTime", doc = "Exposure Time") 
-    wcs             = pvproperty(value='', dtype=caproto.ChannelType.STRING, name="dc:wcs", doc = "WCS file") 
+    @exposureTime.putter
+    async def exposureTime(self, instance, value):
+        if (self.sdsuController == None):
+            await self.parent.logMessage(f"Controller not initialized")
+        else: 
+            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, value, self.numcoadds.value)
+            await self.parent.logMessage(f"Config lnr: {self.lnrNum.value} adc: {self.digitalAvgs.value} exp: {value} coadds: {self.numcoadds.value}")
+
+
     digitalAvgs     = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:digitalAvgs", doc = "Digital Averages") 
-    detBias         = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:detBias", doc = "Detector Bias") 
+    @digitalAvgs.putter
+    async def digitalAvgs(self, instance, value):
+        if (self.sdsuController == None):
+            await self.parent.logMessage(f"Controller not initialized")
+        else: 
+            self.sdsuController.setExposure(self.lnrNum.value, value, self.exposureTime.value, self.numcoadds.value)
+            await self.parent.logMessage(f"Config lnr: {self.lnrNum.value} adc: {value} exp: {self.exposureTime.value} coadds: {self.numcoadds.value}")
+
     numcoadds       = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:numcoadds", doc = "Number of Coadds") 
+    @numcoadds.putter
+    async def numcoadds(self, instance, value):
+        if (self.sdsuController == None):
+            await self.parent.logMessage(f"Controller not initialized")
+        else: 
+            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, value)
+            await self.parent.logMessage(f"Config lnr: {self.lnrNum.value} adc: {self.digitalAvgs.value} exp: {self.exposureTime.value} coadds: {value}")
+    #------ DC configuration values --------
+
+
+
+
+    detBias         = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:detBias", doc = "Detector Bias") 
     sequence        = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:sequence", doc = "Sequence Count") 
+    wcs             = pvproperty(value='', dtype=caproto.ChannelType.STRING, name="dc:wcs", doc = "WCS file") 
+
+
 
     dataLabel       = pvproperty(value='GN20231011S1800', dtype=caproto.ChannelType.STRING, name="dc:dataLabel", doc = "Data Label") 
 
