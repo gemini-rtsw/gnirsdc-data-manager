@@ -369,6 +369,7 @@ async def startup(ioc, proc, async_lib, *, data_dir, **kw):
     proc.set_ready()
     await ioc.state.write(StateEnum.RUNNING)
 
+
 def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None, supported_async_libs=None):
     parser, split_args = template_arg_parser(desc=desc, default_prefix=default_prefix,
                                              argv=argv, macros=macros,
@@ -378,30 +379,29 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None, suppo
     parser.add_argument('--output-dir', '-o', type=str, help="FITS output directory, default: {data-dir}/fits")
     parser.add_argument('--top', '-t', type=str, help="EPICS top name")
     parser.add_argument('--debug', '-D', action='store_true', help="Set Debug mode - no SDSU")
-    # parser.add_argument('--list-pvs', action='store_true', help='List Process Variables')
     
     args = parser.parse_args()
     ioc_options, run_options = split_args(args)
     run_options['data_dir'] = args.data_dir
-    run_options['output_dir'] = f'{args.data_dir}/fits' if args.output_dir is None else args.output_dir
+    run_options['output_dir'] = args.data_dir + '/fits' if args.output_dir is None else args.output_dir
     run_options['debug'] = args.debug
 
-    # Set or update default_prefix based on --top argument
     if args.top is not None:
         ioc_options['default_prefix'] = args.top
-        print(f"Top name: {args.top}")
     else:
-        # Ensure default_prefix is used if --top is not provided
         ioc_options['default_prefix'] = default_prefix
+
+    # Adjust for GnirsDataManagerIOC initialization
+    if 'default_prefix' not expected by GnirsDataManagerIOC:
+        del ioc_options['default_prefix']
 
     if args.debug:
         DebugMode(True)
-        print("Debug mode: True")
     else:
         DebugMode(False)
-        print("Debug mode: False")
 
     return ioc_options, run_options
+
 
 async def main():
     ioc_options, run_options = custom_ioc_arg_parser(
