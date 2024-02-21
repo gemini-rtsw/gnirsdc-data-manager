@@ -394,6 +394,7 @@ class GnirsCADCARController(PVGroup):
     #------ DC configuration values --------
 
 
+    achvdBias       = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:achvdBias.VAL", doc = "Achieved Detector Bias") 
 
 
     detBias         = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:detBias", doc = "Detector Bias") 
