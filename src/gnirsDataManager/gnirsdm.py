@@ -370,37 +370,67 @@ async def startup(ioc, proc, async_lib, *, data_dir, **kw):
     await ioc.state.write(StateEnum.RUNNING)
 
 
-def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None, supported_async_libs=None):
+def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
+                          supported_async_libs=None):
+    """
+    Custom ArgumentParser for the Gemini NIRS Data Manager IOC.
+
+    Parameters
+    ----------
+    description : string
+        Human-friendly description of what that IOC does
+    default_prefix : string
+    args : list, optional
+        Defaults to sys.argv
+    macros : dict, optional
+        Maps macro names to default value (string) or None (indicating that
+        this macro parameter is required).
+    supported_async_libs : list, optional
+        "White list" of supported server implementations. The first one will
+        be the default. If None specified, the parser will accept all of the
+        (hard-coded) choices.
+
+    Returns
+    -------
+    ioc_options : dict
+        kwargs to be handed into the IOC init.
+
+    run_options : dict
+        kwargs to be handed to run
+    """
     parser, split_args = template_arg_parser(desc=desc, default_prefix=default_prefix,
                                              argv=argv, macros=macros,
                                              supported_async_libs=supported_async_libs)
 
-    parser.add_argument('--data-dir', '-d', type=str, required=True, help="Working data directory,")
-    parser.add_argument('--output-dir', '-o', type=str, help="FITS output directory, default: {data-dir}/fits")
-    parser.add_argument('--top', '-t', type=str, help="EPICS top name")
-    parser.add_argument('--debug', '-D', action='store_true', help="Set Debug mode - no SDSU")
-    
+    parser.add_argument('--data-dir', '-d', type=str, required=True,
+                        help="Working data directory,")
+    parser.add_argument('--output-dir', '-o', type=str,
+                        help="FITS output directory, default: {data-dir}/fits")
+    parser.add_argument('--top', '-t', type=str,
+                        help="EPICS top name")
+    parser.add_argument('--debug', '-D', action='store_true', 
+                        help="Set Debug mode - no SDSU")    
+#    parser.add_argument('--list-pvs', action='store_true', help='List Process Variables')
     args = parser.parse_args()
     ioc_options, run_options = split_args(args)
     run_options['data_dir'] = args.data_dir
-    run_options['output_dir'] = args.data_dir + '/fits' if args.output_dir is None else args.output_dir
+    run_options['output_dir'] = f'{args.data_dir}/fits' if args.output_dir is None else args.output_dir
     run_options['debug'] = args.debug
 
-    if args.top is not None:
-        ioc_options['default_prefix'] = args.top
-    else:
-        ioc_options['default_prefix'] = default_prefix
 
-    # Adjust for GnirsDataManagerIOC initialization
-    if 'default_prefix' not expected by GnirsDataManagerIOC:
-        del ioc_options['default_prefix']
+    if (args.top is not None):
+        ioc_options["prefix"] = args.top + ":"
+        print (f"Top name: {DEFAULT_PREFIX}")
 
-    if args.debug:
+    if (args.debug == True):
         DebugMode(True)
+        print (f"Debug mode: True")
     else:
         DebugMode(False)
+        print (f"Debug mode: False")
 
     return ioc_options, run_options
+
 
 
 async def main():
