@@ -11,17 +11,18 @@ ENV JAVA_HOME /usr/lib/jvm/jre
 
 # Copy the gmp-server tar.gz file and the custom script into the container
 COPY gmp-server-0.2.6-SNAPSHOT.tar.gz /tmp
-COPY start-gmp-server.sh /usr/local/bin/
+COPY entrypoint-gmp.sh /usr/local/bin/
 
 # Extract the tar.gz file into /usr/local/share
 RUN tar -xzvf /tmp/gmp-server-0.2.6-SNAPSHOT.tar.gz -C /usr/local/share \
-    && chmod +x /usr/local/bin/start-gmp-server.sh
+    && chmod +x /usr/local/bin/entrypoint-gmp.sh
 
 # Set the working directory to the extraction directory
 WORKDIR /usr/local/share/gmp-server-0.2.6-SNAPSHOT
 
 # Command to start the gmp-server
-CMD ["/usr/local/bin/start-gmp-server.sh"]
+CMD ["/usr/local/bin/entrypoint-gmp.sh"]
 
 #run from the root dir of the gnirsdc-data-manager repo
+#docker build -f Dockerfile.gmp -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server .
 #docker run -d --network=host --name gmp registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
