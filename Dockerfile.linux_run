@@ -29,10 +29,10 @@ LABEL maintainer="hawi.stecher@noirlab.edu"
 RUN dnf install -y procps-ng git
 
 
-RUN git clone -b irdcioc            https://oauth2:$PAT@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git    /gnirsdc
-RUN git clone -b main               https://oauth2:$PAT@gitlab.com:hstecher/pycadcar.git                                    /pycadcar
-RUN git clone -b unstable/2022q1    https://oauth2:$PAT@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git           /gnirsdc-tools
-RUN git clone -b pybind11           https://oauth2:$PAT@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git             /gnirsdc-lib
+RUN git clone -b irdcioc            https://oauth2:$PAT@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git     /gnirsdc
+RUN git clone -b main               https://oauth2:$PAT@gitlab.com/hstecher/pycadcar.git                                    /pycadcar
+RUN git clone -b unstable/2022q1    https://oauth2:$PAT@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git           /gnirsdc-tools
+RUN git clone -b pybind11           https://oauth2:$PAT@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git             /gnirsdc-lib
 
 RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics
 
