@@ -29,7 +29,7 @@ build_image:
   services:
     - docker:dind
   script:
-    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/$CONTAINER_NAME:$CI_COMMIT_REF_SLUG -f $DOCKERFILE_NAME .
+    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/$CONTAINER_NAME -f $DOCKERFILE_NAME .
   rules:
     - if: '$CI_COMMIT_BRANCH == "irdcioc"'
 
@@ -39,6 +39,6 @@ push_to_registry:
   services:
     - docker:dind
   script:
-    - docker push $CI_REGISTRY_IMAGE/$CONTAINER_NAME:$CI_COMMIT_REF_SLUG
+    - docker push $CI_REGISTRY_IMAGE/$CONTAINER_NAME
   rules:
     - if: '$CI_COMMIT_BRANCH == "irdcioc"'
