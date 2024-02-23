@@ -25,6 +25,7 @@ FROM registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirs
 # Maintainer label
 LABEL maintainer="hawi.stecher@noirlab.edu"
 
+RUN dnf install -y procps-ng git
 
 
 RUN git clone -b irdcioc            git@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git    /gnirsdc
@@ -34,7 +35,6 @@ RUN git clone -b pybind11           git@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/
 
 RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics
 
-RUN dnf install -y procps-ng
 
 WORKDIR /pycadcar
 RUN python3 -m pip install .
