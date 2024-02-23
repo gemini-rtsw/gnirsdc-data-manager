@@ -26,10 +26,11 @@ FROM registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirs
 LABEL maintainer="hawi.stecher@noirlab.edu"
 
 
-COPY ./gnirsdc-data-manager /gnirsdc
-COPY ./pycadcar /pycadcar
-COPY ./gnirsdc-tools /gnirsdc-tools
-COPY ./gnirsdc-lib /gnirsdc-lib
+
+RUN git clone -b irdcioc            git@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git    /gnirsdc
+RUN git clone -b main               git@gitlab.com:hstecher/pycadcar.git                                    /pycadcar
+RUN git clone -b unstable/2022q1    git@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git           /gnirsdc-tools
+RUN git clone -b pybind11           git@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git             /gnirsdc-lib
 
 RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics
 
@@ -41,7 +42,8 @@ RUN python3 -m pip install .
 WORKDIR /gnirsdc-lib
 RUN python3 -m pip install .
 
-
+WORKDIR /gnirsdc-tools
+RUN python3 -m pip install .
 
 WORKDIR /gnirsdc
 

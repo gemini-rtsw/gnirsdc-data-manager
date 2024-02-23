@@ -5,14 +5,6 @@ stages:
 variables:
   CONTAINER_NAME: "gnirsdc-run"
   DOCKERFILE_NAME: "Dockerfile.linux_run"
-
-stages:
-  - build
-  - push
-
-variables:
-  CONTAINER_NAME: "gnirsdc-run"
-  DOCKERFILE_NAME: "Dockerfile.linux_run"
   DEPLOY_TOKEN: "***REMOVED***"
 
 before_script:
@@ -26,6 +18,8 @@ build_image:
     - docker:dind
   script:
     - docker build -t $CI_REGISTRY_IMAGE/$CI_PROJECT_PATH/$CONTAINER_NAME:$CI_COMMIT_REF_SLUG -f $DOCKERFILE_NAME .
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "pybind11"'
 
 push_to_registry:
   stage: push
@@ -34,5 +28,5 @@ push_to_registry:
     - docker:dind
   script:
     - docker push $CI_REGISTRY_IMAGE/$CI_PROJECT_PATH/$CONTAINER_NAME:$CI_COMMIT_REF_SLUG
-  only:
-    - master
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "pybind11"'
