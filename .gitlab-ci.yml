@@ -6,6 +6,19 @@ variables:
   CONTAINER_NAME: "gnirsdc-run"
   DOCKERFILE_NAME: "Dockerfile.linux_run"
 
+stages:
+  - build
+  - push
+
+variables:
+  CONTAINER_NAME: "gnirsdc-run"
+  DOCKERFILE_NAME: "Dockerfile.linux_run"
+  DEPLOY_TOKEN: "***REMOVED***"
+
+before_script:
+  - echo "Logging into GitLab Container Registry with deploy token..."
+  - echo $DEPLOY_TOKEN | docker login $CI_REGISTRY -u $DEPLOY_TOKEN --password-stdin
+
 build_image:
   stage: build
   image: docker:latest
@@ -20,8 +33,6 @@ push_to_registry:
   services:
     - docker:dind
   script:
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - docker push $CI_REGISTRY_IMAGE/$CI_PROJECT_PATH/$CONTAINER_NAME:$CI_COMMIT_REF_SLUG
   only:
     - master
-
