@@ -18,7 +18,7 @@
 
 
 # Use a build argument to pass the PAT securely
-ARG PAT
+ARG TOKEN
 
 # Base image
 FROM registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-base
@@ -28,12 +28,12 @@ LABEL maintainer="hawi.stecher@noirlab.edu"
 
 RUN dnf install -y procps-ng git
 
-RUN echo "Using PAT: $PAT"
+RUN echo "Using PAT: $TOKEN"
 
-RUN git clone -b irdcioc            https://$PAT@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git     /gnirsdc
-RUN git clone -b main               https://$PAT@gitlab.com/hstecher/pycadcar.git                                    /pycadcar
-RUN git clone -b unstable/2022q1    https://$PAT@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git           /gnirsdc-tools
-RUN git clone -b pybind11           https://$PAT@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git             /gnirsdc-lib
+RUN git clone -b irdcioc            https://$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git     /gnirsdc
+RUN git clone -b main               https://$TOKEN@gitlab.com/hstecher/pycadcar.git                                    /pycadcar
+RUN git clone -b unstable/2022q1    https://$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git           /gnirsdc-tools
+RUN git clone -b pybind11           https://$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git             /gnirsdc-lib
 
 RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics
 

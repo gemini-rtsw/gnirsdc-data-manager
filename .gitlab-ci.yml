@@ -17,7 +17,7 @@ build_image:
   services:
     - docker:dind
   script:
-    - docker build --build-arg PAT=$DEPLOY_TOKEN -t $CI_REGISTRY_IMAGE/$CI_PROJECT_PATH/$CONTAINER_NAME:$CI_COMMIT_REF_SLUG -f $DOCKERFILE_NAME .
+    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/$CI_PROJECT_PATH/$CONTAINER_NAME:$CI_COMMIT_REF_SLUG -f $DOCKERFILE_NAME .
   rules:
     - if: '$CI_COMMIT_BRANCH == "irdcioc"'
 
