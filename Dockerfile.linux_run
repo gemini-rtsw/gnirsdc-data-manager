@@ -29,16 +29,12 @@ RUN dnf install -y procps-ng git
 
 ARG TOKEN
 
-RUN echo "Using PAT: "
-RUN echo "$TOKEN"
-RUN echo $TOKEN
-RUN echo "--------"
+RUN echo "Using PAT: $TOKEN"
 
-
-RUN git clone -b irdcioc            https://$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git     /gnirsdc
-RUN git clone -b main               https://$TOKEN@gitlab.com/hstecher/pycadcar.git                                    /pycadcar
-RUN git clone -b unstable/2022q1    https://$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git           /gnirsdc-tools
-RUN git clone -b pybind11           https://$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git             /gnirsdc-lib
+RUN git clone -b irdcioc            https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git     /gnirsdc
+RUN git clone -b main               https://oauth2:$TOKEN@gitlab.com/hstecher/pycadcar.git                                    /pycadcar
+RUN git clone -b unstable/2022q1    https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git           /gnirsdc-tools
+RUN git clone -b pybind11           https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git             /gnirsdc-lib
 
 RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics
 
