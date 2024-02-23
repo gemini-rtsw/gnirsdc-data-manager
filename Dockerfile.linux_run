@@ -29,10 +29,8 @@ RUN dnf install -y procps-ng git
 
 ARG TOKEN
 
-RUN echo "Using PAT: $TOKEN"
-
 RUN git clone -b irdcioc            https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git     /gnirsdc
-RUN git clone -b main               https://oauth2:$TOKEN@gitlab.com/hstecher/pycadcar.git                                    /pycadcar
+RUN git clone -b main               https://oauth2:$TOKENgitlab.com/nsf-noirlab/gemini/rtsw/iocs/pycadcar.git                                    /pycadcar
 RUN git clone -b unstable/2022q1    https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git           /gnirsdc-tools
 RUN git clone -b pybind11           https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git             /gnirsdc-lib
 
