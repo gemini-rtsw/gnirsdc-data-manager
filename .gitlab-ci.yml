@@ -1,6 +1,5 @@
 stages:
   - build
-  - push
 
 # Note: The 'DEPLOY_TOKEN' is used here for operations requiring authentication.
 # If 'DEPLOY_TOKEN' expires or you need to create a new one, follow these steps:
@@ -30,15 +29,7 @@ build_image:
     - docker:dind
   script:
     - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/$CONTAINER_NAME -f $DOCKERFILE_NAME .
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "irdcioc"'
-
-push_to_registry:
-  stage: push
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
     - docker push $CI_REGISTRY_IMAGE/$CONTAINER_NAME
   rules:
     - if: '$CI_COMMIT_BRANCH == "irdcioc"'
+
