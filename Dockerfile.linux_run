@@ -30,7 +30,10 @@ RUN dnf install -y procps-ng git
 ARG TOKEN
 
 RUN echo "Using PAT: "
+RUN echo "$TOKEN"
 RUN echo $TOKEN
+RUN echo "--------"
+
 
 RUN git clone -b irdcioc            https://$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git     /gnirsdc
 RUN git clone -b main               https://$TOKEN@gitlab.com/hstecher/pycadcar.git                                    /pycadcar
