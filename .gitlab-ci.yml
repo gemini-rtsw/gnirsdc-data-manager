@@ -19,7 +19,7 @@ build_image:
   script:
     - docker build -t $CI_REGISTRY_IMAGE/$CI_PROJECT_PATH/$CONTAINER_NAME:$CI_COMMIT_REF_SLUG -f $DOCKERFILE_NAME .
   rules:
-    - if: '$CI_COMMIT_BRANCH == "pybind11"'
+    - if: '$CI_COMMIT_BRANCH == "irdcioc"'
 
 push_to_registry:
   stage: push
@@ -29,4 +29,4 @@ push_to_registry:
   script:
     - docker push $CI_REGISTRY_IMAGE/$CI_PROJECT_PATH/$CONTAINER_NAME:$CI_COMMIT_REF_SLUG
   rules:
-    - if: '$CI_COMMIT_BRANCH == "pybind11"'
+    - if: '$CI_COMMIT_BRANCH == "irdcioc"'
