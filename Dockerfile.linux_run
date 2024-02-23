@@ -28,6 +28,7 @@ LABEL maintainer="hawi.stecher@noirlab.edu"
 
 RUN dnf install -y procps-ng git
 
+RUN echo "Using PAT: $PAT"
 
 RUN git clone -b irdcioc            https://$PAT@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git     /gnirsdc
 RUN git clone -b main               https://$PAT@gitlab.com/hstecher/pycadcar.git                                    /pycadcar
