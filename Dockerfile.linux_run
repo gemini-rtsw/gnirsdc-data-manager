@@ -18,7 +18,6 @@
 
 
 # Use a build argument to pass the PAT securely
-ARG TOKEN
 
 # Base image
 FROM registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-base
@@ -28,7 +27,10 @@ LABEL maintainer="hawi.stecher@noirlab.edu"
 
 RUN dnf install -y procps-ng git
 
-RUN echo "Using PAT: $TOKEN"
+ARG TOKEN
+
+RUN echo "Using PAT: "
+RUN echo $TOKEN
 
 RUN git clone -b irdcioc            https://$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git     /gnirsdc
 RUN git clone -b main               https://$TOKEN@gitlab.com/hstecher/pycadcar.git                                    /pycadcar
