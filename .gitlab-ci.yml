@@ -1,4 +1,5 @@
 stages:
+  - prebuild
   - build
 
 # Note: The 'DEPLOY_TOKEN' is used here for operations requiring authentication.
@@ -36,3 +37,17 @@ build_image:
   rules:
     - if: '$CI_COMMIT_BRANCH == "irdcioc"'
 
+variables:
+  DOCKERFILE_BASE: "Dockerfile.base"
+
+build_image_base:
+  stage: prebuild
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-base -f $DOCKERFILE_BASE .
+    - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-base
+  rules:
+    - changes:
+        - $DOCKERFILE_BASE
