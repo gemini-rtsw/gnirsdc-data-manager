@@ -15,9 +15,9 @@ stages:
 
 
 variables:
-  CONTAINER_NAME: "gnirsdc-run"
-  DOCKERFILE_RUN: "Dockerfile.linux_run"
-  DOCKERFILE_ENV: "Dockerfile.dev_env"
+  CONTAINER_NAME: "gnirsdc"
+  DOCKERFILE_RUN: "Dockerfile.run"
+  DOCKERFILE_ENV: "Dockerfile.dev"
 
 before_script:
   - echo "Logging into GitLab Container Registry with deploy token..."
@@ -29,10 +29,10 @@ build_image:
   services:
     - docker:dind
   script:
-    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/$DOCKERFILE_RUN -f $DOCKERFILE_RUN .
-    - docker push $CI_REGISTRY_IMAGE/$DOCKERFILE_RUN
-    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/$DOCKERFILE_ENV -f $DOCKERFILE_ENV .
-    - docker push $CI_REGISTRY_IMAGE/$DOCKERFILE_ENV
+    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run -f $DOCKERFILE_RUN .
+    - docker push $CI_REGISTRY_IMAGE/$CONTAINER_NAME
+    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-env -f $DOCKERFILE_ENV .
+    - docker push $CI_REGISTRY_IMAGE/$CONTAINER_NAME
   rules:
     - if: '$CI_COMMIT_BRANCH == "irdcioc"'
 
