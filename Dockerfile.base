@@ -33,5 +33,3 @@ RUN mkdir -p /readout_data/new
 # Start bash
 CMD ["/bin/bash"]
 
-
-
