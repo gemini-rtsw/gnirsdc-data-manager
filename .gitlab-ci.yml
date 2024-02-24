@@ -31,8 +31,8 @@ build_image:
   script:
     - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run -f $DOCKERFILE_RUN .
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run
-    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-env -f $DOCKERFILE_ENV .
-    - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-env
+    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev -f $DOCKERFILE_ENV .
+    - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev
   rules:
     - if: '$CI_COMMIT_BRANCH == "irdcioc"'
 
