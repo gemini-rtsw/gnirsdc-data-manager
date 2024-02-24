@@ -1,5 +1,6 @@
 stages:
-  - prebuild
+# add this to build base - it takes too long - not sure if it will succeed in a runner - build locally for now
+#  - prebuild
   - build
 
 # Note: The 'DEPLOY_TOKEN' is used here for operations requiring authentication.
