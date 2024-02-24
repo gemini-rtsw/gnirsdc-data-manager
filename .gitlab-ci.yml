@@ -11,12 +11,13 @@ stages:
 # 4. Copy the newly generated token.
 # 5. In your project's settings under 'CI / CD', go to 'Variables'.
 # 6. Add a new variable with the key 'DEPLOY_TOKEN' and paste the token as the value.
-#    Ensure to mark it as 'Protected' and/or 'Masked' as necessary.
+#    Ensure to mark it as 'Protected off' and 'Masked' as necessary.
 
 
 variables:
   CONTAINER_NAME: "gnirsdc-run"
-  DOCKERFILE_NAME: "Dockerfile.linux_run"
+  DOCKERFILE_RUN: "Dockerfile.linux_run"
+  DOCKERFILE_ENV: "Dockerfile.dev_env"
 
 before_script:
   - echo "Logging into GitLab Container Registry with deploy token..."
@@ -28,8 +29,10 @@ build_image:
   services:
     - docker:dind
   script:
-    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/$CONTAINER_NAME -f $DOCKERFILE_NAME .
-    - docker push $CI_REGISTRY_IMAGE/$CONTAINER_NAME
+    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/$DOCKERFILE_RUN -f $DOCKERFILE_RUN .
+    - docker push $CI_REGISTRY_IMAGE/$DOCKERFILE_RUN
+    - docker build --build-arg "TOKEN=${DEPLOY_TOKEN}" -t $CI_REGISTRY_IMAGE/$DOCKERFILE_ENV -f $DOCKERFILE_ENV .
+    - docker push $CI_REGISTRY_IMAGE/$DOCKERFILE_ENV
   rules:
     - if: '$CI_COMMIT_BRANCH == "irdcioc"'
 
