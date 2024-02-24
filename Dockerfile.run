@@ -1,0 +1,62 @@
+
+# Instructions for users on how to use the PAT with this Dockerfile:
+# This Dockerfile requires a Personal Access Token (PAT) from GitLab to access private repositories.
+# The PAT is expected to be passed as a build argument named 'TOKEN'.
+#
+# If you are building this image locally, you need to pass your PAT when running the docker build command.
+# Here's how:
+#
+# 1. Obtain your Personal Access Token from GitLab:
+#    - Go to GitLab.com > <Project> > Settings > CI/CD > Variables > DEPLOY_TOKEN > 
+#    - Copy the Value
+#
+# 2. Pass the PAT as a build argument:
+#    docker build --build-arg TOKEN=<paste value here> -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run -f Dockerfile.run .
+#
+# Note: Replace 'your_personal_access_token' with your actual GitLab PAT.
+
+
+# ---- run DC
+# or pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run
+# docker run -itd --name gnirsdc --privileged --network=host registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run
+
+
+# Use a build argument to pass the PAT securely
+
+# Base image
+FROM registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-base
+
+# Maintainer label
+LABEL maintainer="hawi.stecher@noirlab.edu"
+
+RUN dnf install -y procps-ng git
+
+ARG TOKEN
+
+
+RUN git clone -b irdcioc            https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git  /gnirsdc
+RUN git clone -b main               https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/pycadcar.git              /pycadcar
+RUN git clone -b unstable/2022q1    https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git         /gnirsdc-tools
+RUN git clone -b pybind11           https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git           /gnirsdc-lib
+
+RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics
+
+
+WORKDIR /pycadcar
+RUN python3 -m pip install .
+
+WORKDIR /gnirsdc-lib
+RUN python3 -m pip install .
+
+WORKDIR /gnirsdc-tools
+RUN python3 -m pip install .
+
+WORKDIR /gnirsdc
+
+
+
+# Start bash
+CMD ["/gnirsdc/entrypoint.sh"]
+
+
+
