@@ -3,11 +3,10 @@ stages:
 
 # Note: The 'DEPLOY_TOKEN' is used here for operations requiring authentication.
 # If 'DEPLOY_TOKEN' expires or you need to create a new one, follow these steps:
-# 1. Navigate to your GitLab group's settings.
+# 1. Navigate to your GitLab rtsw group's settings.
 # 2. Go to 'Access Tokens' under the 'Settings' menu.
 # 3. Create a new Personal Access Token with the appropriate scopes. 
-#    For repository cloning, ensure 'read_repository' is selected.
-#    For API access, select 'api'.
+#    will need: read repo, read api, rw registry
 # 4. Copy the newly generated token.
 # 5. In your project's settings under 'CI / CD', go to 'Variables'.
 # 6. Add a new variable with the key 'DEPLOY_TOKEN' and paste the token as the value.

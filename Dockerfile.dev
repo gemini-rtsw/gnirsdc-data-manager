@@ -12,12 +12,15 @@
 #    - Copy the Value
 #
 # 2. Pass the PAT as a build argument:
-#    docker build --build-arg TOKEN=<paste value here> -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run-dev -f Dockerfile.dev .
+#    docker build --build-arg TOKEN=<paste value here> -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev -f Dockerfile.dev .
 #
 # Note: Replace 'your_personal_access_token' with your actual GitLab PAT.
+# Note: If you need to create a new PAT it must be done at the rtsw group level so all the repos below can be accessed
+#       and it must be added to each repos CD/CI variable list
+#       see the comments in .gitlab-ci.yml for details
 
 # ---- run DC
-# or pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run
+# docker pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev
 # docker run -itd --name gnirsdc-dev --privileged --network=host -v `pwd`:/work registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev bash -l
 
 
