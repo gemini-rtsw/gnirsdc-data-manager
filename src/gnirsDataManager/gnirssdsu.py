@@ -100,12 +100,12 @@ class InitSDSUCAD(GnirsCAD):
                 await self.logMessage("SDSU Initializing")
                 self.controller = controllerInterface("/readout_data", "./firmware")
 
-                result = self.controller.testDataLink()
+                #result = self.controller.testDataLink()
 
-                if (result == True):
-                    self.controller.setAladdinIII(True)
-                    self.controller.init()
+                #if (result == True):
+                self.controller.setAladdinIII(True)
 
+                if self.controller.init():
                     await self.logMessage("SDSU Initialization successful")
 
                 else: 
