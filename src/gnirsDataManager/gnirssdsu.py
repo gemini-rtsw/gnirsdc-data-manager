@@ -96,25 +96,25 @@ class InitSDSUCAD(GnirsCAD):
             await self.logMessage("SDSU Debug Mode initialization successful")
 
         else:
-            try:
-                await self.logMessage("SDSU Initializing")
-                self.controller = controllerInterface("/readout_data", "./firmware")
+          #  try:
+            await self.logMessage("SDSU Initializing")
+            self.controller = controllerInterface("/readout_data", "./firmware")
 
-                #result = self.controller.testDataLink()
+            #result = self.controller.testDataLink()
 
-                #if (result == True):
-                self.controller.setAladdinIII(True)
+            #if (result == True):
+            self.controller.setAladdinIII(True)
 
-                if self.controller.init():
-                    await self.logMessage("SDSU Initialization successful")
+            if self.controller.init():
+                await self.logMessage("SDSU Initialization successful")
 
-                else: 
-                    await self.logMessage("SDSU Initialization failed")
+            else: 
+                await self.logMessage("SDSU Initialization failed")
 
-            except Exception as e:
-                    print("CAUGHT EXCEPTION")
-                    error_message = str(e)
-                    await self.logMessage(f"An exception occurred: {error_message}")
+           # except Exception as e:
+            #        print("CAUGHT EXCEPTION")
+             #       error_message = str(e)
+              #      await self.logMessage(f"An exception occurred: {error_message}")
 
 
 
