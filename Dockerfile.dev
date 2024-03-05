@@ -45,7 +45,6 @@ RUN dnf install -y procps-ng git
 RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics
 
 
-COPY . /gnirsddc
 
 COPY ./pycadcar /pycadcar
 WORKDIR /pycadcar
@@ -59,6 +58,7 @@ COPY ./gnirsdc-tools /gnirsdc-tools
 WORKDIR /gnirsdc-tools
 RUN python3 -m pip install .
 
+COPY ./gnirsddc /gnirsddc
 WORKDIR /gnirsdc
 
 
