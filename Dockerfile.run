@@ -57,7 +57,7 @@ COPY ./gnirsdc-tools /gnirsdc-tools
 WORKDIR /gnirsdc-tools
 RUN python3 -m pip install .
 
-COPY ./gnirsddc /gnirsddc
+COPY ./gnirsdc /gnirsdc
 WORKDIR /gnirsdc
 
 
