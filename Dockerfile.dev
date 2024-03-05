@@ -1,24 +1,7 @@
-
-
-# Instructions for users on how to use the PAT with this Dockerfile:
-# This Dockerfile requires a Personal Access Token (PAT) from GitLab to access private repositories.
-# The PAT is expected to be passed as a build argument named 'TOKEN'.
+# ---- Here's how to build this image locally:
 #
-# If you are building this image locally, you need to pass your PAT when running the docker build command.
-# Here's how:
+# docker build -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev -f Dockerfile.dev .
 #
-# 1. Obtain your Personal Access Token from GitLab:
-#    - Go to GitLab.com > <Project> > Settings > CI/CD > Variables > DEPLOY_TOKEN > 
-#    - Copy the Value
-#
-# 2. Pass the PAT as a build argument:
-#    docker build --build-arg TOKEN=<paste value here> -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev -f Dockerfile.dev .
-#
-# Note: Replace 'your_personal_access_token' with your actual GitLab PAT.
-# Note: If you need to create a new PAT it must be done at the rtsw group level so all the repos below can be accessed
-#       and it must be added to each repos CD/CI variable list
-#       see the comments in .gitlab-ci.yml for details
-
 # ---- run DC
 # docker pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev
 # docker run -itd --name gnirsdc-dev --privileged --network=host -v `pwd`:/work registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev bash -l
@@ -33,14 +16,6 @@ LABEL maintainer="hawi.stecher@noirlab.edu"
 
 
 RUN dnf install -y procps-ng git
-
-#ARG TOKEN
-
-#RUN git clone -b irdcioc            https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git  /gnirsdc
-#RUN git clone -b main               https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/pycadcar.git              /pycadcar
-#RUN git clone -b unstable/2022q1    https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git         /gnirsdc-tools
-#RUN git clone -b pybind11           https://oauth2:$TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git           /gnirsdc-lib
-
 
 RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics
 
