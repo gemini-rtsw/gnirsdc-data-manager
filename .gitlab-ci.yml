@@ -31,10 +31,10 @@ build_image:
   services:
     - docker:dind
   script:
-    - git clone -b irdcioc            https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git  /gnirsdc
-    - git clone -b main               https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/pycadcar.git              /pycadcar
-    - git clone -b unstable/2022q1    https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git         /gnirsdc-tools
-    - git clone -b pybind11           https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git           /gnirsdc-lib
+#    - git clone -b irdcioc            https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git  gnirsdc
+    - git clone -b main               https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/pycadcar.git              pycadcar
+    - git clone -b unstable/2022q1    https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git         gnirsdc-tools
+    - git clone -b pybind11           https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git           gnirsdc-lib
     - docker build -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run -f $DOCKERFILE_RUN .
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run
     - docker build -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev -f $DOCKERFILE_ENV .
