@@ -414,6 +414,25 @@ class GnirsCADCARController(PVGroup):
 
     rdout           = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="sad:dc:rdout", doc = "Reading out") 
 
+    obsSetupD      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.D", doc = "")
+    setWcsA        = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.A", doc = "")
+    obsSetupC      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.C", doc = "")
+    arSetupH       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:arSetup.H", doc = "")
+    coaddsVAL      = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:coadds.VAL", doc = "")
+    observeA       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:observe.A", doc = "")
+    detIDVAL       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:detID.VAL", doc = "")
+    detTypeVAL     = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:detType.VAL", doc = "")
+    obsepoch        = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:obsepoch", doc = "")
+    obsSetupVALE   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:obsSetup.VALE", doc = "")
+    setWcsVALA     = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.VALA", doc = "")
+    obsSetupVALC   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:obsSetup.VALC", doc = "")
+    obsSetupVALD   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:obsSetup.VALD", doc = "")
+    dhsConnected    = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="sad:dc:dhsConnected", doc = "")
+    minIntVAL      = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:minInt.VAL", doc = "")
+    C1Tmp           = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:C1Tmp", doc = "")
+    prep            = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:prep", doc = "")
+    acq             = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:acq", doc = "")
+
 
 
 
