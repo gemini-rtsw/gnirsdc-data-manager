@@ -420,7 +420,7 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
 
     if (args.top is not None):
         ioc_options["prefix"] = args.top + ":"
-        print (f"Top name: {DEFAULT_PREFIX}")
+        print(f"Top name: {ioc_options['prefix']}")
 
     if (args.debug == True):
         DebugMode(True)
