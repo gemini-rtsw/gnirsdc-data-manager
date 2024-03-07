@@ -427,12 +427,12 @@ class GnirsCADCARController(PVGroup):
     setWcsVALA     = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.VALA", doc = "")
     obsSetupVALC   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:obsSetup.VALC", doc = "")
     obsSetupVALD   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:obsSetup.VALD", doc = "")
-    dhsConnected    = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="sad:dc:dhsConnected", doc = "")
+    dhsConnected    = pvproperty(value=1, dtype=caproto.ChannelType.LONG, name="sad:dc:dhsConnected", doc = "")
     minIntVAL      = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:minInt.VAL", doc = "")
     C1Tmp           = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:C1Tmp", doc = "")
     prep            = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:prep", doc = "")
     acq             = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:acq", doc = "")
-    activate        = pvproperty(value=0, dtype=caproto.ChannelType.ENUM, enum_strings=['Deactivate', 'Activate'], name="dc:activate", doc = "")
+    activate        = pvproperty(value=1, dtype=caproto.ChannelType.ENUM, enum_strings=['Deactivate', 'Activate'], name="dc:activate", doc = "")
 
 
 
