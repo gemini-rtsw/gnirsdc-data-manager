@@ -432,7 +432,7 @@ class GnirsCADCARController(PVGroup):
     C1Tmp           = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:C1Tmp", doc = "")
     prep            = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:prep", doc = "")
     acq             = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:acq", doc = "")
-    activate        = pvproperty(value=0, dtype=caproto.ChannelType.ENUM, name="dc:activate", doc = "")
+    activate        = pvproperty(value=0, dtype=caproto.ChannelType.ENUM, enum_strings=['Deactivate', 'Active'], name="dc:activate", doc = "")
 
 
 
