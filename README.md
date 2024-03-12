@@ -2,6 +2,45 @@
 
 This repository contains bash scripts for managing the Detector Controller Software and GMP containers.
 
+## Detector Controller Usage
+
+ssh to one of the required IRDC servers (gn-irdc-lp1, gn-irdc-lp2, gn-irdc-lp3)
+
+Use the following commands to manage the Detector Controller Software and GMP containers, run:
+
+```bash
+dc-start.sh
+```
+
+```bash
+dc-stop.sh
+```
+
+```bash
+dc-status.sh
+```
+
+## DM Screen Usage
+
+From a workstation with access to the IRDC server (currently hbfcon03 and mkocon05)
+
+```bash
+irdc_dm.sh
+```
+
+From a remote system
+
+```bash
+ssh -X <irdc server> "irdc_dm_server.sh"
+```
+or 
+
+```bash
+ssh -X <irdc server> 
+irdc_dm_server.sh
+```
+
+
 ## Scripts
 
 1. `dc-start.sh`
@@ -22,24 +61,6 @@ This repository contains bash scripts for managing the Detector Controller Softw
    - Checks the status of the Detector Controller Software
    - Verifies if the `gnirsdc` container is running and displays its status
    - Verifies if the `gmp` container is running and displays its status
-
-## Usage
-
-ssh to one of the required IRDC servers (gn-irdc-lp1, gn-irdc-lp2, gn-irdc-lp3)
-
-Use the following commands to manage the Detector Controller Software and GMP containers, run:
-
-```bash
-./dc-start.sh
-```
-
-```bash
-./dc-stop.sh
-```
-
-```bash
-./dc-status.sh
-```
 
 ## Note
 
