@@ -45,6 +45,7 @@ build_image:
 
 pages:
   stage: pages
+  image: node:14
   script:
     - mkdir public
     - cp README.md public/index.md
