@@ -84,7 +84,6 @@ class TDLCAD(GnirsCAD):
 
 class InitSDSUCAD(GnirsCAD):
     async def start(self):
-        await self.logMessage("Initializing SDSU")
 
         result = False
 
@@ -96,25 +95,24 @@ class InitSDSUCAD(GnirsCAD):
             await self.logMessage("SDSU Debug Mode initialization successful")
 
         else:
-          #  try:
-            await self.logMessage("SDSU Initializing")
-            self.controller = controllerInterface("/readout_data", "./firmware")
+            try:
+                await self.logMessage("SDSU Initializing")
+                self.controller = controllerInterface("/readout_data", "./firmware")
 
-            #result = self.controller.testDataLink()
+                result = self.controller.testDataLink()
 
-            #if (result == True):
-            self.controller.setAladdinIII(True)
+                if (result == True):
+                    self.controller.setAladdinIII(True)
 
-            if self.controller.init():
-                await self.logMessage("SDSU Initialization successful")
+                    if self.controller.init():
+                        await self.logMessage("SDSU Initialization successful")
 
-            else: 
-                await self.logMessage("SDSU Initialization failed")
+                    else: 
+                        await self.logMessage("SDSU Initialization failed")
 
-           # except Exception as e:
-            #        print("CAUGHT EXCEPTION")
-             #       error_message = str(e)
-              #      await self.logMessage(f"An exception occurred: {error_message}")
+            except Exception as e:
+                    error_message = str(e)
+                    await self.logMessage(f"An exception occurred: {error_message}")
 
 
 
@@ -422,17 +420,17 @@ class GnirsCADCARController(PVGroup):
     observeA       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:observe.A", doc = "")
     detIDVAL       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:detID.VAL", doc = "")
     detTypeVAL     = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:detType.VAL", doc = "")
-    obsepoch        = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:obsepoch", doc = "")
+    obsepoch       = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:obsepoch", doc = "")
     obsSetupVALE   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:obsSetup.VALE", doc = "")
     setWcsVALA     = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.VALA", doc = "")
     obsSetupVALC   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:obsSetup.VALC", doc = "")
     obsSetupVALD   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:obsSetup.VALD", doc = "")
-    dhsConnected    = pvproperty(value=1, dtype=caproto.ChannelType.LONG, name="sad:dc:dhsConnected", doc = "")
+    dhsConnected   = pvproperty(value=1, dtype=caproto.ChannelType.LONG, name="sad:dc:dhsConnected", doc = "")
     minIntVAL      = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:minInt.VAL", doc = "")
-    C1Tmp           = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:C1Tmp", doc = "")
-    prep            = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:prep", doc = "")
-    acq             = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:acq", doc = "")
-    activate        = pvproperty(value=1, dtype=caproto.ChannelType.ENUM, enum_strings=['Deactivate', 'Activate'], name="dc:activate", doc = "")
+    C1Tmp          = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:C1Tmp", doc = "")
+    prep           = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:prep", doc = "")
+    acq            = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:acq", doc = "")
+    activate       = pvproperty(value=1, dtype=caproto.ChannelType.ENUM, enum_strings=['Deactivate', 'Activate'], name="dc:activate", doc = "")
 
 
 
