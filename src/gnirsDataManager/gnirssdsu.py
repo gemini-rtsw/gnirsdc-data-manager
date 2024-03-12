@@ -85,34 +85,34 @@ class TDLCAD(GnirsCAD):
 class InitSDSUCAD(GnirsCAD):
     async def start(self):
 
-        result = False
+        if (self.controller == None):
+            if (DEBUG_MODE):
+                await self.logMessage("DEBUG MODE ENABLED")
+                self.controller = controllerInterfaceDebug()
 
+                await self.logMessage("SDSU Debug Mode initialization successful")
 
-        if (DEBUG_MODE):
-            await self.logMessage("DEBUG MODE ENABLED")
-            self.controller = controllerInterfaceDebug()
+            else:
+                try:
+                    await self.logMessage("SDSU Initializing")
+                    self.controller = controllerInterface("/readout_data", "./firmware")
 
-            await self.logMessage("SDSU Debug Mode initialization successful")
+                    result = self.controller.testDataLink()
 
+                    if (result == True):
+                        self.controller.setAladdinIII(True)
+
+                        if self.controller.init():
+                            await self.logMessage("SDSU Initialization successful")
+
+                        else: 
+                            await self.logMessage("SDSU Initialization failed")
+
+                except Exception as e:
+                        error_message = str(e)
+                        await self.logMessage(f"An exception occurred: {error_message}")
         else:
-            try:
-                await self.logMessage("SDSU Initializing")
-                self.controller = controllerInterface("/readout_data", "./firmware")
-
-                result = self.controller.testDataLink()
-
-                if (result == True):
-                    self.controller.setAladdinIII(True)
-
-                    if self.controller.init():
-                        await self.logMessage("SDSU Initialization successful")
-
-                    else: 
-                        await self.logMessage("SDSU Initialization failed")
-
-            except Exception as e:
-                    error_message = str(e)
-                    await self.logMessage(f"An exception occurred: {error_message}")
+            await self.logMessage(f"Controller Already Initialized")
 
 
 
