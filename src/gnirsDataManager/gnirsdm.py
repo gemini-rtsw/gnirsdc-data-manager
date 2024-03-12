@@ -403,7 +403,7 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
                                              supported_async_libs=supported_async_libs)
 
     parser.add_argument('--data-dir', '-d', type=str, 
-                        help="Working data directory,")
+                        help="Working data directory,", default=DEFAULT_DATADIR)
     parser.add_argument('--output-dir', '-o', type=str,
                         help="FITS output directory, default: {data-dir}/fits")
     parser.add_argument('--top', '-t', type=str,
