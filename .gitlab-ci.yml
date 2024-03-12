@@ -1,5 +1,6 @@
 stages:
   - build
+  - pages
 
 # Note: The 'DEPLOY_TOKEN' is used here for operations requiring authentication.
 # If 'DEPLOY_TOKEN' expires or you need to create a new one, follow these steps:
@@ -42,3 +43,13 @@ build_image:
   rules:
     - if: '$CI_COMMIT_BRANCH == "irdcioc"'
 
+pages:
+  stage: pages
+  script:
+    - mkdir public
+    - cp README.md public/index.md
+  artifacts:
+    paths:
+      - public
+  only:
+    - irdcioc
