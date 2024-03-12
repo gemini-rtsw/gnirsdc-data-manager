@@ -40,6 +40,21 @@ ssh -X <irdc server>
 irdc_dm_server.sh
 ```
 
+## Data Retrieval
+
+At the moment data will be written to the server at here:
+
+```bash
+/readout_data/fits
+```
+
+scp the data to a local system for viewing
+
+Example:
+
+```bash 
+scp <user>@<server>:/readout_data/fits/* .
+```
 
 ## Scripts
 
