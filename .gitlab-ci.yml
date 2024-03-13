@@ -19,18 +19,15 @@ variables:
   DOCKERFILE_RUN: "Dockerfile.run"
   DOCKERFILE_ENV: "Dockerfile.dev"
 
-
-before_script:
-  - echo "Logging into GitLab Container Registry with deploy token..."
-  - echo $DEPLOY_TOKEN | docker login $CI_REGISTRY -u $DEPLOY_TOKEN --password-stdin
-
-
-        
+      
 build_image:
   stage: build
   image: docker:latest
   services:
     - docker:dind
+  before_script:
+  - echo "Logging into GitLab Container Registry with deploy token..."
+  - echo $DEPLOY_TOKEN | docker login $CI_REGISTRY -u $DEPLOY_TOKEN --password-stdin
   script:
     - git clone -b irdcioc            https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git  gnirsdc
     - git clone -b main               https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/pycadcar.git              pycadcar
