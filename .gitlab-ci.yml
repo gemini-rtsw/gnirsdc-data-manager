@@ -42,10 +42,10 @@ build_image:
 
 pages:
   stage: pages
-  image: node:14
+  image: registry.gitlab.com/gitlab-org/gitlab-pages:latest
   script:
     - mkdir public
-    - cp README.md public/index.md
+    - pandoc README.md -f markdown -t html -o public/index.html
   artifacts:
     paths:
       - public
