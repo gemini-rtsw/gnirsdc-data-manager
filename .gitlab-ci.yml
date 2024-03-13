@@ -42,7 +42,7 @@ build_image:
 
 pages:
   stage: pages
-  image: registry.gitlab.com/gitlab-org/gitlab-pages:latest
+  image: pandoc/core:latest
   script:
     - mkdir public
     - pandoc README.md -f markdown -t html -o public/index.html
