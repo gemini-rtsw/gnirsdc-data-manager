@@ -46,7 +46,7 @@ pages:
   script:
     - apk add --no-cache pandoc
     - mkdir public
-    - pandoc README.md -f markdown -t html --highlight-style --toc -o public/index.html
+    - pandoc README.md -f markdown -t html --toc --highlight-style pygments -o public/index.html
   artifacts:
     paths:
       - public
