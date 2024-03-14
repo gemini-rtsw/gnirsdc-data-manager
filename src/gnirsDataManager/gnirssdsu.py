@@ -51,13 +51,14 @@ class InitCAD(GnirsCAD):
         print("InitCAD start")
 
         await self.logMessage("InitCAD start")
-
+        self.setSuccess("Init successfull")
 
 
 class BiasCAD(GnirsCAD):
     async def start(self):
         if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
+            self.setError("Controller not initialized")
         else:
             print("BiasCAD start")
             
@@ -66,20 +67,27 @@ class BiasCAD(GnirsCAD):
             if (biasVal == -3.6):
                 self.controller.biasLow()
                 await self.logMessage("Bias set to shallow: -3.6")
+                self.setSuccess("Set Bias successfull")
             elif (biasVal == -3.2):
                 self.controller.biasHigh()
                 await self.logMessage("Bias set to deep: -3.2")
+                self.setSuccess("Set Bias successfull")
+
             else:
                 await self.logMessage("Invalid bias voltage value. Leaving bias at: " + str(biasVal))
+                self.setError("Set Bias failed")
+
                 
 
 class TDLCAD(GnirsCAD):
     async def start(self):
         if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
+            self.setError("Controller not initialized")
         else: 
             result = self.controller.testDataLink()
             await self.logMessage(f"TDL: {result}")
+            self.setSuccess("Set Bias successfull")
 
 
 class InitSDSUCAD(GnirsCAD):
@@ -91,7 +99,7 @@ class InitSDSUCAD(GnirsCAD):
                 self.controller = controllerInterfaceDebug()
 
                 await self.logMessage("SDSU Debug Mode initialization successful")
-
+                self.setSuccess("Controller Init Successfull")
             else:
                 try:
                     await self.logMessage("SDSU Initializing")
@@ -107,12 +115,17 @@ class InitSDSUCAD(GnirsCAD):
 
                         else: 
                             await self.logMessage("SDSU Initialization failed")
-
+    
+                    self.setSuccess("Controller Init Successfull")
                 except Exception as e:
-                        error_message = str(e)
-                        await self.logMessage(f"An exception occurred: {error_message}")
+                    error_message = str(e)
+                    await self.logMessage(f"An exception occurred: {error_message}")
+                    self.setError("Controller Init Error")
+
         else:
             await self.logMessage(f"Controller Already Initialized")
+            self.setSuccess("Controller Already Initialized")
+
 
 
 
@@ -121,24 +134,29 @@ class DCConfigCAD(GnirsCAD):
     async def start(self):
         if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
+            self.setError("Controller not Initialized")
         else:
             self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.numcoadds.value)
             await self.logMessage(f"Config lnr: {self.p.lnrNum.value} adc: {self.p.digitalAvgs.value} exp: {self.p.exposureTime.value} coadds: {self.p.numcoadds.value}")
+            self.setSuccess("Configuration Set Successfully")
 
 
 class AbortCAD(GnirsCAD):
     async def start(self):
         if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
+            self.setError("Controller not Initialized")
         else:
             self.controller.abortExposure()
             await self.logMessage(f"Aborting Exposure")
+            self.setSuccessful("Abort Successful")
 
 
 class ObserveCAD(GnirsCAD):
     async def start(self):
         if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
+            self.setError("Controller not Initialized")
         else:
             if (int(self.p.rdout.value) == 0):
                 #begin readout
@@ -155,12 +173,15 @@ class ObserveCAD(GnirsCAD):
                     self.countdown_timer(self.p.exposureTime.value)
                 )
 
+            self.setSuccessful("Observe Started Successfully")
+
 #            loop = asyncio.get_event_loop()
 #            executor = ThreadPoolExecutor()
 #            loop.run_in_executor(executor, asyncio.run, self.start_async_exposure())
 #            loop.run_in_executor(executor, asyncio.run, self.countdown_timer(self.p.exposureTime.value))    
             else:
                 await self.logMessage(f'Readout in progress')
+                self.setError("Observe Failure - Readout in Progress")
 
     def start_async_exposure(self):
         """
