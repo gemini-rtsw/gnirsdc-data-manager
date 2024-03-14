@@ -173,7 +173,7 @@ class ObserveCAD(GnirsCAD):
                     self.countdown_timer(self.p.exposureTime.value)
                 )
 
-            self.setSuccessful("Observe Started Successfully")
+                self.setSuccessful("Observe Started Successfully")
 
 #            loop = asyncio.get_event_loop()
 #            executor = ThreadPoolExecutor()
