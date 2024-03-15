@@ -4,6 +4,7 @@ import asyncio
 import enum
 import importlib
 import os
+import subprocess
 import queue
 import sys
 import threading
@@ -43,6 +44,45 @@ INSTRUMENT_NAME = "GNIRS"
 DEFAULT_PREFIX = "gnirsdm:"
 DEFAULT_DATADIR = '/readout_data'
 MAX_LOG_SIZE = 5
+
+
+
+def get_repo_info_for_directories():
+    # List of directory names
+    directories = [
+        "/gnirsdc",
+        "/pycadcar",
+        "/gnirsdc-tools",
+        "/gnirsdc-lib"
+    ]
+
+    # Function to get the commit hash and branch for a repository
+    def get_repo_info(directory):
+        try:
+            # Change to the repository directory
+            os.chdir(directory)
+
+            # Run git commands to get the commit hash and branch
+            commit_hash = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
+            branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode("utf-8").strip()
+
+            return commit_hash, branch
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return None, None
+
+    # Iterate over the directories and print the repo information
+    for directory in directories:
+        commit_hash, branch = get_repo_info(directory)
+        if commit_hash and branch:
+            print(f"Repo: {directory}")
+            print(f"Commit Hash: {commit_hash}")
+            print(f"Branch: {branch}")
+            print("---")
+        else:
+            print(f"Repo: {directory}")
+            print("Failed to retrieve commit hash and branch.")
+            print("---")
+
 
 
 
@@ -444,7 +484,13 @@ async def main():
     | |__| || |\  |_| |_| | \ \ ____) | | |__| | |____ 
      \_____||_| \_|_____|_|  \_\_____/  |_____/ \_____|
     """)
+
+    print("")
     
+    # Call the function to get repo info for the specified directories
+    get_repo_info_for_directories()
+
+
 
     ioc_options, run_options = custom_ioc_arg_parser(
             default_prefix=DEFAULT_PREFIX,
