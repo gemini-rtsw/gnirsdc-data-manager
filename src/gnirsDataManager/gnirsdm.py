@@ -434,6 +434,18 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
 
 
 async def main():
+
+
+    print("""
+      _____  _   _ _____ _____   _____   _____   _____ 
+     / ____|| \ | |_   _|  __ \ / ____| |  __ \ / ____|
+    | |  __ |  \| | | | | |__) | (___   | |  | | |     
+    | | |_ ||     | | | |  _  / \___ \  | |  | | |     
+    | |__| || |\  |_| |_| | \ \ ____) | | |__| | |____ 
+     \_____||_| \_|_____|_|  \_\_____/  |_____/ \_____|
+    """)
+    
+
     ioc_options, run_options = custom_ioc_arg_parser(
             default_prefix=DEFAULT_PREFIX,
             desc=''
