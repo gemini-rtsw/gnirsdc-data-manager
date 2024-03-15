@@ -68,7 +68,7 @@ def get_repo_info_for_directories():
             remote_origin = subprocess.check_output(["git", "config", "--get", "remote.origin.url"]).decode("utf-8").strip()
 
             # Drop everything except the "gitlab.com" part from the remote origin URL
-            gitlab_url = remote_origin.split("gitlab.com")[1]
+            remote_origin = remote_origin.split("@")[1]
 
             return commit_hash, branch, remote_origin
         except (subprocess.CalledProcessError, FileNotFoundError):
