@@ -56,31 +56,33 @@ def get_repo_info_for_directories():
         "/gnirsdc-lib"
     ]
 
-    # Function to get the commit hash and branch for a repository
+    # Function to get the commit hash, branch, and remote origin for a repository
     def get_repo_info(directory):
         try:
             # Change to the repository directory
             os.chdir(directory)
 
-            # Run git commands to get the commit hash and branch
+            # Run git commands to get the commit hash, branch, and remote origin
             commit_hash = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
             branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode("utf-8").strip()
+            remote_origin = subprocess.check_output(["git", "config", "--get", "remote.origin.url"]).decode("utf-8").strip()
 
-            return commit_hash, branch
+            return commit_hash, branch, remote_origin
         except (subprocess.CalledProcessError, FileNotFoundError):
-            return None, None
+            return None, None, None
 
     # Iterate over the directories and print the repo information
     for directory in directories:
-        commit_hash, branch = get_repo_info(directory)
-        if commit_hash and branch:
+        commit_hash, branch, remote_origin = get_repo_info(directory)
+        if commit_hash and branch and remote_origin:
             print(f"Repo: {directory}")
             print(f"Commit Hash: {commit_hash}")
             print(f"Branch: {branch}")
+            print(f"Remote Origin: {remote_origin}")
             print("---")
         else:
             print(f"Repo: {directory}")
-            print("Failed to retrieve commit hash and branch.")
+            print("Failed to retrieve repo information.")
             print("---")
 
 
