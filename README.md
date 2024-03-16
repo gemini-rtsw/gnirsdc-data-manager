@@ -81,4 +81,13 @@ scp <user>@<server>:/readout_data/fits/* .
 
 Your user on the IRDC server must be a memeber of the docker group
 
+## Driver 
+
+The DC uses the SDSU PCIe driver. The driver is officially supported on linux kernel 2 and 3. We run it on kernel 4. We have not had kernel issues on kernel version 4.18.0-348.20.1.el8_5.x86_64 and older.
+
+```bash 
+Kernel on gn-irdc-lp1 and gn-irdc-lp3
+4.18.0-348.20.1.el8_5.x86_64
+```
+
 
