@@ -348,12 +348,16 @@ class GnirsCADCARController(PVGroup):
         self.apply.car_record = self.applyC
         self.apply.sub_records = [self.dcconfig,self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL, self.bias]
 
-
+        self.observe.car_record = self.observeC
+        self.observeC.car_record = self.applyC
 
 
 
 
     #------ CAD commands --------
+    applyC = SubGroup(CARRecord, prefix='dc:applyC.')
+    apply = SubGroup(ApplyRecord, prefix='dc:apply.')        
+        
     # dc:TDL
     TDL = SubGroup(TDLCAD, prefix='dc:TDL.')
 
@@ -368,12 +372,14 @@ class GnirsCADCARController(PVGroup):
     dcconfig = SubGroup(DCConfigCAD, prefix='dc:dcconfig.')
     endObserve = SubGroup(AbortCAD, prefix='dc:endObserve.')
     abort = SubGroup(AbortCAD, prefix='dc:abort.')
-    observe = SubGroup(ObserveCAD, prefix='dc:observe.')
     stop = SubGroup(AbortCAD, prefix='dc:stop.')
         
 
-    applyC = SubGroup(CARRecord, prefix='dc:applyC.')
-    apply = SubGroup(ApplyRecord, prefix='dc:apply.')
+    observe = SubGroup(ObserveCAD, prefix='dc:observe.')
+    observeC = SubGroup(CARRecord, prefix='dc:observeC.')
+
+
+
 
     #------ DC configuration values --------
     lnrNum          = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:lnrNum", doc = "Low Noise Reads") 
@@ -455,7 +461,7 @@ class GnirsCADCARController(PVGroup):
     prep           = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:prep", doc = "")
     acq            = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:acq", doc = "")
     activate       = pvproperty(value=1, dtype=caproto.ChannelType.ENUM, enum_strings=['Deactivate', 'Activate'], name="dc:activate", doc = "")
-
+    integTimeVAL   = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "")
 
 
 
