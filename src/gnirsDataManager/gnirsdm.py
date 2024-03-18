@@ -491,6 +491,7 @@ async def main():
     """)
 
     print("")
+    print("Booting...")
     
     # Call the function to get repo info for the specified directories
     get_repo_info_for_directories()
