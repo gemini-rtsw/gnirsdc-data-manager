@@ -320,6 +320,7 @@ class ObserveCAD(GnirsCAD):
 class StopCAD(GnirsCAD):
     async def start(self):
         print("StopCAD start")
+        await self.setSuccess()
 
 
 class GnirsCADCARController(PVGroup):
