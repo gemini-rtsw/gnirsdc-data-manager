@@ -348,8 +348,8 @@ class GnirsCADCARController(PVGroup):
         self.sdsuController = None
 
         # CAD commands connect to top level CAR record
-        for cmd in [self.dcconfig, self.endObserve, self.abort, self.observe, self.stop]:
-            cmd.car_record = self.applyC
+#        for cmd in [self.dcconfig, self.endObserve, self.abort, self.observe, self.stop]:
+#            cmd.car_record = self.applyC
 
         # Apply command connects to CAD/CAR records
         self.apply.car_record = self.applyC
@@ -357,7 +357,7 @@ class GnirsCADCARController(PVGroup):
 
         # Special case for observe
         self.observe.car_record = self.observeC
-        self.observeC.car_record = self.applyC
+#        self.observeC.car_record = self.applyC
 
 
 
