@@ -353,7 +353,7 @@ class GnirsCADCARController(PVGroup):
 
         # Apply command connects to CAD/CAR records
         self.apply.car_record = self.applyC
-        self.apply.sub_records = [self.dcconfig, self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL, self.bias]
+        self.apply.cad_records = [self.dcconfig, self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL, self.bias]
 
         # Special case for observe
         self.observe.car_record = self.observeC
