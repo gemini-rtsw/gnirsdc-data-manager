@@ -324,8 +324,6 @@ class StopCAD(GnirsCAD):
 
 
 class GnirsCADCARController(PVGroup):
-
-class GnirsCADCARController(PVGroup):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         print(f"Debug mode: {DEBUG_MODE}")
