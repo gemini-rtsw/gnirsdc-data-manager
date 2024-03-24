@@ -90,4 +90,17 @@ Kernel on gn-irdc-lp1 and gn-irdc-lp3
 4.18.0-348.20.1.el8_5.x86_64
 ```
 
-
+Future notes:
+IRDC Documentation Notes
+Driver documentation
+Kernel version
+Repo
+Build
+Install
+troubleshooting
+DM Screen
+Repo
+Build
+Install
+Run
+Use
