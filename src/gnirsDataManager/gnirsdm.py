@@ -186,7 +186,7 @@ class GnirsDataManagerIOC(PVGroup):
 
         self.processor = None 
 
-        print(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.sub_records)}')
+        print(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.cad_records)}')
 
 
 
