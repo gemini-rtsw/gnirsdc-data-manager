@@ -325,56 +325,38 @@ class StopCAD(GnirsCAD):
 
 class GnirsCADCARController(PVGroup):
 
+class GnirsCADCARController(PVGroup):
     def __init__(self, *args, **kwargs):
-
-        print (f"Debug mode: {DEBUG_MODE}")
-
+        super().__init__(*args, **kwargs)
+        print(f"Debug mode: {DEBUG_MODE}")
 
         self.sdsuController = None
 
-
-        super().__init__(*args, **kwargs)
-
-
-    #------ CAD commands --------
+        # Initialize CAR and CAD commands as attributes
         self.applyC = SubGroup(CARRecord, prefix='dc:applyC.')
         self.apply = SubGroup(ApplyRecord, prefix='dc:apply.')        
-        
-    # dc:TDL
         self.TDL = SubGroup(TDLCAD, prefix='dc:TDL.')
-
-    # dc:bias  
         self.bias = SubGroup(BiasCAD, prefix='dc:bias.')
-
-    # dc:init
         self.init = SubGroup(InitCAD, prefix='dc:init.')
         self.initSDSU = SubGroup(InitSDSUCAD, prefix='dc:initSDSU.')
-
-    # dc:apply
         self.dcconfig = SubGroup(DCConfigCAD, prefix='dc:dcconfig.')
         self.endObserve = SubGroup(AbortCAD, prefix='dc:endObserve.')
         self.abort = SubGroup(AbortCAD, prefix='dc:abort.')
         self.stop = SubGroup(AbortCAD, prefix='dc:stop.')
-        
-
         self.observe = SubGroup(ObserveCAD, prefix='dc:observe.')
         self.observeC = SubGroup(CARRecord, prefix='dc:observeC.')
 
-
         # CAD commands connect to top level CAR record
-        self.dcconfig.car_record = self.applyC
-        self.endObserve.car_record = self.applyC
-        self.abort.car_record = self.applyC
-        self.observe.car_record = self.applyC
-        self.stop.car_record = self.applyC
+        for cmd in [self.dcconfig, self.endObserve, self.abort, self.observe, self.stop]:
+            cmd.car_record = self.applyC
 
         # Apply command connects to CAD/CAR records
         self.apply.car_record = self.applyC
-        self.apply.sub_records = [self.dcconfig,self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL, self.bias]
+        self.apply.sub_records = [self.dcconfig, self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL, self.bias]
 
+        # Special case for observe
         self.observe.car_record = self.observeC
         self.observeC.car_record = self.applyC
-
 
 
 
