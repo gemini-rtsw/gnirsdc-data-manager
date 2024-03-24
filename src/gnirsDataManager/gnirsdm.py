@@ -41,7 +41,7 @@ import gnirsgiapi
 from gnirsgiapi import GiapiInterface
 
 INSTRUMENT_NAME = "GNIRS"
-DEFAULT_PREFIX = "gnirsdm:"
+DEFAULT_PREFIX = "tgnirs:"
 DEFAULT_DATADIR = '/readout_data'
 MAX_LOG_SIZE = 5
 
