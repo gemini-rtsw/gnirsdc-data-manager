@@ -324,25 +324,28 @@ class StopCAD(GnirsCAD):
 
 
 class GnirsCADCARController(PVGroup):
+
+
+    # Initialize CAR and CAD commands as attributes
+    applyC = SubGroup(CARRecord, prefix='dc:applyC.')
+    apply = SubGroup(ApplyRecord, prefix='dc:apply.')        
+    TDL = SubGroup(TDLCAD, prefix='dc:TDL.')
+    bias = SubGroup(BiasCAD, prefix='dc:bias.')
+    init = SubGroup(InitCAD, prefix='dc:init.')
+    initSDSU = SubGroup(InitSDSUCAD, prefix='dc:initSDSU.')
+    dcconfig = SubGroup(DCConfigCAD, prefix='dc:dcconfig.')
+    endObserve = SubGroup(AbortCAD, prefix='dc:endObserve.')
+    abort = SubGroup(AbortCAD, prefix='dc:abort.')
+    stop = SubGroup(AbortCAD, prefix='dc:stop.')
+    observe = SubGroup(ObserveCAD, prefix='dc:observe.')
+    observeC = SubGroup(CARRecord, prefix='dc:observeC.')
+
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         print(f"Debug mode: {DEBUG_MODE}")
 
         self.sdsuController = None
-
-        # Initialize CAR and CAD commands as attributes
-        self.applyC = SubGroup(CARRecord, prefix='dc:applyC.')
-        self.apply = SubGroup(ApplyRecord, prefix='dc:apply.')        
-        self.TDL = SubGroup(TDLCAD, prefix='dc:TDL.')
-        self.bias = SubGroup(BiasCAD, prefix='dc:bias.')
-        self.init = SubGroup(InitCAD, prefix='dc:init.')
-        self.initSDSU = SubGroup(InitSDSUCAD, prefix='dc:initSDSU.')
-        self.dcconfig = SubGroup(DCConfigCAD, prefix='dc:dcconfig.')
-        self.endObserve = SubGroup(AbortCAD, prefix='dc:endObserve.')
-        self.abort = SubGroup(AbortCAD, prefix='dc:abort.')
-        self.stop = SubGroup(AbortCAD, prefix='dc:stop.')
-        self.observe = SubGroup(ObserveCAD, prefix='dc:observe.')
-        self.observeC = SubGroup(CARRecord, prefix='dc:observeC.')
 
         # CAD commands connect to top level CAR record
         for cmd in [self.dcconfig, self.endObserve, self.abort, self.observe, self.stop]:
