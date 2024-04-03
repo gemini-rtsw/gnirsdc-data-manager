@@ -3,6 +3,7 @@ from caproto.server import pvproperty, SubGroup, PVGroup, ioc_arg_parser, run
 from pygeminirec.applyrecord import ApplyRecord
 from pygeminirec.cadrecord import CADRecord
 from pygeminirec.carrecord import CARRecord
+from pygeminirec.carrecord import CADDirective
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -445,7 +446,6 @@ class GnirsCADCARController(PVGroup):
 
     rdout           = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="sad:dc:rdout", doc = "Reading out") 
 
-    obsSetupD      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.D", doc = "")
     setWcsA        = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.A", doc = "")
     obsSetupC      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.C", doc = "")
     arSetupH       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:arSetup.H", doc = "")
@@ -467,8 +467,14 @@ class GnirsCADCARController(PVGroup):
     integTimeVAL   = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "")
 
 
+## obsSetupD needs a forward link to observeCAD to mark it to process
+    obsSetupD      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.D", doc = "",
+                                        put=lambda self, instance, value: self.putter(value)
+    )
 
-
+    async def putter(self, value):
+        print(f"Value changed to: {value}")
+        await self.observe.DIR.write(CADDirective.MARK)
 
     
 
