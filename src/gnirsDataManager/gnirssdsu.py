@@ -375,7 +375,10 @@ class GnirsCADCARController(PVGroup):
         # Apply command connects to CAD/CAR records
         self.apply.cars.records = [self.applyC]
         #self.apply.cads.records = [self.dcconfig, self.observe]
-        self.apply.cads.records = [self.dcconfig, self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL, self.bias]
+
+
+        # some kind of order bug. observe must go first or seqexec will error ?? 
+        self.apply.cads.records = [self.observe, self.dcconfig, self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL, self.bias]
 
         # Observe has it's own CAR
         self.observe.cars.records = [self.observeC]
