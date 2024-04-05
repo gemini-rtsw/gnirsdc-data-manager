@@ -38,7 +38,7 @@ build_image:
     - docker build -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev -f $DOCKERFILE_ENV .
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev
   rules:
-    - if: '$CI_COMMIT_BRANCH == "irdcioc"'
+    - if: '$CI_COMMIT_BRANCH == "master"'
 
 pages:
   stage: pages
