@@ -111,12 +111,18 @@ class InitSDSUCAD(GnirsCAD):
         else:
             try:
                 await self.logMessage("SDSU Initializing")
-                self.controller = controllerInterface("/readout_data", "./firmware")
+
+                firmware_full_path = os.path.join(os.getcwd(), "./firmware/AladdinIII_SDSU_Firmware.lod")
+
+                # Normalize the path to resolve any symbolic links, ".." or "." etc.
+                firmware_full_path = os.path.normpath(firmware_full_path)
+
+                self.controller = controllerInterface("/readout_data", firmware_full_path)
 
                 result = self.controller.testDataLink()
 
                 if (result == True):
-                    self.controller.setAladdinIII(True)
+                    #self.controller.setAladdinIII(True)
 
                     if self.controller.init():
                         await self.logMessage("SDSU Initialization successful")
