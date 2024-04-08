@@ -1,0 +1,7 @@
+{
+    "name": "My GNIRSDC Data Manager Project",
+    "image": "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run",
+    "runArgs": ["--network=host"],
+    "dockerFile": "Dockerfile.run",
+    "overrideCommand": false
+}
