@@ -101,43 +101,41 @@ class TDLCAD(GnirsCAD):
 class InitSDSUCAD(GnirsCAD):
     async def start(self):
 
-        if (self.controller == None):
-            if (DEBUG_MODE):
-                await self.logMessage("DEBUG MODE ENABLED")
-                self.controller = controllerInterfaceDebug()
+        if (DEBUG_MODE):
+            await self.logMessage("DEBUG MODE ENABLED")
+            self.controller = controllerInterfaceDebug()
 
-                await self.logMessage("SDSU Debug Mode initialization successful")
-                await self.MESS.write("Controller Init Successfull")
-                return True
-            else:
-                try:
-                    await self.logMessage("SDSU Initializing")
-                    self.controller = controllerInterface("/readout_data", "./firmware")
-
-                    result = self.controller.testDataLink()
-
-                    if (result == True):
-                        self.controller.setAladdinIII(True)
-
-                        if self.controller.init():
-                            await self.logMessage("SDSU Initialization successful")
-                            await self.MESS.write("SDSU Initialization successful")
-                            return True
-                        else: 
-                            await self.logMessage("SDSU Initialization failed")
-                            await self.MESS.write("SDSU Initialization failed")
-                            return False
-    
-                except Exception as e:
-                    error_message = str(e)
-                    await self.logMessage(f"An exception occurred: {error_message}")
-                    await self.MESS.write("Controller Init Error")
-                    return False
-
+            await self.logMessage("SDSU Debug Mode initialization successful")
+            await self.MESS.write("Controller Init Successfull")
+            return True
         else:
-            await self.logMessage(f"Controller Already Initialized")
-            await self.MESS.write("Controller Already Initialized")
-            return False
+            try:
+                await self.logMessage("SDSU Initializing")
+                self.controller = controllerInterface("/readout_data", "./firmware")
+
+                result = self.controller.testDataLink()
+
+                if (result == True):
+                    self.controller.setAladdinIII(True)
+
+                    if self.controller.init():
+                        await self.logMessage("SDSU Initialization successful")
+                        await self.MESS.write("SDSU Initialization successful")
+                        return True
+                    else: 
+                        await self.logMessage("SDSU Initialization failed")
+                        await self.MESS.write("SDSU Initialization failed")
+                        self.controller = None
+                        return False
+
+            except Exception as e:
+                error_message = str(e)
+                await self.logMessage(f"An exception occurred: {error_message}")
+                await self.MESS.write("Controller Init Error")
+                self.controller = None
+                return False
+
+
 
 
 
