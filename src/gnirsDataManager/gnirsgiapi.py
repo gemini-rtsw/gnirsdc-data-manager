@@ -7,23 +7,35 @@ import time
 
 
 
-def source_env_file(env_file):
-    # Change directory to the one containing the env_file
-    env_dir = os.path.dirname(env_file)
-    if env_dir:  # If there's a directory to change to
-        os.chdir(env_dir)
-        print(f"Changed working directory to: {os.getcwd()}")
+def set_environment_variables():
+    os.chdir("../../giapi-gluecc")
+    cwd = os.getcwd()
+    
+    # Setting GIAPI_ROOT based on the current working directory
+    os.environ['GIAPI_ROOT'] = cwd
+    
+    # Directly constructing and setting the other environment variables
+    os.environ['BOOST_ROOT'] = os.path.join(cwd, "external/boost")
+    os.environ['LD_LIBRARY_PATH'] = ":".join([
+        os.path.join(cwd, "external/apr/lib"),
+        os.path.join(cwd, "external/apr-util/lib"),
+        os.path.join(cwd, "external/activemq-cpp/lib"),
+        os.path.join(cwd, "external/log4cxx/lib"),
+        os.path.join(cwd, "external/cppunit/lib"),
+        os.path.join(cwd, "external/curlpp/lib"),
+        os.path.join(cwd, "external/curlpp/lib64"),
+        os.path.join(cwd, "external/libcurl/lib"),
+        os.path.join(cwd, "external/libcurl/lib64"),
+        os.path.join(cwd, "install/lib"),
+    ])
 
-    with open(os.path.basename(env_file)) as file:
-        for line in file:
-            line = line.strip()
-            if line.startswith("#") or not line:
-                continue
-            key, value = line.split("=", 1)
-            os.environ[key] = value
+    # Debugging: Print environment variables to verify
+    print(f"GIAPI_ROOT: {os.environ.get('GIAPI_ROOT')}")
+    print(f"BOOST_ROOT: {os.environ.get('BOOST_ROOT')}")
+    print(f"LD_LIBRARY_PATH: {os.environ.get('LD_LIBRARY_PATH')}")
 
-# source .env file before running the rest of script
-source_env_file('../../giapi-gluecc/defineGiapiglueEnv.sh')
+# Assuming you are already in the desired directory before calling this function
+#set_environment_variables()
 
 
 #giapi_root="/home/hstecher/work/gnirsdc-data-manager/giapi-gluecc"
@@ -54,6 +66,7 @@ cppyy.include("giapi/DataUtil.h")
 
 cppyy.include("giapi/GeminiUtil.h")
 cppyy.include("giapi/ServicesUtil.h")
+
 
 cppyy.load_library(f"libapr-1.so.0")
 cppyy.load_library(f"libexpat.so.0")
