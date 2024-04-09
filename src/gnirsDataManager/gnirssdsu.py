@@ -101,15 +101,16 @@ class TDLCAD(GnirsCAD):
 class InitSDSUCAD(GnirsCAD):
     async def start(self):
 
-        if (DEBUG_MODE):
-            await self.logMessage("DEBUG MODE ENABLED")
-            self.controller = controllerInterfaceDebug()
+        try:
 
-            await self.logMessage("SDSU Debug Mode initialization successful")
-            await self.MESS.write("Controller Init Successfull")
-            return True
-        else:
-            try:
+            if (DEBUG_MODE):
+                await self.logMessage("DEBUG MODE ENABLED")
+                self.controller = controllerInterfaceDebug()
+
+                await self.logMessage("SDSU Debug Mode initialization successful")
+                await self.MESS.write("Controller Init Successfull")
+                return True
+            else:
                 await self.logMessage("SDSU Initializing")
 
                 firmware_full_path = os.path.join(os.getcwd(), "firmware/AladdinIII_SDSU_Firmware.lod")
@@ -122,25 +123,23 @@ class InitSDSUCAD(GnirsCAD):
 
                 result = self.controller.testDataLink()
 
-                if (result == True):
-                    #self.controller.setAladdinIII(True)
-
+                if result:
                     if self.controller.init():
                         await self.logMessage("SDSU Initialization successful")
                         await self.MESS.write("SDSU Initialization successful")
                         return True
-                    else: 
-                        await self.logMessage("SDSU Initialization failed")
-                        await self.MESS.write("SDSU Initialization failed")
-                        self.controller = None
-                        return False
-
-            except Exception as e:
-                error_message = str(e)
-                await self.logMessage(f"An exception occurred: {error_message}")
-                await self.MESS.write("Controller Init Error")
-                self.controller = None
-                return False
+         
+        except Exception as e:
+            error_message = str(e)
+            await self.logMessage(f"An exception occurred: {error_message}")
+            await self.MESS.write("Controller Init Error")
+            self.controller = None
+            return False
+        
+        await self.logMessage("SDSU Initialization failed")
+        await self.MESS.write("SDSU Initialization failed")
+        self.controller = None
+        return False
 
 
 

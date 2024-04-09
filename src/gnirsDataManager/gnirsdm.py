@@ -46,8 +46,6 @@ DEFAULT_DATADIR = '/readout_data'
 MAX_LOG_SIZE = 5
 WORKING_DIR = os.getcwd()
 
-
-
 def get_repo_info_for_directories():
 
     # List of directory names
