@@ -6,42 +6,6 @@ import asyncio
 import time
 
 
-
-def set_environment_variables():
-    os.chdir("../../giapi-gluecc")
-    cwd = os.getcwd()
-    
-    # Setting GIAPI_ROOT based on the current working directory
-    os.environ['GIAPI_ROOT'] = cwd
-    
-    # Directly constructing and setting the other environment variables
-    os.environ['BOOST_ROOT'] = os.path.join(cwd, "external/boost")
-    os.environ['LD_LIBRARY_PATH'] = ":".join([
-        os.path.join(cwd, "external/apr/lib"),
-        os.path.join(cwd, "external/apr-util/lib"),
-        os.path.join(cwd, "external/activemq-cpp/lib"),
-        os.path.join(cwd, "external/log4cxx/lib"),
-        os.path.join(cwd, "external/cppunit/lib"),
-        os.path.join(cwd, "external/curlpp/lib"),
-        os.path.join(cwd, "external/curlpp/lib64"),
-        os.path.join(cwd, "external/libcurl/lib"),
-        os.path.join(cwd, "external/libcurl/lib64"),
-        os.path.join(cwd, "install/lib"),
-    ])
-
-    # Debugging: Print environment variables to verify
-    print(f"GIAPI_ROOT: {os.environ.get('GIAPI_ROOT')}")
-    print(f"BOOST_ROOT: {os.environ.get('BOOST_ROOT')}")
-    print(f"LD_LIBRARY_PATH: {os.environ.get('LD_LIBRARY_PATH')}")
-
-# Assuming you are already in the desired directory before calling this function
-#set_environment_variables()
-
-
-#giapi_root="/home/hstecher/work/gnirsdc-data-manager/giapi-gluecc"
-
-#os.environ['LD_LIBRARY_PATH'] = f"{os.environ.get('LD_LIBRARY_PATH')}:{giapi_root}/home/hstecher/work/gnirsdc-data-manager/giapi-gluecc/external/apr-util/lib/"
-
 print(f"GIAPI_ROOT: {os.environ.get('GIAPI_ROOT')}")
 print(f"LD_LIBRARY_PATH: {os.environ.get('LD_LIBRARY_PATH')}")
 
