@@ -1,9 +1,9 @@
 {
     "name": "Your Project Name",
     "image": "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev",
-    "overrideCommand": true,
-    "postCreateCommand": "tail -f /dev/null",
+    "overrideCommand": false,
     "runArgs": [
+        "-it",
         "--network=host",
         "-v", "${env:HOME}/.ssh:/root/.ssh:ro"
     ],
