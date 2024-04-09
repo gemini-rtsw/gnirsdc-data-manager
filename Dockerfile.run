@@ -32,9 +32,17 @@ WORKDIR /gnirsdc-tools
 RUN python3 -m pip install .
 
 COPY ./gnirsdc /gnirsdc
+
+# Set the working directory to where giapi-gluecc will reside
+WORKDIR /gnirsdc/giapi-gluecc
+
+# Set GIAPI_ROOT to the current directory
+# and other environment variables relative to GIAPI_ROOT
+ENV GIAPI_ROOT=/path/to/giapi-gluecc \
+    BOOST_ROOT=/path/to/giapi-gluecc/external/boost \
+    LD_LIBRARY_PATH=/path/to/giapi-gluecc/external/apr/lib:/path/to/giapi-gluecc/external/apr-util/lib:/path/to/giapi-gluecc/external/activemq-cpp/lib:/path/to/giapi-gluecc/external/log4cxx/lib:/path/to/giapi-gluecc/external/cppunit/lib:/path/to/giapi-gluecc/external/curlpp/lib:/path/to/giapi-gluecc/external/curlpp/lib64:/path/to/giapi-gluecc/external/libcurl/lib:/path/to/giapi-gluecc/external/libcurl/lib64:/path/to/giapi-gluecc/install/lib
+
 WORKDIR /gnirsdc
-
-
 
 # Start bash
 CMD ["/gnirsdc/entrypoint.sh"]
