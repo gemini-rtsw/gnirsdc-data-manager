@@ -42,6 +42,8 @@ ENV GIAPI_ROOT=/gnirsdc/giapi-gluecc \
     BOOST_ROOT=/gnirsdc/giapi-gluecc/external/boost \
     LD_LIBRARY_PATH=/gnirsdc/giapi-gluecc/external/apr/lib:/gnirsdc/giapi-gluecc/external/apr-util/lib:/gnirsdc/giapi-gluecc/external/activemq-cpp/lib:/gnirsdc/giapi-gluecc/external/log4cxx/lib:/gnirsdc/giapi-gluecc/external/cppunit/lib:/gnirsdc/giapi-gluecc/external/curlpp/lib:/gnirsdc/giapi-gluecc/external/curlpp/lib64:/gnirsdc/giapi-gluecc/external/libcurl/lib:/gnirsdc/giapi-gluecc/external/libcurl/lib64:/gnirsdc/giapi-gluecc/install/lib
 
+RUN echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
+
 WORKDIR /gnirsdc
 
 # Start bash
