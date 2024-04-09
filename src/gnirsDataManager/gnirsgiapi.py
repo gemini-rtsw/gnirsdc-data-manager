@@ -7,6 +7,24 @@ import time
 
 
 
+def source_env_file(env_file):
+    # Change directory to the one containing the env_file
+    env_dir = os.path.dirname(env_file)
+    if env_dir:  # If there's a directory to change to
+        os.chdir(env_dir)
+        print(f"Changed working directory to: {os.getcwd()}")
+
+    with open(os.path.basename(env_file)) as file:
+        for line in file:
+            line = line.strip()
+            if line.startswith("#") or not line:
+                continue
+            key, value = line.split("=", 1)
+            os.environ[key] = value
+
+# source .env file before running the rest of script
+source_env_file('../../giapi-gluecc/defineGiapiglueEnv.sh')
+
 
 #giapi_root="/home/hstecher/work/gnirsdc-data-manager/giapi-gluecc"
 
