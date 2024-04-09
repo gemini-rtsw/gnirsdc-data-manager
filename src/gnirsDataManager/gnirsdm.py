@@ -44,10 +44,12 @@ INSTRUMENT_NAME = "GNIRS"
 DEFAULT_PREFIX = "tgnirs:"
 DEFAULT_DATADIR = '/readout_data'
 MAX_LOG_SIZE = 5
+WORKING_DIR = os.getcwd()
 
 
 
 def get_repo_info_for_directories():
+
     # List of directory names
     directories = [
         "/gnirsdc",
@@ -87,6 +89,8 @@ def get_repo_info_for_directories():
             print(f"Repo: {directory}")
             print("Failed to retrieve repo information.")
             print("---")
+
+    os.chdir(WORKING_DIR)
 
 
 
@@ -507,7 +511,7 @@ async def main():
     print ("IOC created")
     await ioc.data_dir.write(run_options['data_dir'])
 
-
+    print(f"Working directory: {os.getcwd()}")
 
 
     dm = manager.DataMover(run_options['data_dir'], run_options['output_dir'])

@@ -112,7 +112,7 @@ class InitSDSUCAD(GnirsCAD):
             try:
                 await self.logMessage("SDSU Initializing")
 
-                firmware_full_path = os.path.join(os.getcwd(), "./firmware/AladdinIII_SDSU_Firmware.lod")
+                firmware_full_path = os.path.join(os.getcwd(), "firmware/AladdinIII_SDSU_Firmware.lod")
 
                 print(f"LOD Path: {firmware_full_path}")
                 # Normalize the path to resolve any symbolic links, ".." or "." etc.
