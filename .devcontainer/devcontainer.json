@@ -1,6 +1,8 @@
 {
     "name": "Your Project Name",
-    "image": "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run",
+    "image": "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev",
+    "overrideCommand": true,
+    "postCreateCommand": "tail -f /dev/null",
     "runArgs": [
         "--network=host",
         "-v", "${env:HOME}/.ssh:/root/.ssh:ro"
@@ -11,6 +13,5 @@
                 "ms-python.python"
             ]
         }
-    },
-    "overrideCommand": false
+    }
 }
