@@ -174,8 +174,8 @@ class AbortCAD(GnirsCAD):
 
 
 class ObserveCAD(GnirsCAD):
-    def __init__(self):
-        super().__init__()  # Initialize parent class if necessary
+    def __init__(self, *args, **kwargs):
+        super().__init__( *args, **kwargs)  # Initialize parent class if necessary
         self.rdout_change_event = asyncio.Event()
 
     async def set_rdout(self, value):
