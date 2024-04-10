@@ -99,9 +99,13 @@ class TDLCAD(GnirsCAD):
 
 
 class InitSDSUCAD(GnirsCAD):
+
     async def start(self):
 
         try:
+
+            # deallocate controller just in case this is an additional init
+            self.controller = None
 
             if (DEBUG_MODE):
                 await self.logMessage("DEBUG MODE ENABLED")
