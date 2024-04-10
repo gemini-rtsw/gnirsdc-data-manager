@@ -174,6 +174,23 @@ class AbortCAD(GnirsCAD):
 
 
 class ObserveCAD(GnirsCAD):
+    def __init__(self):
+        super().__init__()  # Initialize parent class if necessary
+        self.rdout_change_event = asyncio.Event()
+
+    async def set_rdout(self, value):
+        """Set self.p.rdout.value and signal the event."""
+        await self.p.rdout.write(value)
+        self.rdout_change_event.set()
+
+    async def wait_for_rdout(self, value):
+        """Wait until self.p.rdout.value equals the specified value."""
+        while True:
+            await self.rdout_change_event.wait()
+            if int(self.p.rdout.value) == value:
+                self.rdout_change_event.clear()  # Reset the event for the next wait
+                break
+
     async def start(self):
         if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
@@ -182,7 +199,7 @@ class ObserveCAD(GnirsCAD):
         else:
             if (int(self.p.rdout.value) == 0):
                 #begin readout
-                await self.p.rdout.write(1)
+                await self.set_rdout(1)
 
 
                 # Run the blocking function in a separate thread
@@ -195,13 +212,14 @@ class ObserveCAD(GnirsCAD):
                     self.countdown_timer(self.p.exposureTime.value)
                 )
 
-                await self.MESS.write("Observe Started Successfully")
-                return True
 
-#            loop = asyncio.get_event_loop()
-#            executor = ThreadPoolExecutor()
-#            loop.run_in_executor(executor, asyncio.run, self.start_async_exposure())
-#            loop.run_in_executor(executor, asyncio.run, self.countdown_timer(self.p.exposureTime.value))    
+                # wait for observe to complete
+                await self.wait_for_rdout(0)
+
+
+                await self.MESS.write("Observe CAD Completed Successfully")
+                return True
+   
             else:
                 await self.logMessage(f'Readout in progress')
                 await self.MESS.write("Observe Failure - Readout in Progress")
