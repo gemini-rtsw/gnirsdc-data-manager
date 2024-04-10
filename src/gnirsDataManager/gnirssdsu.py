@@ -174,22 +174,6 @@ class AbortCAD(GnirsCAD):
 
 
 class ObserveCAD(GnirsCAD):
-    def __init__(self, *args, **kwargs):
-        super().__init__( *args, **kwargs)  # Initialize parent class if necessary
-        self.rdout_change_event = asyncio.Event()
-
-    async def set_rdout(self, value):
-        """Set self.p.rdout.value and signal the event."""
-        await self.p.rdout.write(value)
-        self.rdout_change_event.set()
-
-    async def wait_for_rdout(self, value):
-        """Wait until self.p.rdout.value equals the specified value."""
-        while True:
-            await self.rdout_change_event.wait()
-            if int(self.p.rdout.value) == value:
-                self.rdout_change_event.clear()  # Reset the event for the next wait
-                break
 
     async def start(self):
         if (self.controller == None):
@@ -198,8 +182,9 @@ class ObserveCAD(GnirsCAD):
             return False
         else:
             if (int(self.p.rdout.value) == 0):
+                
                 #begin readout
-                await self.set_rdout(1)
+                await self.p.rdout.write(1)
 
 
                 # Run the blocking function in a separate thread
@@ -214,7 +199,8 @@ class ObserveCAD(GnirsCAD):
 
 
                 # wait for observe to complete
-                await self.wait_for_rdout(0)
+                while(self.p.rdout.value == 1):
+                    await asyncio.sleep(0.01)
 
 
                 await self.MESS.write("Observe CAD Completed Successfully")
