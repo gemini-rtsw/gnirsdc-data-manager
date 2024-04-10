@@ -403,7 +403,7 @@ class GnirsCADCARController(PVGroup):
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else: 
-            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, self.coaddsVAL.value)
+            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value))
             await self.parent.logMessage(f"Config lnr: {value} adc: {self.digitalAvgs.value} exp: {self.exposureTime.value} coadds: {self.coaddsVAL.value}")
 
 
@@ -413,7 +413,7 @@ class GnirsCADCARController(PVGroup):
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else: 
-            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, self.coaddsVAL.value)
+            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value))
             await self.parent.logMessage(f"Config lnr: {value} adc: {self.digitalAvgs.value} exp: {self.exposureTime.value} coadds: {self.coaddsVAL.value}")
 
     digitalAvgs     = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:digitalAvgs", doc = "Digital Averages") 
@@ -422,7 +422,7 @@ class GnirsCADCARController(PVGroup):
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else: 
-            self.sdsuController.setExposure(self.lnrNum.value, value, self.exposureTime.value, self.coaddsVAL.value)
+            self.sdsuController.setExposure(self.lnrNum.value, value, self.exposureTime.value, int(self.coaddsVAL.value))
             await self.parent.logMessage(f"Config lnr: {self.lnrNum.value} adc: {value} exp: {self.exposureTime.value} coadds: {self.coaddsVAL.value}")
 
     coaddsVAL      = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:coadds.VAL", doc = "")
@@ -432,7 +432,7 @@ class GnirsCADCARController(PVGroup):
             await self.parent.logMessage(f"Controller not initialized")
         else:
             await self.obsSetupVALE.write(value)             
-            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, value)
+            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(value))
             await self.parent.logMessage(f"Config lnr: {self.lnrNum.value} adc: {self.digitalAvgs.value} exp: {self.exposureTime.value} coadds: {value}")
     #------ DC configuration values --------
 
