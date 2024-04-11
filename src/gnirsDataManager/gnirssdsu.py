@@ -401,24 +401,6 @@ class GnirsCADCARController(PVGroup):
 
 
 
-    # ----- syncing functions ------------------
-    async def sync_with_channel(self, channel: pvproperty, value: Any):
-        converted_value = self.convert_value(value, channel.dtype)
-        if channel.value != converted_value:
-            await channel.write(converted_value)
-
-    def convert_value(self, value: Any, target_type: caproto.ChannelType) -> Union[str, int, float]:
-        if target_type == caproto.ChannelType.STRING:
-            return str(value)
-        elif target_type == caproto.ChannelType.INT:
-            return int(value)
-        elif target_type == caproto.ChannelType.LONG:
-            return int(value)
-        elif target_type == caproto.ChannelType.DOUBLE:
-            return float(value)
-        else:
-            raise ValueError(f"Unsupported target type: {target_type}")
-
 
     #------ DC configuration values --------
 
@@ -426,12 +408,16 @@ class GnirsCADCARController(PVGroup):
     obsSetupD      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.D", doc = "")
     @obsSetupD.putter
     async def obsSetupD(self, instance, value):
-        await self.sync_with_channel(self.lnrNum, value)
+        if (self.lnrNum.value != int(value)):
+            await self.lnrNum.write(int(value))
+
 
     lnrNum          = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:lnrNum", doc = "Low Noise Reads") 
     @lnrNum.putter
     async def lnrNum(self, instance, value):
-        await self.sync_with_channel(self.obsSetupD, value)
+        if (self.obsSetupD.value != str(value)):
+            await self.obsSetupD.write(str(value))
+
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else:
