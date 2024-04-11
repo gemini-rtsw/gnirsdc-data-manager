@@ -515,12 +515,14 @@ class GnirsCADCARController(PVGroup):
 
 
 ## obsSetupD needs a forward link to observeCAD to mark it to process
+# this is a seqexec thing. for observe CAD DIR never gets set to MARK
     observeA       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:observe.A", doc = "")
 
     @observeA.putter
     async def observeA(self, instance, value):
         print(f"Value changed to: {value}")
         await self.observe.DIR.write(CADDirective.MARK)
+        await self.dataLabel.write(value)
 
 
 
