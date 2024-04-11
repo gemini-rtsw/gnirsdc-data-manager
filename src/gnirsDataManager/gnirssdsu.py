@@ -190,7 +190,7 @@ class ObserveCAD(GnirsCAD):
 
             if (int(self.p.rdout.value) == 0):
 
-                
+
                 if self.p.sequence.value < 1:
                     self.p.sequence.value = 1
 
@@ -210,10 +210,16 @@ class ObserveCAD(GnirsCAD):
                         self.countdown_timer(self.p.exposureTime.value)
                     )
 
+                    # Wait for both tasks to complete
+                    await asyncio.gather(exposure_task, countdown_task)
 
                     # wait for observe to complete
                     while(self.p.rdout.value == 1):
                         await asyncio.sleep(0.01)
+
+                    # the sleep is the ensure the SDSU readout overhead is complete
+                    if self.p.sequence.value > 1:
+                        await asyncio.sleep(1)
 
                 await self.p.sequence.write(1)
 
@@ -271,9 +277,9 @@ class ObserveCAD(GnirsCAD):
 
 
         # readout SDSU
-        sleep(self.p.exposureTime.value/2)        
+        #sleep(self.p.exposureTime.value/2)        
         self.controller.startExposure(self.p.detectorTemp1.value, self.p.detectorTemp1.value, self.p.parent.include_eng.value)	
-        sleep(self.p.exposureTime.value/2)        
+        sleep(self.p.exposureTime.value)        
 
 
         asyncio.run_coroutine_threadsafe(self.logMessage(f'SDSU readout complete'), self.loop)
