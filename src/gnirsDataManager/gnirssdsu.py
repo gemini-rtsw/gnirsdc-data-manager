@@ -422,10 +422,10 @@ class GnirsCADCARController(PVGroup):
             await self.parent.logMessage(f"Controller not initialized")
         else:
             self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value))
-            await self.parent.logMessage(f"Config lnr: {value} adc: {self.digitalAvgs.value} exp: {self.exposureTime.value} coadds: {self.coaddsVAL.value}")
+            await self.parent.logMessage(f"LNR: {value}")
     #------ fowlers - lnr -------------------
 
-
+    #-------------- exposureTime -------------------
     exposureTime    = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:exposureTime", doc = "Exposure Time") 
     @exposureTime.putter
     async def exposureTime(self, instance, value):
@@ -433,7 +433,17 @@ class GnirsCADCARController(PVGroup):
             await self.parent.logMessage(f"Controller not initialized")
         else: 
             self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value))
-            await self.parent.logMessage(f"Config lnr: {value} adc: {self.digitalAvgs.value} exp: {self.exposureTime.value} coadds: {self.coaddsVAL.value}")
+            await self.parent.logMessage(f"Exposure Time: {value}")
+    #-------------- exposureTime -------------------
+
+
+
+    #-------------- digitalAvgs -------------------
+    obsSetupC      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.C", doc = "")
+    @obsSetupD.putter
+    async def obsSetupD(self, instance, value):
+        if (self.lnrNum.value != int(value)):
+            await self.lnrNum.write(int(value))
 
     digitalAvgs     = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:digitalAvgs", doc = "Digital Averages") 
     @digitalAvgs.putter
@@ -442,8 +452,13 @@ class GnirsCADCARController(PVGroup):
             await self.parent.logMessage(f"Controller not initialized")
         else: 
             self.sdsuController.setExposure(self.lnrNum.value, value, self.exposureTime.value, int(self.coaddsVAL.value))
-            await self.parent.logMessage(f"Config lnr: {self.lnrNum.value} adc: {value} exp: {self.exposureTime.value} coadds: {self.coaddsVAL.value}")
+            await self.parent.logMessage(f"ADC: {value}")
+    #-------------- digitalAvgs -------------------
 
+
+
+
+    #-------------- coadds -------------------
     coaddsVAL      = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:coadds.VAL", doc = "")
     @coaddsVAL.putter
     async def coaddsVAL(self, instance, value):
@@ -452,7 +467,9 @@ class GnirsCADCARController(PVGroup):
         else:
             await self.obsSetupVALE.write(value)             
             self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(value))
-            await self.parent.logMessage(f"Config lnr: {self.lnrNum.value} adc: {self.digitalAvgs.value} exp: {self.exposureTime.value} coadds: {value}")
+            await self.parent.logMessage(f"Coadds: {value}")
+    #-------------- coadds -------------------
+
     #------ DC configuration values --------
 
 
@@ -478,7 +495,6 @@ class GnirsCADCARController(PVGroup):
 
     setWcsA        = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.A", doc = "")
 
-    obsSetupC      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.C", doc = "")
 
     arSetupH       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:arSetup.H", doc = "")
     detIDVAL       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:detID.VAL", doc = "")
