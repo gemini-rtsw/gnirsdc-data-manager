@@ -415,8 +415,6 @@ class GnirsCADCARController(PVGroup):
     lnrNum          = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:lnrNum", doc = "Low Noise Reads") 
     @lnrNum.putter
     async def lnrNum(self, instance, value):
-        if (self.obsSetupD.value != str(value)):
-            await self.obsSetupD.write(str(value))
 
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
@@ -440,14 +438,15 @@ class GnirsCADCARController(PVGroup):
 
     #-------------- digitalAvgs -------------------
     obsSetupC      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.C", doc = "")
-    @obsSetupD.putter
-    async def obsSetupD(self, instance, value):
-        if (self.lnrNum.value != int(value)):
-            await self.lnrNum.write(int(value))
+    @obsSetupC.putter
+    async def obsSetupC(self, instance, value):
+        if (self.digitalAvgs.value != int(value)):
+            await self.digitalAvgs.write(int(value))
 
     digitalAvgs     = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:digitalAvgs", doc = "Digital Averages") 
     @digitalAvgs.putter
     async def digitalAvgs(self, instance, value):
+
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else: 
