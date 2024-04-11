@@ -187,30 +187,37 @@ class ObserveCAD(GnirsCAD):
             await self.MESS.write("Controller not Initialized")
             return False
         else:
-            if (int(self.p.rdout.value) == 0):
+
+            if self.p.sequence.value < 1:
+                self.p.sequence.value = 1
+
+            for i in range(self.p.sequence.value):
+                if (int(self.p.rdout.value) == 0):
+                    
+                    #begin readout
+                    await self.p.rdout.write(1)
+
+
+                    # Run the blocking function in a separate thread
+                    self.loop = asyncio.get_event_loop()
+
+                    exposure_task = asyncio.create_task(
+                        asyncio.to_thread(self.start_async_exposure)
+                    )
+                    countdown_task = asyncio.create_task(
+                        self.countdown_timer(self.p.exposureTime.value)
+                    )
+
+
+                    # wait for observe to complete
+                    while(self.p.rdout.value == 1):
+                        await asyncio.sleep(0.01)
+
+
+                    await self.MESS.write("Observe CAD Completed Successfully")
+                    return True
                 
-                #begin readout
-                await self.p.rdout.write(1)
-
-
-                # Run the blocking function in a separate thread
-                self.loop = asyncio.get_event_loop()
-
-                exposure_task = asyncio.create_task(
-                    asyncio.to_thread(self.start_async_exposure)
-                )
-                countdown_task = asyncio.create_task(
-                    self.countdown_timer(self.p.exposureTime.value)
-                )
-
-
-                # wait for observe to complete
-                while(self.p.rdout.value == 1):
-                    await asyncio.sleep(0.01)
-
-
-                await self.MESS.write("Observe CAD Completed Successfully")
-                return True
+                await self.p.sequence.write(1)
    
             else:
                 await self.logMessage(f'Readout in progress')
