@@ -9,6 +9,8 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 from time import sleep
+from typing import Any, Union
+
 
 import time
 
@@ -399,16 +401,43 @@ class GnirsCADCARController(PVGroup):
 
 
 
+    # ----- syncing functions ------------------
+    async def sync_with_channel(self, channel: pvproperty, value: Any):
+        converted_value = self.convert_value(value, channel.dtype)
+        if channel.value != converted_value:
+            await channel.write(converted_value)
+
+    def convert_value(self, value: Any, target_type: caproto.ChannelType) -> Union[str, int, float]:
+        if target_type == caproto.ChannelType.STRING:
+            return str(value)
+        elif target_type == caproto.ChannelType.INT:
+            return int(value)
+        elif target_type == caproto.ChannelType.LONG:
+            return int(value)
+        elif target_type == caproto.ChannelType.DOUBLE:
+            return float(value)
+        else:
+            raise ValueError(f"Unsupported target type: {target_type}")
+
 
     #------ DC configuration values --------
+
+    #------ fowlers - lnr -------------------
+    obsSetupD      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.D", doc = "")
+    @obsSetupD.putter
+    async def obsSetupD(self, instance, value):
+        await self.sync_with_channel(self.lnrNum, value)
+
     lnrNum          = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:lnrNum", doc = "Low Noise Reads") 
     @lnrNum.putter
     async def lnrNum(self, instance, value):
+        await self.sync_with_channel(self.obsSetupD, value)
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
-        else: 
+        else:
             self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value))
             await self.parent.logMessage(f"Config lnr: {value} adc: {self.digitalAvgs.value} exp: {self.exposureTime.value} coadds: {self.coaddsVAL.value}")
+    #------ fowlers - lnr -------------------
 
 
     exposureTime    = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:exposureTime", doc = "Exposure Time") 
@@ -464,7 +493,6 @@ class GnirsCADCARController(PVGroup):
     setWcsA        = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.A", doc = "")
 
     obsSetupC      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.C", doc = "")
-    obsSetupD      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.D", doc = "")
 
     arSetupH       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:arSetup.H", doc = "")
     detIDVAL       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:detID.VAL", doc = "")
