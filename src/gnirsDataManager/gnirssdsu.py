@@ -188,11 +188,13 @@ class ObserveCAD(GnirsCAD):
             return False
         else:
 
-            if self.p.sequence.value < 1:
-                self.p.sequence.value = 1
+            if (int(self.p.rdout.value) == 0):
 
-            for i in range(self.p.sequence.value):
-                if (int(self.p.rdout.value) == 0):
+                
+                if self.p.sequence.value < 1:
+                    self.p.sequence.value = 1
+
+                for i in range(self.p.sequence.value):
                     
                     #begin readout
                     await self.p.rdout.write(1)
@@ -213,16 +215,21 @@ class ObserveCAD(GnirsCAD):
                     while(self.p.rdout.value == 1):
                         await asyncio.sleep(0.01)
 
-
-                    await self.MESS.write("Observe CAD Completed Successfully")
-                    return True
-                
                 await self.p.sequence.write(1)
-   
+
+
+                await self.MESS.write("Observe CAD Completed Successfully")
+                return True
+            
+
             else:
                 await self.logMessage(f'Readout in progress')
                 await self.MESS.write("Observe Failure - Readout in Progress")
                 return False
+                
+
+   
+
 
     def start_async_exposure(self):
         """
