@@ -278,8 +278,8 @@ class ObserveCAD(GnirsCAD):
 
         # readout SDSU
         #sleep(self.p.exposureTime.value/2)        
-        self.controller.startExposure(self.p.detectorTemp1.value, self.p.detectorTemp1.value, self.p.parent.include_eng.value)	
-        sleep(self.p.exposureTime.value)        
+        self.controller.startExposureBlock(self.p.detectorTemp1.value, self.p.detectorTemp1.value, self.p.parent.include_eng.value)	
+        #sleep(self.p.exposureTime.value)        
 
 
         asyncio.run_coroutine_threadsafe(self.logMessage(f'SDSU readout complete'), self.loop)
@@ -364,6 +364,7 @@ class ObserveCAD(GnirsCAD):
             file.write(f"eng: {self.p.parent.include_eng.value}\n")
 
     
+
         #run thread safe async to set the eng write false after every fits
         asyncio.run_coroutine_threadsafe(self.p.parent.include_eng.write(0), self.loop)
 
@@ -444,7 +445,7 @@ class GnirsCADCARController(PVGroup):
     #------ fowlers - lnr -------------------
 
     #-------------- exposureTime -------------------
-    exposureTime    = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:exposureTime", doc = "Exposure Time") 
+    exposureTime    = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "Exposure Time") 
     @exposureTime.putter
     async def exposureTime(self, instance, value):
         if (self.sdsuController == None):
@@ -510,7 +511,6 @@ class GnirsCADCARController(PVGroup):
     timeLeft        = pvproperty(value='0', dtype=caproto.ChannelType.STRING, name="sad:dc:timeLeft", doc = "Exposure time left") 
     obsProgress     = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:obsProgress", doc = "Exposure percent complete") 
 
-    rdout           = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="sad:dc:rdout", doc = "Reading out") 
 
     setWcsA        = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.A", doc = "")
 
@@ -528,8 +528,15 @@ class GnirsCADCARController(PVGroup):
     dhsConnected   = pvproperty(value=1, dtype=caproto.ChannelType.LONG, name="sad:dc:dhsConnected", doc = "")
     minIntVAL      = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:minInt.VAL", doc = "")
     C1Tmp          = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:C1Tmp", doc = "")
-    prep           = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:prep", doc = "")
-    acq            = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:acq", doc = "")
+
+
+
+    prep           = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="sad:dc:prep", doc = "")
+    acq            = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="sad:dc:acq", doc = "")
+    rdout           = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="sad:dc:rdout", doc = "Reading out") 
+
+
+
     activate       = pvproperty(value=1, dtype=caproto.ChannelType.ENUM, enum_strings=['Deactivate', 'Activate'], name="dc:activate", doc = "")
     integTimeVAL   = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "")
 
