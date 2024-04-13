@@ -133,6 +133,7 @@ class InitSDSUCAD(GnirsCAD):
                     if self.controller.init():
                         await self.logMessage("SDSU Initialization successful")
                         await self.MESS.write("SDSU Initialization successful")
+                        await self.p.sdsuState.write("INITIALIZED")
                         return True
          
         except Exception as e:
@@ -491,6 +492,7 @@ class GnirsCADCARController(PVGroup):
     #-------------- coadds -------------------
 
     #------ DC configuration values --------
+    sdsuState       = pvproperty(value='NOT INITIALIZED', dtype=caproto.ChannelType.STRING, name="dc:sdsuState", doc = "SDSU Controller State") 
 
 
     achvdBias       = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:achvdBias.VAL", doc = "Achieved Detector Bias") 
