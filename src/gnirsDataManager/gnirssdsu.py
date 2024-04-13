@@ -195,7 +195,7 @@ class ObserveCAD(GnirsCAD):
                 if self.p.sequence.value < 1:
                     self.p.sequence.value = 1
 
-                for i in range(self.p.sequence.value):
+                for i in range(self.p.sequence.value, 0, -1):   # reverse and end at i = 1
                     
                     #begin readout
                     await self.p.rdout.write(1)
@@ -218,12 +218,8 @@ class ObserveCAD(GnirsCAD):
                     while(self.p.rdout.value == 1):
                         await asyncio.sleep(0.01)
 
-                    # the sleep is the ensure the SDSU readout overhead is complete
-                    if self.p.sequence.value > 1:
-                        await asyncio.sleep(1)
-
-                await self.p.sequence.write(1)
-
+                    await self.p.sequenceLeft.write(i) # keep track of the remaining exposures
+                                                       # end at 1 so it will do a single exposure if sequence is not manually set
 
                 await self.MESS.write("Observe CAD Completed Successfully")
                 return True
@@ -492,6 +488,14 @@ class GnirsCADCARController(PVGroup):
     #-------------- coadds -------------------
 
     #------ DC configuration values --------
+    sequence        = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:sequence", doc = "Sequence Count") 
+    @sequence.putter
+    async def sequence(self, instance, value):
+        await self.sequenceLeft.write(value)
+
+
+    sequenceLeft           = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:sequenceLeft", doc = "Exposures left to readout")
+
     sdsuState       = pvproperty(value='NOT INITIALIZED', dtype=caproto.ChannelType.STRING, name="dc:sdsuState", doc = "SDSU Controller State") 
 
 
@@ -499,7 +503,6 @@ class GnirsCADCARController(PVGroup):
 
 
     detBias         = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:detBias", doc = "Detector Bias") 
-    sequence        = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:sequence", doc = "Sequence Count") 
     wcs             = pvproperty(value='', dtype=caproto.ChannelType.STRING, name="dc:wcs", doc = "WCS file") 
 
 
