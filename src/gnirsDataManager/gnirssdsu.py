@@ -127,6 +127,8 @@ class InitSDSUCAD(GnirsCAD):
 
                 self.controller = controllerInterface("/readout_data", firmware_full_path)
 
+                self.controller.setAladdinIII(True)
+
                 result = self.controller.testDataLink()
 
                 if result:
