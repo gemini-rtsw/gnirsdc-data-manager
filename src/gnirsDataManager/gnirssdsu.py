@@ -216,31 +216,6 @@ class ObserveCAD(GnirsCAD):
                     await self.p.rdout.write(1)
 
 
-                    # Queues to collect results from processes
-                   # exposure_queue = Queue()
-                   # countdown_queue = Queue()
-
-                    # Creating processes
-                  #  exposure_process = Process(target=self.run_async_in_process, args=(self.start_async_exposure, exposure_queue))
-                  #  countdown_process = Process(target=self.run_async_in_process, args=(lambda: self.countdown_timer(self.p.exposureTime.value), countdown_queue))
-
-                    # Start processes
-                   # exposure_process.start()
-                   # countdown_process.start()
-
-                    # Join processes to ensure they complete
-                   # exposure_process.join()
-                   # countdown_process.join()
-
-
-                    # Get results from queues
-                   # exposure_result = exposure_queue.get()
-                   # countdown_result = countdown_queue.get()
-
-                    #print(exposure_result)
-                    #print(countdown_result)
-
-
                     await self.start_async_exposure()
                     await self.countdown_timer(self.p.exposureTime.value)
             
@@ -301,8 +276,12 @@ class ObserveCAD(GnirsCAD):
 
 
         # readout SDSU
-        self.controller.startExposureBlock(self.p.detectorTemp1.value, self.p.detectorTemp1.value, self.p.parent.include_eng.value)	
+        self.controller.startExposure(self.p.detectorTemp1.value, self.p.detectorTemp1.value, self.p.parent.include_eng.value)	
 
+        await self.logMessage(f'SDSU readout started')
+
+        while self.controller.getReadingOut(): 
+            time.sleep(0.1)
 
         await self.logMessage(f'SDSU readout complete')
         await self.logMessage(f'descrambling raw data')
@@ -391,7 +370,16 @@ class ObserveCAD(GnirsCAD):
         asyncio.run_coroutine_threadsafe(self.p.parent.include_eng.write(0), self.loop)
 
 
+async def run_exposure_async(detector_temp, include_eng):
+    # Create a process to run the exposure start function
+    process = Process(target=start_exposure_process, args=(detector_temp, include_eng))
+    process.start()
 
+    # Wait asynchronously for the process to complete
+    while process.is_alive():
+        await asyncio.sleep(0.1)  # Adjust the sleep time as needed
+
+    process.join()  # Ensure the process is cleaned up
 
 
 class StopCAD(GnirsCAD):
