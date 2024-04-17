@@ -131,12 +131,15 @@ class GnirsDataManagerProcessor:
         self.ready = threading.Event()
         self.shutting_down = False
         self.logger = getLogger('GnirsDataManagerProcessor')
+        self.processes = []
 
     def set_ready(self):
         self.ready.set()
 
     def shutdown(self):
         self.shutting_down = True
+        for p in self.processes:
+            p.join()
 
     def process_queue(self):
         self.ready.wait()
@@ -146,11 +149,19 @@ class GnirsDataManagerProcessor:
                 asyncio.run(self.ioc.state.write(StateEnum.PROCESSING))
                 p = Process(target=standalone_process_task, args=(next_task, self.dp, self.ioc, self.logger))
                 p.start()
-                # Removed p.join() to not wait for process to complete
+                self.processes.append(p)
                 asyncio.run(self.ioc.currentLabel.write(''))
                 asyncio.run(self.ioc.state.write(StateEnum.RUNNING))
             except queue.Empty:
                 continue  # Continue checking for new tasks
+            self.cleanup_processes()
+
+    def cleanup_processes(self):
+        # Clean up completed processes
+        for p in list(self.processes):
+            if not p.is_alive():
+                p.join()  # Ensure the process has ended cleanly
+                self.processes.remove(p)
 
     async def set_error(self, label, message):
         await self.ioc.lastErrorLabel.write(label)
