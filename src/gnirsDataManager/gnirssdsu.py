@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from time import sleep
 from typing import Any, Union
 
+from multiprocessing import Process, Queue
 
 import time
 
@@ -184,6 +185,18 @@ class AbortCAD(GnirsCAD):
 
 class ObserveCAD(GnirsCAD):
 
+    def run_async_in_process(self, function, queue):
+        """
+        A function to run asyncio tasks in a separate process.
+        It uses an event loop to run the provided coroutine and puts the result back in a queue.
+        """
+        async def run():
+            result = await function()
+            queue.put(result)
+        
+        asyncio.run(run())
+
+
     async def start(self):
         if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
@@ -203,22 +216,33 @@ class ObserveCAD(GnirsCAD):
                     await self.p.rdout.write(1)
 
 
-                    # Run the blocking function in a separate thread
-                    self.loop = asyncio.get_event_loop()
+                    # Queues to collect results from processes
+                    exposure_queue = Queue()
+                    countdown_queue = Queue()
 
-                    exposure_task = asyncio.create_task(
-                        asyncio.to_thread(self.start_async_exposure)
-                    )
-                    countdown_task = asyncio.create_task(
-                        self.countdown_timer(self.p.exposureTime.value)
-                    )
+                    # Creating processes
+                    exposure_process = Process(target=self.run_async_in_process, args=(self.start_async_exposure, exposure_queue))
+                    countdown_process = Process(target=self.run_async_in_process, args=(lambda: self.countdown_timer(self.p.exposureTime.value), countdown_queue))
 
-                    # Wait for both tasks to complete
-                    await asyncio.gather(exposure_task, countdown_task)
+                    # Start processes
+                    exposure_process.start()
+                    countdown_process.start()
 
-                    # wait for observe to complete
-                    while(self.p.rdout.value == 1):
-                        await asyncio.sleep(0.01)
+                    # Join processes to ensure they complete
+                    exposure_process.join()
+                    countdown_process.join()
+
+                    # Get results from queues
+                    exposure_result = exposure_queue.get()
+                    countdown_result = countdown_queue.get()
+
+                    print(exposure_result)
+                    print(countdown_result)
+
+
+                    #await self.start_async_exposure()
+                    #await self.countdown_timer(self.p.exposureTime.value)
+            
 
                     await self.p.sequenceLeft.write(i) # keep track of the remaining exposures
                                                        # end at 1 so it will do a single exposure if sequence is not manually set
@@ -236,7 +260,7 @@ class ObserveCAD(GnirsCAD):
    
 
 
-    def start_async_exposure(self):
+    async def start_async_exposure(self):
         """
         Manages the process of starting an asynchronous exposure sequence, including logging, readout, and archiving.
 
@@ -252,7 +276,7 @@ class ObserveCAD(GnirsCAD):
         The function performs different actions based on the 'archive_fits' value and the exposure time.
         It's designed to work with a specific system setup, handling both the observational and data handling aspects.
         """
-        asyncio.run_coroutine_threadsafe(self.logMessage(f'{self.prefix} ObserveCAD start'), self.loop)
+        await self.logMessage(f'{self.prefix} ObserveCAD start')
         print(f'{self.prefix} ObserveCAD start')
 
         #self.write_coadds_header()
@@ -260,50 +284,48 @@ class ObserveCAD(GnirsCAD):
         # if sending to archive let GDS know
         if (self.p.parent.archive_fits.value):
             self.giapi.setDataLabel(self.p.dataLabel.value)
-            asyncio.run_coroutine_threadsafe(self.logMessage(f'DataLabel: {self.giapi.dataLabel}'), self.loop)
+            await self.logMessage(f'DataLabel: {self.giapi.dataLabel}')
         
-            asyncio.run_coroutine_threadsafe(self.logMessage(f'sending observe prep to GMP'), self.loop)
+            asyncio.run_coroutine_threadsafe(self.logMessage(f'sending observe prep to GMP')
 
             self.giapi.observePrep()
             self.giapi.observeStartAcq()
             self.giapi.observeEndAcq()
 
-            asyncio.run_coroutine_threadsafe(self.logMessage(f'sending start readout to GMP'), self.loop)
+            await self.logMessage(f'sending start readout to GMP')
 
             self.giapi.observeStartReadout()
 
-            asyncio.run_coroutine_threadsafe(self.logMessage(f'sending start readout to SDSU'), self.loop)
+            await self.logMessage(f'sending start readout to SDSU')
 
 
         # readout SDSU
-        #sleep(self.p.exposureTime.value/2)        
         self.controller.startExposureBlock(self.p.detectorTemp1.value, self.p.detectorTemp1.value, self.p.parent.include_eng.value)	
-        #sleep(self.p.exposureTime.value)        
 
 
-        asyncio.run_coroutine_threadsafe(self.logMessage(f'SDSU readout complete'), self.loop)
-        asyncio.run_coroutine_threadsafe(self.logMessage(f'descrambling raw data'), self.loop)
+        await self.logMessage(f'SDSU readout complete')
+        await self.logMessage(f'descrambling raw data')
 
         # if sending to archive let GDS know
         if (self.p.parent.archive_fits.value):
             self.giapi.observeEndReadout()
 
-            asyncio.run_coroutine_threadsafe(self.logMessage(f'GDS writing fits'), self.loop)
+            await self.logMessage(f'GDS writing fits')
 
             self.giapi.observeStartWrite()
 
             self.giapi.observeEndWrite()
 
         #complete readout
-        asyncio.run_coroutine_threadsafe(self.logMessage(f'ObserveCAD end'), self.loop)
-
+        await self.logMessage(f'ObserveCAD end')
+                                         
         # set write to fits archive by default don't want a test write to affect a seqexec readout
-        asyncio.run_coroutine_threadsafe(self.p.parent.archive_fits.write(1), self.loop)
+        await self.p.parent.archive_fits.write(1)
         # and turn off raw data
-        asyncio.run_coroutine_threadsafe(self.p.parent.include_eng.write(0), self.loop)
+        await self.p.parent.include_eng.write(0)
 
 
-        asyncio.run_coroutine_threadsafe(self.p.rdout.write(0), self.loop)
+        await self.p.rdout.write(0)
 
 
 

@@ -17,7 +17,7 @@ LABEL maintainer="hawi.stecher@noirlab.edu"
 
 RUN dnf install -y procps-ng git
 
-RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics
+RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics inotify-simple
 
 
 

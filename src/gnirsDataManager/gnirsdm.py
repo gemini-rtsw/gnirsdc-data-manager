@@ -17,6 +17,9 @@ from logging import getLogger
 from gemUtilities import checkCAConnection
 from diskSpaceMonitor import DiskSpacePVGroup
 
+import multiprocessing
+from inotify_simple import INotify, flags
+
 
 #from gnirs_data import manager
 
@@ -356,31 +359,33 @@ class GnirsDataManagerIOC(PVGroup):
         await wait_for(self.queued.write(self.queued.value - 1),
                        self.append_log_string(log))
 
-async def inotify_task(ioc, proc, data_dir):
-    '''
-    Asynchronously monitor a directory for new files.
+def inotify_task(proc, data_dir, check_interval=300):
+    os.makedirs(data_dir, exist_ok=True)
+    print(data_dir)
 
-    This function sets up an inotify watch on the specified data directory. It
-    listens for file creation and move events. When such an event occurs, the 
-    function processes the new file by calling `proc.new_file` with the path 
-    of the new or moved file.
-    
-    Args:
-    ioc: The IO Controller used in the monitoring process.
-    proc: The processor object responsible for handling new files.
-    data_dir: The directory to monitor for file events.
-    '''
-   
-    os.makedirs(data_dir, exist_ok=True)  # Create the directory if it doesn't exist
-    print(data_dir) 
+    with INotify() as inotify:
+        inotify.add_watch(data_dir, flags.CLOSE_WRITE | flags.MOVED_TO)
+        while True:
+            # Process any existing files in the directory at regular intervals
+            for existing_file in os.listdir(data_dir):
+                full_path = os.path.join(data_dir, existing_file)
+                if os.path.isfile(full_path):
+                    proc.new_file(full_path)
 
-    with Inotify() as inotify:
-        inotify.add_watch(data_dir, Mask.CLOSE_WRITE | Mask.MOVED_TO)
-        async for event in inotify:
-            await proc.new_file(event.path)
+            # Wait for new file events or timeout to re-check the directory
+            events = inotify.read(timeout=check_interval)
+            for event in events:
+                if event.mask & (flags.CLOSE_WRITE | flags.MOVED_TO):
+                    full_path = os.path.join(data_dir, os.path.basename(event.pathname))
+                    proc.new_file(full_path)
 
-async def create_inotify_task(ioc, proc, data_dir, **kw):
-    return asyncio.create_task(inotify_task(ioc, proc, f"{data_dir}/new"), name="inotify_task")
+            # Wait before next directory check to reduce load
+            time.sleep(check_interval)
+
+def start_inotify_task(proc, data_dir):
+    process = multiprocessing.Process(target=inotify_task, args=(proc, data_dir))
+    process.start()
+    return process
 
 async def create_ioc_task(pvdb, *, module_name="caproto.asyncio.server",
         interfaces=None, log_pv_names=False, startup_hook=None, **kw):
@@ -412,7 +417,7 @@ async def create_ioc_task(pvdb, *, module_name="caproto.asyncio.server",
 async def startup(ioc, proc, async_lib, *, data_dir, **kw):
     await ioc.state.write(StateEnum.INITIALIZING)
     print(data_dir)
-    await create_inotify_task(ioc, proc, data_dir)
+    start_inotify_task(proc, data_dir)
     proc.set_ready()
     await ioc.state.write(StateEnum.RUNNING)
 
