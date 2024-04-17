@@ -18,7 +18,7 @@ from gemUtilities import checkCAConnection
 from diskSpaceMonitor import DiskSpacePVGroup
 
 from multiprocessing import Process
-from inotify_simple import INotify, flags
+#from inotify_simple import INotify, flags
 
 
 #from gnirs_data import manager
@@ -343,43 +343,22 @@ class GnirsDataManagerIOC(PVGroup):
                        self.append_log_string(log))
 
 async def inotify_task(ioc, proc, data_dir):
-    '''
-    Asynchronously monitor a directory for new and existing files.
-
-    This function first processes any existing files in the specified data directory.
-    It then sets up an inotify watch on the directory to listen for file creation and
-    move events. When such an event occurs, the function processes the new file by
-    calling `proc.new_file` with the path of the new or moved file.
-    
-    Args:
-    ioc: The IO Controller used in the monitoring process.
-    proc: The processor object responsible for handling new files.
-    data_dir: The directory to monitor for file events.
-    '''
-    
-    os.makedirs(data_dir, exist_ok=True)  # Ensure the directory exists
+    os.makedirs(data_dir, exist_ok=True)
     print(f"Monitoring directory: {data_dir}")
 
-    # Process existing files in the directory
     for filename in os.listdir(data_dir):
-        file_path = Path(data_dir) / filename  # Create a Path object
-        if file_path.is_file():  # Check if it's a file
+        file_path = Path(data_dir) / filename
+        if file_path.is_file():
             await proc.new_file(file_path)
 
-    # Setup inotify watch
-    inotify = INotify()
-    watch_flags = flags.CLOSE_WRITE | flags.MOVED_TO
-    wd = inotify.add_watch(str(data_dir), watch_flags)  # Ensure data_dir is a string
+    os.makedirs(data_dir, exist_ok=True)  # Create the directory if it doesn't exist
+    print(data_dir) 
 
-    try:
-        while True:  # Event loop for new files
-            events = inotify.read(timeout=1000)  # Read events with a timeout
-            for event in events:
-                if event.mask & (flags.CLOSE_WRITE | flags.MOVED_TO):
-                    file_path = Path(data_dir) / event.name  # Convert to Path object
-                    await proc.new_file(file_path)
-    finally:
-        inotify.rm_watch(wd)  # Clean up the watch descriptor when done
+    with Inotify() as inotify:
+        inotify.add_watch(data_dir, Mask.CLOSE_WRITE | Mask.MOVED_TO)
+        async for event in inotify:
+            await proc.new_file(event.path)
+
 
 async def create_inotify_task(ioc, proc, data_dir, **kw):
     return asyncio.create_task(inotify_task(ioc, proc, f"{data_dir}/new"), name="inotify_task")
