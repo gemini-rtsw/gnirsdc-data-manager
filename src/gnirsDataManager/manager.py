@@ -179,6 +179,10 @@ class DataMover:
             else:
                 self.logger.error(f"Failed to move {src_path} to {dst_path}: {e}")
 
+    def delete_group(self, delete_name, prefix):
+        for full_name in (x for x in os.listdir(delete_name.path) if x.startswith(f'{prefix}.')):
+            os.remove(full_name)
+
     def move_group(self, move_from, move_to, prefix):
         for full_name in (x for x in os.listdir(move_from.path) if x.startswith(f'{prefix}.')):
             self.move(move_from, move_to, full_name)
@@ -357,7 +361,9 @@ class DataProcessor:
                 raise ProcessingError(f"{fitsname} exists already")
             self.logger.debug(f" -> writing to {fits_path}")
             hdulist.writeto(fits_path)
+
             dm.move(dm.processing, dm.output, fitsname, error_allowed=False)
+
 
         except (NotImplementedError, ProcessingError, OSError) as e:
             self.logger.error(str(e))
@@ -366,6 +372,8 @@ class DataProcessor:
         else:
             if self.keep:
                 dm.move_group(dm.processing, dm.proc_raw, fname)
+            else:
+                dm.delete_group(dm.processing, fname)
 
 def unscramble(data):
     return data

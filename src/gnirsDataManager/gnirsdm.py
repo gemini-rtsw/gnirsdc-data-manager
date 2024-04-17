@@ -506,7 +506,7 @@ async def main():
 
     dm = manager.DataMover(run_options['data_dir'], run_options['output_dir'])
     # TODO: "Keep should be configured via command line"
-    ioc.processor = manager.DataProcessor(dm, keep=True)
+    ioc.processor = manager.DataProcessor(dm)
     proc = GnirsDataManagerProcessor(ioc, ioc.processor)
     thrd = threading.Thread(target = proc.process_queue)
     thrd.start()

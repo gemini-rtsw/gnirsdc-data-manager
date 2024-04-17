@@ -185,18 +185,6 @@ class AbortCAD(GnirsCAD):
 
 class ObserveCAD(GnirsCAD):
 
-    def run_async_in_process(self, function, queue):
-        """
-        A function to run asyncio tasks in a separate process.
-        It uses an event loop to run the provided coroutine and puts the result back in a queue.
-        """
-        async def run():
-            result = await function()
-            queue.put(result)
-        
-        asyncio.run(run())
-
-
     async def start(self):
         if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
@@ -217,7 +205,7 @@ class ObserveCAD(GnirsCAD):
 
 
                     await self.start_async_exposure()
-                    await self.countdown_timer(self.p.exposureTime.value)
+                    #await self.countdown_timer(self.p.exposureTime.value)
             
 
                     await self.p.sequenceLeft.write(i) # keep track of the remaining exposures
@@ -281,10 +269,9 @@ class ObserveCAD(GnirsCAD):
         await self.logMessage(f'SDSU readout started')
 
         while self.controller.getReadingOut(): 
-            time.sleep(0.1)
+            await asyncio.sleep(0.01)
 
         await self.logMessage(f'SDSU readout complete')
-        await self.logMessage(f'descrambling raw data')
 
         # if sending to archive let GDS know
         if (self.p.parent.archive_fits.value):
