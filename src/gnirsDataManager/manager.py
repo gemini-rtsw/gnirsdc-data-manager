@@ -49,6 +49,7 @@ import shutil
 from logging import getLogger, Formatter, StreamHandler, INFO, DEBUG
 from operator import attrgetter
 import re
+from pathlib import Path
 
 from docopt import docopt
 from astropy.io import fits
@@ -165,11 +166,18 @@ class DataMover:
         """
         try:
             src_path = move_from.full_path(fname)
-            shutil.move(src_path, move_to.path)
-            self.logger.debug(f"Moved {src_path} -> {move_to.path}")
+            dst_path = Path(move_to.path) / Path(fname).name  # Ensures the file name is appended to the destination directory
+
+            if dst_path.exists():  # Check if the destination file exists
+                os.remove(dst_path)  # If it exists, remove it first
+
+            shutil.move(src_path, dst_path)  # Now move the file
+            self.logger.debug(f"Moved {src_path} -> {dst_path}")
         except (FileNotFoundError, FileExistsError) as e:
             if not error_allowed:
-                raise
+                raise e
+            else:
+                self.logger.error(f"Failed to move {src_path} to {dst_path}: {e}")
 
     def move_group(self, move_from, move_to, prefix):
         for full_name in (x for x in os.listdir(move_from.path) if x.startswith(f'{prefix}.')):

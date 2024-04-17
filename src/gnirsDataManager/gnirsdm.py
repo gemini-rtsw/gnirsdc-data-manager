@@ -17,6 +17,8 @@ from logging import getLogger
 from gemUtilities import checkCAConnection
 from diskSpaceMonitor import DiskSpacePVGroup
 
+from multiprocessing import Process
+
 
 #from gnirs_data import manager
 
@@ -103,6 +105,23 @@ class StateEnum(enum.IntEnum):
     RUNNING = 2,
     PROCESSING = 3
 
+def standalone_process_task(file_path, dp, ioc, logger):
+    fname = file_path.parts[-1].rpartition('.')[0]
+    label = None
+    try:
+        rpath, header = manager.decode_header(dp.datamov.new, fname)
+        label = header['PDU']['DATALABE']
+        asyncio.run(ioc.currentLabel.write(label))
+        dp.process_file(fname)
+    except Exception as exc:
+        logger.error(f"Processing {file_path}: {exc}")
+        if label is None:
+            asyncio.run(ioc.set_error(fname, "Illegal header"))
+        else:
+            asyncio.run(ioc.set_error(label, str(exc)))
+    finally:
+        asyncio.run(ioc.done_task(f"Done processing {file_path.parts[-1]}"))
+
 class GnirsDataManagerProcessor:
     def __init__(self, ioc, processor):
         self.ioc = ioc
@@ -118,65 +137,31 @@ class GnirsDataManagerProcessor:
     def shutdown(self):
         self.shutting_down = True
 
-    def process_task(self, file_path):
-        fname = file_path.parts[-1].rpartition('.')[0]
-        label = None
-        try:
-            rpath, header = manager.decode_header(self.dp.datamov.new, fname)
-            label = header['PDU']['DATALABE']
-            asyncio.run(self.ioc.currentLabel.write(label))
-            self.dp.process_file(fname)
-        except Exception as exc:
-            self.logger.error(f"Processing {file_path}: {exc}")
-            if label is None:
-                asyncio.run(self.set_error(fname, "Illegal header"))
-            else:
-                asyncio.run(self.set_error(label, str(exc)))
-        finally:
-            asyncio.run(self.ioc.done_task(f"Done processing {file_path.parts[-1]}"))
-
-
     def process_queue(self):
-        '''Process tasks from the queue.
-
-        This method continuously processes tasks from the queue. It repeatedly checks 
-        for tasks, with a brief wait (timeout of 0.5 seconds) between checks. If a task 
-        is found, it is processed, and the system's state and current label are updated.
-        If the queue is empty, it catches the 'queue.Empty' exception, allowing the loop 
-        to continue checking for new tasks. This process continues unless the system is 
-        shutting down.
-        '''
-
         self.ready.wait()
         while not self.shutting_down:
             try:
                 next_task = self.queue.get(timeout=0.5)
                 asyncio.run(self.ioc.state.write(StateEnum.PROCESSING))
-                self.process_task(next_task)
+                p = Process(target=standalone_process_task, args=(next_task, self.dp, self.ioc, self.logger))
+                p.start()
+                # Removed p.join() to not wait for process to complete
                 asyncio.run(self.ioc.currentLabel.write(''))
                 asyncio.run(self.ioc.state.write(StateEnum.RUNNING))
             except queue.Empty:
-                ...
+                continue  # Continue checking for new tasks
 
     async def set_error(self, label, message):
         await self.ioc.lastErrorLabel.write(label)
         await self.ioc.lastError.write(message)
 
     async def new_file(self, fpath):
-        '''Queue a new file for processing.
-
-        This asynchronous method checks if the provided file path ends with '.header'.
-        If it does, the file is considered for queuing. It logs the action of queuing 
-        the new file and then adds the file path to the processing queue. This method 
-        is designed to handle '.header' files specifically.
-        
-        Args:
-        fpath (Path): The file path of the file to be queued.
-        '''
         filename = fpath.parts[-1]
         if filename.endswith('.header'):
             await self.ioc.push_task(f"Queueing new file: {filename}")
             self.queue.put(fpath)
+
+            
 
 class GnirsDataManagerIOC(PVGroup):
 
