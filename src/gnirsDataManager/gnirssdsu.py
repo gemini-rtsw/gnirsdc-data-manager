@@ -232,6 +232,7 @@ class ObserveCAD(GnirsCAD):
                     exposure_process.join()
                     countdown_process.join()
 
+
                     # Get results from queues
                     exposure_result = exposure_queue.get()
                     countdown_result = countdown_queue.get()
@@ -286,7 +287,7 @@ class ObserveCAD(GnirsCAD):
             self.giapi.setDataLabel(self.p.dataLabel.value)
             await self.logMessage(f'DataLabel: {self.giapi.dataLabel}')
         
-            asyncio.run_coroutine_threadsafe(self.logMessage(f'sending observe prep to GMP')
+            await self.logMessage(f'sending observe prep to GMP')
 
             self.giapi.observePrep()
             self.giapi.observeStartAcq()
