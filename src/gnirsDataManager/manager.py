@@ -179,9 +179,25 @@ class DataMover:
             else:
                 self.logger.error(f"Failed to move {src_path} to {dst_path}: {e}")
 
-    def delete_group(self, delete_name, prefix):
-        for full_name in (x for x in os.listdir(delete_name.path) if x.startswith(f'{prefix}.')):
-            os.remove(full_name)
+    def delete_group(self, delete_from, prefix, error_allowed=True):
+        """
+        Delete a group of files within a directory that start with a given prefix
+        """
+        try:
+            # Loop through files that start with the given prefix
+            for fname in (x for x in os.listdir(delete_from.path) if x.startswith(f'{prefix}.')):
+                file_path = delete_from.full_path(fname)  # Construct the full path for each file
+                if os.path.exists(file_path):  # Check if the file exists
+                    os.remove(file_path)  # Delete the file
+                    self.logger.debug(f"Deleted file: {file_path}")
+                else:
+                    raise FileNotFoundError(f"No such file: {file_path}")
+        except Exception as e:
+            if not error_allowed:
+                raise e
+            else:
+                self.logger.error(f"Failed to delete files from {delete_from.path}: {e}")
+
 
     def move_group(self, move_from, move_to, prefix):
         for full_name in (x for x in os.listdir(move_from.path) if x.startswith(f'{prefix}.')):
