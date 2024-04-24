@@ -1,6 +1,6 @@
 #!/bin/bash
 # Source environment variables
-cd /gnirsdc/giapi-gluecc
+cd /gnirsdc/giapi-glue-cc
 source defineGiapiglueEnv.sh
 
 # Change to the appropriate directory
