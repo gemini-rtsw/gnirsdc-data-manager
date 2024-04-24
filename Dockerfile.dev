@@ -33,9 +33,7 @@ COPY ./gnirsdc /gnirsdc
 WORKDIR /gnirsdc
 
 # Extract the tar.gz file 
-RUN echo `pwd`
-RUN echo `ls`
-RUN tar -xzvf /gnirsdc/giapi-gluecc_rocky8.tar.gz -C /gnirsdc/giapi-glue-cc
+RUN tar -xzvf /gnirsdc/giapi-gluecc_rocky8.tar.gz -C /gnirsdc/
 
 # Set the working directory to where giapi-gluecc will reside
 WORKDIR /gnirsdc/giapi-glue-cc
