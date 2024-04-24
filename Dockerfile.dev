@@ -29,14 +29,11 @@ COPY ./gnirsdc-lib /gnirsdc-lib
 WORKDIR /gnirsdc-lib
 RUN python3 -m pip install .
 
-COPY ./gnirsdc-tools /gnirsdc-tools
-WORKDIR /gnirsdc-tools
-RUN python3 -m pip install .
-
 COPY ./gnirsdc /gnirsdc
+WORKDIR /gnirsdc
 
 # Extract the tar.gz file 
-RUN tar -xzvf /gnirsdc/giapi-gluecc_rocky8.tar.gz -C /gnirsdc/giapi-glue-cc
+RUN tar -xzvf ./giapi-gluecc_rocky8.tar.gz -C ./giapi-glue-cc
 
 # Set the working directory to where giapi-gluecc will reside
 WORKDIR /gnirsdc/giapi-glue-cc
