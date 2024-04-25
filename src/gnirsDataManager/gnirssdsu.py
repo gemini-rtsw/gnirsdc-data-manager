@@ -15,7 +15,7 @@ from multiprocessing import Process, Queue
 
 import time
 
-import os
+import os, shutil
 
 from libgnirsioc import controllerInterface
 from libgnirsioc import controllerInterfaceDebug
@@ -196,6 +196,11 @@ class ObserveCAD(GnirsCAD):
             self.giapi.observeStartReadout(self.p.observeA.value)
             self.giapi.observeEndReadout(self.p.observeA.value)
             self.giapi.observeStartWrite(self.p.observeA.value)
+
+                        #copy debut fits
+            os.makedirs('/readout_data/fits/', exist_ok=True)
+            shutil.copy('../../eng_readout.fits', '/readout_data/fits/eng_readout.fits')
+
             self.giapi.observeEndWrite(self.p.observeA.value)
             return True
 

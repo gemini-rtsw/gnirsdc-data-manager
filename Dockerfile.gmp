@@ -28,3 +28,6 @@ CMD ["/usr/local/bin/entrypoint-gmp.sh"]
 #run from the root dir of the gnirsdc-data-manager repo
 #docker build -f Dockerfile.gmp -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server .
 #docker run -d --network=host --name gmp -v /readout_data:/readout_data -v /staging/perm:/staging/perm registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
+#
+#debug on macOS
+#docker run -d --network=host --name gmp -v /Users/hawi.stecher/irdc_data/readout_data:/readout_data -v /Users/hawi.stecher/irdc_data/staging/perm:/staging/perm registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server

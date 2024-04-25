@@ -5,7 +5,8 @@
     "runArgs": [
         "-it",
         "--network=host",
-        "-v", "${env:HOME}/.ssh:/root/.ssh:ro"
+        "-v", "${env:HOME}/.ssh:/root/.ssh:ro",
+        "-v", "${env:HOME}/irdc_data/readout_data:/readout_data:rw"
     ],
     "customizations": {
         "vscode": {
