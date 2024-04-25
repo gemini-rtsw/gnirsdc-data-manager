@@ -13,7 +13,7 @@ fi
 
 # Run the gmp container
 echo "Running the 'gmp' container..."
-output=$(docker run -d --network=host --name gmp registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server)
+output=$(docker run -d --network=host --name gmp -v /readout_data:/readout_data -v /staging/perm:/staging/perm registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server)
 
 # Check if the docker run command executed successfully
 if [ $? -eq 0 ]; then

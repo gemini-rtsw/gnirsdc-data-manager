@@ -186,7 +186,21 @@ class AbortCAD(GnirsCAD):
 class ObserveCAD(GnirsCAD):
 
     async def start(self):
-        if (self.controller == None):
+        if (DEBUG_MODE):
+            print("DEBUG Observe")
+
+
+            self.giapi.observePrep(self.p.observeA.value)
+            self.giapi.observeStartAcq(self.p.observeA.value)
+            self.giapi.observeEndAcq(self.p.observeA.value)
+            self.giapi.observeStartReadout(self.p.observeA.value)
+            self.giapi.observeEndReadout(self.p.observeA.value)
+            self.giapi.observeStartWrite(self.p.observeA.value)
+            self.giapi.observeEndWrite(self.p.observeA.value)
+            return True
+
+
+        elif (self.controller == None):
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not Initialized")
             return False
@@ -247,18 +261,17 @@ class ObserveCAD(GnirsCAD):
 
         # if sending to archive let GDS know
         if (self.p.parent.archive_fits.value):
-            self.giapi.setDataLabel(self.p.dataLabel.value)
             await self.logMessage(f'DataLabel: {self.giapi.dataLabel}')
         
             await self.logMessage(f'sending observe prep to GMP')
 
-            self.giapi.observePrep()
-            self.giapi.observeStartAcq()
-            self.giapi.observeEndAcq()
+            self.giapi.observePrep(self.p.observeA.value)
+            self.giapi.observeStartAcq(self.p.observeA.value)
+            self.giapi.observeEndAcq(self.p.observeA.value)
 
             await self.logMessage(f'sending start readout to GMP')
 
-            self.giapi.observeStartReadout()
+            self.giapi.observeStartReadout(self.p.observeA.value)
 
             await self.logMessage(f'sending start readout to SDSU')
 
@@ -275,13 +288,13 @@ class ObserveCAD(GnirsCAD):
 
         # if sending to archive let GDS know
         if (self.p.parent.archive_fits.value):
-            self.giapi.observeEndReadout()
+            self.giapi.observeEndReadout(self.p.observeA.value)
 
             await self.logMessage(f'GDS writing fits')
 
-            self.giapi.observeStartWrite()
+            self.giapi.observeStartWrite(self.p.observeA.value)
 
-            self.giapi.observeEndWrite()
+            self.giapi.observeEndWrite(self.p.observeA.value)
 
         #complete readout
         await self.logMessage(f'ObserveCAD end')
@@ -546,13 +559,15 @@ class GnirsCADCARController(PVGroup):
     #integTimeVAL   = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "")
 
 
-## obsSetupD needs a forward link to observeCAD to mark it to process
-# this is a seqexec thing. for observe CAD DIR never gets set to MARK
-    observeA       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:observe.A", doc = "")
+
+    observeA       = pvproperty(value="eng_readout", dtype=caproto.ChannelType.STRING, name="dc:observe.A", doc = "")
 
     @observeA.putter
     async def observeA(self, instance, value):
         print(f"Value changed to: {value}")
+
+        ## obsSetupA has a forward link to observeCAD to mark it so it will process
+        # seqexec never sets observe CAD DIR to MARK so it is done manually here
         await self.observe.DIR.write(CADDirective.MARK)
         await self.dataLabel.write(value)
 

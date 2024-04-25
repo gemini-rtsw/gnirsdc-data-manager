@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<userdb>
+    <passwordencoder>SHA-1</passwordencoder>
+    <users>
+        <user username="admin" password="efacc4001e857f7eba4ae781c2932dedf843865e" roles="Admin"/>
+        <user username="user" password="5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8" roles="User"/>
+    </users>
+</userdb>

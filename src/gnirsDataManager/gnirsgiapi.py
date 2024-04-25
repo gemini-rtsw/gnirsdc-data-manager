@@ -44,6 +44,12 @@ cppyy.include("InstCmdHandler.h")
 from cppyy.gbl import giapi
 from cppyy.gbl import instDummy
 
+
+
+# Access the enum values
+error_status = cppyy.gbl.giapi.status.Status.ERROR
+ok_status = cppyy.gbl.giapi.status.Status.OK
+
 class GiapiInterface:
 
     dataLabel = None
@@ -155,30 +161,46 @@ class GiapiInterface:
         #print("---------------DONE TESTING STUFF---------------")
 
 
-    def setDataLabel(self, label):
-        self.dataLabel = label
+    def handle_observation_event(self, event_type, event_description, data_label):
+        try:
+            # Call the C++ function and pass the specific event type
+            if giapi.DataUtil.postObservationEvent(event_type, data_label) == error_status:
+                print(f"Error: {event_description}")
+            else:
+                print(f"{event_description} Succeeded")
 
-    def observePrep(self):
-        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_PREP, self.dataLabel)
+        except cppyy.gbl.GiapiException as e:
+            print(f"Caught a GiapiException: {str(e)}")
+        except Exception as e:
+            print(f"An unexpected exception occurred: {str(e)}")        
 
-    def observeStartAcq(self):
-        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_START_ACQ, self.dataLabel)
 
-    def observeEndAcq(self):
-        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_END_ACQ, self.dataLabel)
+    def observePrep(self, data_label):
+        self.handle_observation_event(giapi.data.ObservationEvent.OBS_PREP, "Start Prep", data_label)
 
-    def observeStartReadout(self):
-        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_START_READOUT, self.dataLabel)
+        
+    def observeStartAcq(self, data_label):
+        self.handle_observation_event(giapi.data.ObservationEvent.OBS_START_ACQ, "Start Acq", data_label)
 
-    def observeEndReadout(self):
-        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_END_READOUT, self.dataLabel)
 
-    def observeStartWrite(self):
-        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_START_DSET_WRITE, self.dataLabel)
+    def observeEndAcq(self, data_label):
+        self.handle_observation_event(giapi.data.ObservationEvent.OBS_END_ACQ, "End Acq", data_label)
 
-    def observeEndWrite(self):
-        giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_END_DSET_WRITE, self.dataLabel)
 
+    def observeStartReadout(self, data_label):
+        self.handle_observation_event(giapi.data.ObservationEvent.OBS_START_READOUT, "Start Readout", data_label)
+
+
+    def observeEndReadout(self, data_label):
+        self.handle_observation_event(giapi.data.ObservationEvent.OBS_END_READOUT, "End Readout", data_label)
+
+
+    def observeStartWrite(self, data_label):
+        self.handle_observation_event(giapi.data.ObservationEvent.OBS_START_DSET_WRITE, "Start Dest Write", data_label)
+
+
+    def observeEndWrite(self, data_label):
+        self.handle_observation_event(giapi.data.ObservationEvent.OBS_END_DSET_WRITE, "End Dest Write", data_label)
 
 
     def giapiCallback(self, action_id, seq_cmd, activity, config):

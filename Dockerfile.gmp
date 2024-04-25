@@ -20,9 +20,11 @@ RUN tar -xzvf /tmp/gmp-server-0.2.6-SNAPSHOT.tar.gz -C /usr/local/share \
 # Set the working directory to the extraction directory
 WORKDIR /usr/local/share/gmp-server-0.2.6-SNAPSHOT
 
+COPY conf/gmp /usr/local/share/gmp-server-0.2.6-SNAPSHOT/conf/
+
 # Command to start the gmp-server
 CMD ["/usr/local/bin/entrypoint-gmp.sh"]
 
 #run from the root dir of the gnirsdc-data-manager repo
 #docker build -f Dockerfile.gmp -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server .
-#docker run -d --network=host --name gmp registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
+#docker run -d --network=host --name gmp -v /readout_data:/readout_data -v /staging/perm:/staging/perm registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server

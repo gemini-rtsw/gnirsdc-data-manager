@@ -1,0 +1,34 @@
+<!--
+    This configuration file contains the description of EPICS channels
+    that will be simulated in the GMP.
+
+    Each channel must have the following parameters:
+         name : The name of the EPICS channel that will be simulated
+         type : Data type of the epics channel. Valid data types are
+                FLOAT, DOUBLE, SHORT, STRING, BYTE. Uppercase or lowercase
+                values are accepted
+         size : Integer value that describes the number of elements the
+                EPICS channel will contain when updated in simulation.
+    updateRate: Integer value to describe the time in seconds to be used
+                when the simulation is executed. This rate is used to update the
+                value of the EPICS channel in simulation.
+
+-->
+
+
+<channels>
+    <channel>
+        <name>gpi:ws:wsFilter.VALL</name>
+        <type>double</type>
+        <size>10</size>
+        <updateRate>5</updateRate>
+    </channel>
+
+    <channel>
+        <name>gpi:ws:cpWf</name>
+        <type>byte</type>
+        <size>20</size>
+        <updateRate>7</updateRate>
+    </channel>
+
+</channels>
