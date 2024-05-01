@@ -305,18 +305,25 @@ class ObserveCAD(GnirsCAD):
 
     async def countdown_timer(self, total_time):
 
-        while self.p.rdout: # keep looping if rdout is true, if time is up and rdout true then we are doing coadds 
-            
-            start_time = time.time()  # Get the current time in seconds
-            remaining_time = total_time
-            
-            while remaining_time > 0 and self.p.rdout:
-                remaining_time = time.time() - start_time
-                
-                print(f'{self.prefix} countdown_timer: {remaining_time:.1f}')
-                await asyncio.sleep(0.1)  # You can keep a constant sleep interval here
-                await self.p.timeLeft.write(str(remaining_time))
-                await self.p.obsProgress.write(100 - (remaining_time/total_time)*100)
+        while self.p.rdout.value: # keep looping if rdout is true, if time is up and rdout true then we are doing coadds 
+            start_time = time.time()
+
+            while True:
+                current_time = time.time()
+                elapsed_time = current_time - start_time
+                remaining_time = total_time - elapsed_time
+
+                if remaining_time <= 0 or self.p.rdout.value <= 0:
+                    break
+
+                print(f'{self.prefix} countdown_timer: {remaining_time:.1f} seconds left')
+                # Sleep for a shorter period to check more frequently without causing too much delay
+                await asyncio.sleep(0.05)  # Check twice as often
+
+                # Update the GUI or status outputs less frequently to reduce overhead
+                if int(elapsed_time * 10) % 5 == 0:  # Update about every 0.5 seconds
+                    await self.p.timeLeft.write(str(max(remaining_time, 0)))
+                    await self.p.obsProgress.write(100 - (max(remaining_time, 0) / total_time) * 100)
 
 
 async def run_exposure_async(detector_temp, include_eng):
@@ -410,7 +417,7 @@ class GnirsCADCARController(PVGroup):
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else: 
-            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value))
+            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, value, int(self.coaddsVAL.value))
             await self.parent.logMessage(f"Exposure Time: {value}")
     #-------------- exposureTime -------------------
 
