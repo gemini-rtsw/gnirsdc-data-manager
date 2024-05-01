@@ -186,9 +186,7 @@ class AbortCAD(GnirsCAD):
 class ObserveCAD(GnirsCAD):
 
     async def start(self):
-        loop = asyncio.get_running_loop()  # Get the current running loop
-        executor = ThreadPoolExecutor()  # Create a ThreadPoolExecutor
-    
+
         if (DEBUG_MODE):
             print("DEBUG Observe")
 
@@ -227,8 +225,8 @@ class ObserveCAD(GnirsCAD):
 
                     # Run countdown_timer in a separate thread to prevent blocking
                     exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, self.p.obsSetupD.value, self.p.obsSetupC.value)
-                    asyncio.create_task(loop.run_in_executor(executor, self.countdown_timer, exposure_delay))
-                    
+                    asyncio.create_task(self.countdown_timer(self.p.exposureTime.value))
+
                     await self.start_async_exposure()
                 
 
