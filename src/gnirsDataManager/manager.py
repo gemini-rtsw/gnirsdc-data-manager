@@ -195,7 +195,7 @@ class DataMover:
         """
         try:
             # Loop through files that start with the given prefix
-            for fname in (x for x in os.listdir(delete_from.path) if x.startswith(f'{prefix}.')):
+            for fname in (x for x in os.listdir(delete_from.path) if x.startswith(f'{prefix}')):
                 file_path = delete_from.full_path(fname)  # Construct the full path for each file
                 if os.path.exists(file_path):  # Check if the file exists
                     os.remove(file_path)  # Delete the file
@@ -210,7 +210,7 @@ class DataMover:
 
 
     def move_group(self, move_from, move_to, prefix):
-        for full_name in (x for x in os.listdir(move_from.path) if x.startswith(f'{prefix}.')):
+        for full_name in (x for x in os.listdir(move_from.path) if x.startswith(f'{prefix}')):
             self.move(move_from, move_to, full_name)
 
 
@@ -369,7 +369,7 @@ def create_hdulist(header, raw_path):
             for n in range(total_frames):
                 loading[n,:] = np.fromfile(f'{raw_path}-{coadd}.frame.{n}', dtype=np.uint16)
 
-            coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)))
+            coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)
 
         # Average the coadded data (divide by number of coadds)
         coadd_data = coadd_data / len(coadds)
