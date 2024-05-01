@@ -325,7 +325,7 @@ def create_hdulist(header, raw_path):
         frame_rows = raw_rows // total_frames
         coadd_data = np.empty((raw_rows, raw_cols), dtype=np.uint16)  # Initialize the array to store coadded data
 
-        for c in coadds:
+        for c in range(coadds):
             raw_data = np.empty((raw_rows * raw_cols,), dtype=np.uint16)
             loading = raw_data.reshape((total_frames, frame_rows * raw_cols))
 
