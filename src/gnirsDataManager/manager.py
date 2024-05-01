@@ -203,6 +203,28 @@ class DataMover:
         for full_name in (x for x in os.listdir(move_from.path) if x.startswith(f'{prefix}.')):
             self.move(move_from, move_to, full_name)
 
+
+def process_image(data, lnrs, ndavgs):
+    if ndavgs == 1:
+        processor = Processor(shift_delta=-8, full_frame=True)
+        raw_reshaped = data.reshape((lnrs * 2, 512, 2048))
+        reshaped = raw_reshaped.astype(np.float32)
+
+        subtracted = reshaped[lnrs:] - reshaped[:lnrs]
+
+        return processor.unscramble(subtracted.mean(axis=0))
+
+    else:
+        processor = Processor(shift_delta=0, full_frame=True)
+        raw_reshaped = data.reshape((lnrs * 2, 512, 2048 * ndavgs))
+        reshaped = raw_reshaped.astype(np.float32)
+        averaged_samples = processor.ads_average(reshaped, ads_per_fowler=ndavgs)
+
+        subtracted = averaged_samples[lnrs:] - averaged_samples[:lnrs]
+
+        return processor.unscramble(subtracted.mean(axis=0))
+    
+
 def save_processed_image(data, lrns, ndavgs, exptime, hdulist, include_eng):
     if ndavgs == 1:
         processor = Processor(shift_delta=-8, full_frame=True)
@@ -290,9 +312,9 @@ def create_hdulist(header, raw_path):
 
         p_mode = pdu['P_MODE']
 
-        dcver = pdu['DCVER']
-
         coadds = pdu['COADDS']
+
+        dcver = pdu['DCVER']
 
         fname = re.sub(r'[^\w]', '', f"{dateobs}{utstart}") + ".fits"
 
@@ -317,42 +339,51 @@ def create_hdulist(header, raw_path):
         'COADDS': coadds,
         'DATMGVER': __version__
         }.items()))
+    
+    hdulist = fits.HDUList([pdu])
+
     if singleq:
         pdu.header['SINGLEQ'] = True
 
-    if 'FRAMES' in header:
-        total_frames = lnrs * 2
-        frame_rows = raw_rows // total_frames
-        coadd_data = np.empty((raw_rows, raw_cols), dtype=np.uint16)  # Initialize the array to store coadded data
 
-        for c in range(coadds):
-            raw_data = np.empty((raw_rows * raw_cols,), dtype=np.uint16)
-            loading = raw_data.reshape((total_frames, frame_rows * raw_cols))
+ #   if 'FRAMES' in header:
+    total_frames = lnrs * 2
+    frame_rows = raw_rows // total_frames
+    raw_data = np.empty((raw_rows * raw_cols,), dtype=np.uint16)
+    loading = raw_data.reshape((total_frames, frame_rows * raw_cols))
+    coadd_data = np.empty((raw_rows, raw_cols), dtype=np.uint16)  # Initialize the array to store coadded data
 
-            # Load frames for this coadd
+
+    if (coadds > 1):
+        for coadd in range(coadds):
             for n in range(total_frames):
-                loading[n, :] = np.fromfile(f'{raw_path}-{c}.frame.{n}', dtype=np.uint16)
+                loading[n,:] = np.fromfile(f'{raw_path}.frame.{n}', dtype=np.uint16)
 
-            # Sum up frames for each coadd, assuming coadd is a list of indices
-            coadd_data += loading.sum(axis=0).reshape((raw_rows, raw_cols))
+            coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)))
 
         # Average the coadded data (divide by number of coadds)
         coadd_data = coadd_data / len(coadds)
 
+        hdulist.append(fits.ImageHDU(coadd_data), fits.Header({'EXTNAME': 'ENG', 'EXTVER': 1}))
     else:
-        raw_data_path = f'{raw_path}.raw'
-        coadd_data = np.memmap(raw_data_path, dtype=np.uint16).reshape((raw_rows, raw_cols))
+        save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, p_mode == 'SEP')
 
-    hdulist = fits.HDUList([fits.PrimaryHDU(coadd_data)])  # Create a FITS HDU with coadded data
 
-    if p_mode == 'SEP':
-        include_eng = True
-    else:
-        include_eng = False
+#    else:
+#        raw_data_path = f'{raw_path}.raw'
+#        raw_data = np.memmap(raw_data_path, dtype=np.uint16).reshape((raw_rows, raw_cols))
 
-    # Save the processed coadded image
-    save_processed_image(coadd_data, lnrs, ndavgs, exptime, hdulist, include_eng)    
+#    hdulist = fits.HDUList([pdu])
 
+#    if p_mode == 'SEP':
+#        include_eng = True
+#    else:
+#        include_eng = False
+        
+#    save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, include_eng)
+
+
+    # hdulist = fits.HDUList([pdu, procimage])
     if 'TIME_SAMPLES' in header:
         hdulist.append(extract_timing(header['TIME_SAMPLES']))
     return fname, hdulist
