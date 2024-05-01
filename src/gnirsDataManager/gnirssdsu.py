@@ -305,16 +305,18 @@ class ObserveCAD(GnirsCAD):
 
     async def countdown_timer(self, total_time):
 
-        start_time = time.time()  # Get the current time in seconds
-        remaining_time = total_time
-        
-        while remaining_time > 0 and self.p.rdout:
-            remaining_time = time.time() - start_time
+        while self.p.rdout: # keep looping if rdout is true, if time is up and rdout true then we are doing coadds 
             
-            print(f'{self.prefix} countdown_timer: {remaining_time:.1f}')
-            await asyncio.sleep(0.1)  # You can keep a constant sleep interval here
-            await self.p.timeLeft.write(str(remaining_time))
-            await self.p.obsProgress.write(100 - (remaining_time/total_time)*100)
+            start_time = time.time()  # Get the current time in seconds
+            remaining_time = total_time
+            
+            while remaining_time > 0 and self.p.rdout:
+                remaining_time = time.time() - start_time
+                
+                print(f'{self.prefix} countdown_timer: {remaining_time:.1f}')
+                await asyncio.sleep(0.1)  # You can keep a constant sleep interval here
+                await self.p.timeLeft.write(str(remaining_time))
+                await self.p.obsProgress.write(100 - (remaining_time/total_time)*100)
 
 
 async def run_exposure_async(detector_temp, include_eng):
