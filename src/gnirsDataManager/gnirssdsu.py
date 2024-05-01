@@ -186,6 +186,9 @@ class AbortCAD(GnirsCAD):
 class ObserveCAD(GnirsCAD):
 
     async def start(self):
+        loop = asyncio.get_running_loop()  # Get the current running loop
+        executor = ThreadPoolExecutor()  # Create a ThreadPoolExecutor
+    
         if (DEBUG_MODE):
             print("DEBUG Observe")
 
@@ -213,7 +216,6 @@ class ObserveCAD(GnirsCAD):
 
             if (int(self.p.rdout.value) == 0):
 
-
                 if self.p.sequence.value < 1:
                     self.p.sequence.value = 1
 
@@ -223,9 +225,12 @@ class ObserveCAD(GnirsCAD):
                     await self.p.rdout.write(1)
 
 
+                    # Run countdown_timer in a separate thread to prevent blocking
+                    exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, self.p.obsSetupD.value, self.p.obsSetupC.value)
+                    asyncio.create_task(loop.run_in_executor(executor, self.countdown_timer, exposure_delay))
+                    
                     await self.start_async_exposure()
-                    #await self.countdown_timer(self.p.exposureTime.value)
-            
+                
 
                     await self.p.sequenceLeft.write(i) # keep track of the remaining exposures
                                                        # end at 1 so it will do a single exposure if sequence is not manually set
@@ -244,25 +249,9 @@ class ObserveCAD(GnirsCAD):
 
 
     async def start_async_exposure(self):
-        """
-        Manages the process of starting an asynchronous exposure sequence, including logging, readout, and archiving.
 
-        This function handles various tasks such as logging messages, starting and ending the exposure,
-        sending notifications to different systems (like GMP and SDSU), and managing data archival processes.
-        It uses asyncio for concurrency, running coroutines in a specified event loop.
-
-        Parameters:
-        self: Reference to the class instance where methods like 'logMessage', 'write_coadds_header', and attributes
-            like 'p.exposureTime', 'p.detectorTemp1', 'giapi' are defined.
-        loop: The asyncio event loop in which to run asynchronous tasks.
-
-        The function performs different actions based on the 'archive_fits' value and the exposure time.
-        It's designed to work with a specific system setup, handling both the observational and data handling aspects.
-        """
         await self.logMessage(f'{self.prefix} ObserveCAD start')
         print(f'{self.prefix} ObserveCAD start')
-
-        #self.write_coadds_header()
 
         # if sending to archive let GDS know
         if (self.p.parent.archive_fits.value):
@@ -316,22 +305,17 @@ class ObserveCAD(GnirsCAD):
 
 
 
-
     async def countdown_timer(self, total_time):
-        """
-        Asynchronously runs a countdown timer for the specified total time.
 
-        This function periodically updates the remaining time and prints it,
-        along with a specific prefix, to the console. It also writes the remaining time and 
-        observation progress as percentages to their respective properties in the class.
+        remaining_time = total_time
 
-        Parameters:
-        self: Reference to the class instance where 'p.rdout', 'p.timeLeft', and 'p.obsProgress' are defined.
-        total_time: The total time for the countdown in seconds.
+        while remaining_time > 0:
+            remaining_time -= 0.1
+            await asyncio.sleep(0.1)
+            await self.p.timeLeft.write(str(remaining_time))
+            await self.p.obsProgress.write(100 - (remaining_time/total_time)*100)
 
-        The countdown stops when the remaining time reaches zero or when 'self.p.rdout' is False.
-        """
-        print("countdown_timer start")
+'''
         start_time = time.time()  # Get the current time in seconds
         remaining_time = total_time
         
@@ -345,34 +329,7 @@ class ObserveCAD(GnirsCAD):
             await asyncio.sleep(0.1)  # You can keep a constant sleep interval here
             await self.p.timeLeft.write(str(remaining_time))
             await self.p.obsProgress.write(100 - (remaining_time/total_time)*100)
-
-
-
-    def write_coadds_header(self):
-        """
-        Writes content to a file with a '.coadds' extension.
-        The file is named based on the 'dataLabel' attribute and saved in the directory specified by 'data_dir'.
-        The file specifies the number of fits that will be coadded.
-
-        Parameters:
-        self: Reference to the class instance where 'p.parent.data_dir.value' and 'p.dataLabel.value' are defined.
-        content: The content to be written to the file.
-        """
-        directory = self.p.parent.data_dir.value
-        file_name = self.p.dataLabel.value + ".coadds"
-
-        # Create the full path
-        full_path = os.path.join(directory + "/new", file_name)
-
-        # Write to the file
-        with open(full_path, 'w') as file:
-            file.write(f"coadds: {self.p.coaddsVAL.value}\n")
-            file.write(f"eng: {self.p.parent.include_eng.value}\n")
-
-    
-
-        #run thread safe async to set the eng write false after every fits
-        asyncio.run_coroutine_threadsafe(self.p.parent.include_eng.write(0), self.loop)
+'''
 
 
 async def run_exposure_async(detector_temp, include_eng):
