@@ -242,6 +242,7 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, include_eng):
         reshaped = raw_reshaped.astype(np.float32)
         subtracted = reshaped[lrns:] - reshaped[:lrns]
         # First, save the final product
+
         hdulist.append(fits.ImageHDU(processor.unscramble(subtracted.mean(axis=0)), fits.Header({'EXTNAME': 'ENG', 'EXTVER': 1})))
 
         if include_eng == True:
@@ -361,7 +362,7 @@ def create_hdulist(header, raw_path):
     frame_rows = raw_rows // total_frames
     raw_data = np.empty((raw_rows * raw_cols,), dtype=np.uint16)
     loading = raw_data.reshape((total_frames, frame_rows * raw_cols))
-    coadd_data = np.empty((raw_rows, raw_cols), dtype=np.uint16)  # Initialize the array to store coadded data
+    coadd_data = np.empty((1024, 1024), dtype=np.float32)  # Initialize the array to store coadded data
 
 
     if (coadds > 1):
@@ -372,9 +373,9 @@ def create_hdulist(header, raw_path):
             coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)
 
         # Average the coadded data (divide by number of coadds)
-        coadd_data = coadd_data / len(coadds)
+        coadd_data = coadd_data / coadds
 
-        hdulist.append(fits.ImageHDU(coadd_data), fits.Header({'EXTNAME': 'ENG', 'EXTVER': 1}))
+        hdulist.append(fits.ImageHDU(coadd_data, fits.Header({'EXTNAME': 'ENG', 'EXTVER': 1})))
     else:
         save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, p_mode == 'SEP')
 
