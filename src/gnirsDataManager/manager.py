@@ -104,13 +104,24 @@ class DataDir:
 
     def list_matched_files(self):
         "Lists of matching/not-matching files"
-
+        
         files = os.listdir(self.path)
 
-        raw_data = set(os.path.splitext(x)[0] for x in files if x.endswith('.raw'))
-        raw_data |= set(os.path.splitext(os.path.splitext(x)[0])[0] for x in files if ('.frame.' in x))
+        # Using a regex to extract the base name before any frame or other numbering
+        pattern = re.compile(r'^(.+?)(-\d+)?(\.frame\.\d+)?')
+
+        raw_data = set()
+        for x in files:
+            match = pattern.match(x)
+            if match:
+                if x.endswith('.raw'):
+                    raw_data.add(match.group(1))
+                elif '.frame.' in x:
+                    raw_data.add(match.group(1))
+
         paired = []
         unpaired = []
+
         for header in [x for x in files if x.endswith('.header')]:
             base_filename = os.path.splitext(header)[0]
             if base_filename not in raw_data:
@@ -123,7 +134,6 @@ class DataDir:
         # but we don't touch them. Maybe there's something with a
         # header pending to be written
         for pending in raw_data:
-            # TODO: Log the pending...
             self.logger.info(f"Pending file {pending}")
 
         return paired, unpaired
@@ -357,7 +367,7 @@ def create_hdulist(header, raw_path):
     if (coadds > 1):
         for coadd in range(coadds):
             for n in range(total_frames):
-                loading[n,:] = np.fromfile(f'{raw_path}.frame.{n}', dtype=np.uint16)
+                loading[n,:] = np.fromfile(f'{raw_path}-{coadd}.frame.{n}', dtype=np.uint16)
 
             coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)))
 
@@ -411,6 +421,7 @@ class DataProcessor:
     def process_file(self, fname):
         # First, move the files to processing
         dm = self.datamov
+
         dm.move_group(dm.new, dm.processing, fname)
 
         self.logger.debug(f"Processing {fname}")
