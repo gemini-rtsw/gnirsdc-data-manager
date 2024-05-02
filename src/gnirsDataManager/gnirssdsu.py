@@ -316,14 +316,13 @@ class ObserveCAD(GnirsCAD):
                 elapsed_time = current_time - start_time
                 remaining_time = total_time - elapsed_time
 
-                if remaining_time <= 0 or self.p.rdout.value <= 0:
-                    break
-
-                await asyncio.sleep(0.05)  # Check twice as often
-
                 await self.p.timeLeft.write(str(max(remaining_time, 0)))
                 await self.p.obsProgress.write(100 - (max(remaining_time, 0) / total_time) * 100)
 
+                await asyncio.sleep(0.05)  
+
+                if remaining_time <= 0 or self.p.rdout.value <= 0:
+                    break
 
             coadds_completed += 1
             await self.p.coaddProgress.write(100 * coadds_completed / self.p.coaddsVAL.value)
