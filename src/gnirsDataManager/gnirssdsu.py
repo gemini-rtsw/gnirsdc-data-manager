@@ -319,8 +319,6 @@ class ObserveCAD(GnirsCAD):
                 if remaining_time <= 0 or self.p.rdout.value <= 0:
                     break
 
-                print(f'{self.prefix} countdown_timer: {remaining_time:.1f} seconds left')
-                # Sleep for a shorter period to check more frequently without causing too much delay
                 await asyncio.sleep(0.05)  # Check twice as often
 
                 await self.p.timeLeft.write(str(max(remaining_time, 0)))
