@@ -305,6 +305,9 @@ class ObserveCAD(GnirsCAD):
 
     async def countdown_timer(self, total_time):
 
+        if total_time <= 0.2: # about minimum readout time 
+            total_time = 0.2
+
         coadds_completed = 0
 
         while self.p.rdout.value: # keep looping if rdout is true, if time is up and rdout true then we are doing coadds 
