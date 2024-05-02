@@ -305,7 +305,10 @@ class ObserveCAD(GnirsCAD):
 
     async def countdown_timer(self, total_time):
 
+        coadds_completed = 0
+
         while self.p.rdout.value: # keep looping if rdout is true, if time is up and rdout true then we are doing coadds 
+
             start_time = time.time()
 
             while True:
@@ -324,6 +327,13 @@ class ObserveCAD(GnirsCAD):
                 if int(elapsed_time * 10) % 5 == 0:  # Update about every 0.5 seconds
                     await self.p.timeLeft.write(str(max(remaining_time, 0)))
                     await self.p.obsProgress.write(100 - (max(remaining_time, 0) / total_time) * 100)
+
+
+            coadds_completed += 1
+            self.p.coaddProgress.write(100 * coadds_completed / self.p.obsSetupD.value)
+
+
+
 
 
 async def run_exposure_async(detector_temp, include_eng):
@@ -411,7 +421,7 @@ class GnirsCADCARController(PVGroup):
     #------ fowlers - lnr -------------------
 
     #-------------- exposureTime -------------------
-    exposureTime    = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "Exposure Time") 
+    exposureTime    = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "Exposure Time") 
     @exposureTime.putter
     async def exposureTime(self, instance, value):
         if (self.sdsuController == None):
@@ -424,7 +434,7 @@ class GnirsCADCARController(PVGroup):
 
 
     #-------------- digitalAvgs -------------------
-    obsSetupC      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.C", doc = "")
+    obsSetupC      = pvproperty(value=1, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.C", doc = "")
     @obsSetupC.putter
     async def obsSetupC(self, instance, value):
         if (self.digitalAvgs.value != int(value)):
@@ -445,7 +455,7 @@ class GnirsCADCARController(PVGroup):
 
 
     #-------------- coadds -------------------
-    coaddsVAL      = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:coadds.VAL", doc = "")
+    coaddsVAL      = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:coadds.VAL", doc = "")
     @coaddsVAL.putter
     async def coaddsVAL(self, instance, value):
         if (self.sdsuController == None):
@@ -484,6 +494,7 @@ class GnirsCADCARController(PVGroup):
 
     timeLeft        = pvproperty(value='0', dtype=caproto.ChannelType.STRING, name="sad:dc:timeLeft", doc = "Exposure time left") 
     obsProgress     = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:obsProgress", doc = "Exposure percent complete") 
+    coaddProgress   = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:coaddProgress", doc = "Coadd percent complete") 
 
 
     setWcsA        = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.A", doc = "")
