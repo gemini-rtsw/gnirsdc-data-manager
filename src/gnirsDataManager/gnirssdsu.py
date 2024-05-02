@@ -323,14 +323,12 @@ class ObserveCAD(GnirsCAD):
                 # Sleep for a shorter period to check more frequently without causing too much delay
                 await asyncio.sleep(0.05)  # Check twice as often
 
-                # Update the GUI or status outputs less frequently to reduce overhead
-                if int(elapsed_time * 10) % 5 == 0:  # Update about every 0.5 seconds
-                    await self.p.timeLeft.write(str(max(remaining_time, 0)))
-                    await self.p.obsProgress.write(100 - (max(remaining_time, 0) / total_time) * 100)
+                await self.p.timeLeft.write(str(max(remaining_time, 0)))
+                await self.p.obsProgress.write(100 - (max(remaining_time, 0) / total_time) * 100)
 
 
             coadds_completed += 1
-            self.p.coaddProgress.write(100 * coadds_completed / self.p.obsSetupD.value)
+            await self.p.coaddProgress.write(100 * coadds_completed / self.p.coaddsVAL.value)
 
 
 
@@ -402,7 +400,7 @@ class GnirsCADCARController(PVGroup):
     #------ DC configuration values --------
 
     #------ fowlers - lnr -------------------
-    obsSetupD      = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.D", doc = "")
+    obsSetupD      = pvproperty(value=1, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.D", doc = "")
     @obsSetupD.putter
     async def obsSetupD(self, instance, value):
         if (self.lnrNum.value != int(value)):
@@ -421,7 +419,7 @@ class GnirsCADCARController(PVGroup):
     #------ fowlers - lnr -------------------
 
     #-------------- exposureTime -------------------
-    exposureTime    = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "Exposure Time") 
+    exposureTime    = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "Exposure Time") 
     @exposureTime.putter
     async def exposureTime(self, instance, value):
         if (self.sdsuController == None):
