@@ -372,8 +372,6 @@ def create_hdulist(header, raw_path):
 
             coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)
 
-        # Average the coadded data (divide by number of coadds)
-        coadd_data = coadd_data / coadds
 
         hdulist.append(fits.ImageHDU(coadd_data, fits.Header({'EXTNAME': 'ENG', 'EXTVER': 1})))
     else:
