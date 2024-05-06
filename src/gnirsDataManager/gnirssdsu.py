@@ -198,9 +198,10 @@ class ObserveCAD(GnirsCAD):
             self.giapi.observeEndReadout(self.p.observeA.value)
             self.giapi.observeStartWrite(self.p.observeA.value)
 
-                        #copy debut fits
+                        #copy debug fits
             os.makedirs('/readout_data/fits/', exist_ok=True)
-            shutil.copy('../../eng_readout.fits', '/readout_data/fits/eng_readout.fits')
+            fullname = f"/readout_data/fits/f{self.p.observeA.value}"
+            shutil.copy('../../eng_readout.fits', fullname)
 
             self.giapi.observeEndWrite(self.p.observeA.value)
             return True
