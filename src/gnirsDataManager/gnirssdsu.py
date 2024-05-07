@@ -200,7 +200,7 @@ class ObserveCAD(GnirsCAD):
 
                         #copy debug fits
             os.makedirs('/readout_data/fits/', exist_ok=True)
-            fullname = f"/readout_data/fits/{self.p.observeA.value}"
+            fullname = f"/readout_data/fits/{self.p.observeA.value}.fits"
             shutil.copy('../../eng_readout.fits', fullname)
 
             self.giapi.observeEndWrite(self.p.observeA.value)
