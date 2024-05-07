@@ -37,6 +37,8 @@ build_image:
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run
     - docker build -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev -f $DOCKERFILE_ENV .
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev
+    - docker build -f Dockerfile.gmp -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server .
+    - docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
 
