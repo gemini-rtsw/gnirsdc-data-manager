@@ -187,8 +187,6 @@ class GnirsDataManagerIOC(PVGroup):
 
         print(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.cads.records)}')
 
-    def setup_debug(self):
-        self.CADInterface.addCCchannels()
 
     CADInterface = SubGroup(GnirsCADCARController, prefix="")
     GIAPIInterface = GiapiInterface()
@@ -500,12 +498,10 @@ async def main():
             desc=''
             )
     print ("create IOC")
-    ioc = GnirsDataManagerIOC(**ioc_options)
+    ioc = GnirsDataManagerIOC(**ioc_options, debug = run_options['debug'])
     print ("IOC created")
     await ioc.data_dir.write(run_options['data_dir'])
 
-    if (run_options['debug']):
-        ioc.setup_debug()
 
     print(f"Working directory: {os.getcwd()}")
 

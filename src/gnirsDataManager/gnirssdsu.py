@@ -472,7 +472,7 @@ class GnirsCADCARController(PVGroup):
         await self.sequenceLeft.write(value)
 
 
-    sequenceLeft           = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:sequenceLeft", doc = "Exposures left to readout")
+    sequenceLeft    = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:sequenceLeft", doc = "Exposures left to readout")
 
     sdsuState       = pvproperty(value='NOT INITIALIZED', dtype=caproto.ChannelType.STRING, name="dc:sdsuState", doc = "SDSU Controller State") 
 
@@ -540,7 +540,7 @@ class GnirsCADCARController(PVGroup):
 
 
 
-    def addCCchannels(self):
+    if DEBUG_MODE:
         #add CC debug channels
         print("Add CC debug channels")
         cc1       = pvproperty(value=1, dtype=caproto.ChannelType.LONG, name="cc:apply.DIR", doc = "")
