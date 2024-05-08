@@ -188,11 +188,9 @@ class GnirsDataManagerIOC(PVGroup, debug = False):
         print(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.cads.records)}')
 
 
-    if debug:
-        CADInterface = SubGroup(GnirsCADCARControllerDebug, prefix="")
-    else:
-        CADInterface = SubGroup(GnirsCADCARController, prefix="")
+    #    CADInterface = SubGroup(GnirsCADCARControllerDebug, prefix="")
 
+    CADInterface = SubGroup(GnirsCADCARController, prefix="")
     GIAPIInterface = GiapiInterface()
     DiskSpaceMonitor = SubGroup(DiskSpacePVGroup, prefix="")
 
