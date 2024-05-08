@@ -37,6 +37,7 @@ from datetime import datetime
 
 import gnirssdsu
 from gnirssdsu import GnirsCADCARController
+from gnirssdsu import GnirsCADCARControllerDebug
 
 from gnirssdsu import DebugMode
 
@@ -175,9 +176,8 @@ class GnirsDataManagerProcessor:
 
 
 
-class GnirsDataManagerIOC(PVGroup):
+class GnirsDataManagerIOC(PVGroup, debug = False):
 
-         
 
     def __init__(self, *args, **kwargs):
 
@@ -188,7 +188,11 @@ class GnirsDataManagerIOC(PVGroup):
         print(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.cads.records)}')
 
 
-    CADInterface = SubGroup(GnirsCADCARController, prefix="")
+    if debug:
+        CADInterface = SubGroup(GnirsCADCARControllerDebug, prefix="")
+    else:
+        CADInterface = SubGroup(GnirsCADCARController, prefix="")
+
     GIAPIInterface = GiapiInterface()
     DiskSpaceMonitor = SubGroup(DiskSpacePVGroup, prefix="")
 
@@ -499,6 +503,8 @@ async def main():
             )
     print ("create IOC")
     ioc = GnirsDataManagerIOC(**ioc_options, debug = run_options['debug'])
+
+
     print ("IOC created")
     await ioc.data_dir.write(run_options['data_dir'])
 
