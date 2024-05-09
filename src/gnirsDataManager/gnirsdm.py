@@ -37,7 +37,7 @@ from datetime import datetime
 
 import gnirssdsu
 from gnirssdsu import GnirsCADCARController
-from gnirssdsu import GnirsCADCARControllerDebug
+from gnirssdsu import GnirsCCDebugChannels
 
 from gnirssdsu import DebugMode
 
@@ -188,13 +188,9 @@ class GnirsDataManagerIOC(PVGroup):
         print(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.cads.records)}')
 
 
-    #    CADInterface = SubGroup(GnirsCADCARControllerDebug, prefix="")
-
     CADInterface = SubGroup(GnirsCADCARController, prefix="")
     GIAPIInterface = GiapiInterface()
     DiskSpaceMonitor = SubGroup(DiskSpacePVGroup, prefix="")
-
-
 
 
 #-----------------------------------------------------------------------------
@@ -334,7 +330,53 @@ class GnirsDataManagerIOC(PVGroup):
             await restart()
 
 #-----------------------------------------------------------------------------
+    '''
+    #uncomment for CC debug channels
 
+            self.cc1       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:apply.DIR", doc = "")
+            self.cc2       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:apply.VAL", doc = "")
+            self.cc3       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:apply.MESS", doc = "") 
+            self.cc4       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:applyC.CLID", doc = "") 
+            self.cc5       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:applyC.VAL", doc = "") 
+            self.cc6       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:applyC.OMSS", doc = "") 
+            self.cc7       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:coverPosCad.B", doc = "") 
+            self.cc8       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:fw1PosCad.B", doc = "") 
+            self.cc9       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:focusStepsCad.A", doc = "") 
+            self.cc10       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:gratingPosCad.E", doc = "") 
+            self.cc11       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:xdispPosCad.B", doc = "") 
+            self.cc12       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:acqPosCad.B", doc = "") 
+            self.cc13       = pvproperty(value=1, dtype=ChannelType.LONG, name="focus:focusbest", doc = "") 
+            self.cc14       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:gratingPosCad.C", doc = "") 
+            self.cc15       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:cameraPosCad.B", doc = "") 
+            self.cc16       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:gratingPosCad.A", doc = "") 
+            self.cc17       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:gratingPosCad.D", doc = "") 
+            self.cc19       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:slitPosCad.B", doc = "") 
+            self.cc20       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:deckerPosCad.B", doc = "") 
+            self.cc21       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:fw2PosCad.B", doc = "") 
+            self.cc22       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:xdispPosition", doc = "") 
+            self.cc23       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:focusPosition", doc = "") 
+            self.cc24       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:slitPosition", doc = "") 
+            self.cc25       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:acqPosition", doc = "") 
+            self.cc26       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:coverPosition", doc = "") 
+            self.cc27       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:gratingPosition", doc = "") 
+            self.cc28       = pvproperty(value=1, dtype=ChannelType.LONG, name="cc:gratingPosCad.B", doc = "") 
+            self.cc29       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:fw2Position", doc = "") 
+            self.cc30       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:fw1Position", doc = "") 
+            self.cc31       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:cameraPosition", doc = "") 
+            self.cc32       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:deckerPosition", doc = "") 
+            self.cc33       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:gratingWvlength.VAL", doc = "") 
+            self.cc34       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:deckerEng", doc = "") 
+            self.cc35       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:fw2Eng", doc = "") 
+            self.cc36       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:gratingEng", doc = "") 
+            self.cc37       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:cameraEng", doc = "") 
+            self.cc38       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:fw1Eng", doc = "") 
+            self.cc39       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:slitEng", doc = "") 
+            self.cc40       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:xdispEng", doc = "") 
+            self.cc41       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:focusEng", doc = "") 
+            self.cc42       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:gratingTilt", doc = "") 
+            self.cc43       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:gratingOrder", doc = "") 
+            self.cc44       = pvproperty(value=1, dtype=ChannelType.LONG, name="sad:cc:name", doc = "") 
+    '''
 
     def start_ioc():
         ioc = SimpleIOC(**self.ioc_options)
@@ -355,6 +397,9 @@ class GnirsDataManagerIOC(PVGroup):
     async def done_task(self, log):
         await wait_for(self.queued.write(self.queued.value - 1),
                        self.append_log_string(log))
+
+
+
 
 async def inotify_task(ioc, proc, data_dir):
     os.makedirs(data_dir, exist_ok=True)
@@ -500,7 +545,7 @@ async def main():
             desc=''
             )
     print ("create IOC")
-    ioc = GnirsDataManagerIOC(**ioc_options, debug = run_options['debug'])
+    ioc = GnirsDataManagerIOC(**ioc_options)
 
 
     print ("IOC created")
