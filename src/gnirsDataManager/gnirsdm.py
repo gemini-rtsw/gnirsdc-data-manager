@@ -176,7 +176,7 @@ class GnirsDataManagerProcessor:
 
 
 
-class GnirsDataManagerIOC(PVGroup, debug = False):
+class GnirsDataManagerIOC(PVGroup):
 
 
     def __init__(self, *args, **kwargs):
