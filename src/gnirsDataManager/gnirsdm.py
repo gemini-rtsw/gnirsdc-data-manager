@@ -37,7 +37,6 @@ from datetime import datetime
 
 import gnirssdsu
 from gnirssdsu import GnirsCADCARController
-from gnirssdsu import GnirsCCDebugChannels
 
 from gnirssdsu import DebugMode
 
