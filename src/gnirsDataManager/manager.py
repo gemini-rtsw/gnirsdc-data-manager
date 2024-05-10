@@ -333,23 +333,35 @@ def create_hdulist(header, raw_path):
         raise ProcessingError(f"Processing {fname}: missing keyword {e.args[0]}")
 
     pdu = fits.PrimaryHDU(header=fits.Header({
-        'DATALAB': datalabel,
-        'DATE-OBS': dateobs,
-        'UTSTART': utstart,
-        'UTEND': utend,
-        'LNRS': lnrs,
-        'NDAVGS': ndavgs,
-        'EXPTIME': exptime,
-        'EXPREQ': reqtime,
-        'MIN_INT': min_int,
-        'DETTEMP': temp1,
-        'DETBIAS': voltage,
-        'P_MODE': p_mode,
-        'DCVER' : dcver,
-        'RAWNAME': raw_name,
-        'COADDS': coadds,
+        'SIMPLE'    : 'T / file does conform to FITS standard',
+        'BITPIX'    : '16 / number of bits per data pixel',
+        'NAXIS'     : '0 / number of data axes',
+        'EXTEND'    : 'T / FITS dataset may contain extensions',
+        'INSTRUME'  : 'GNIRS              / Instrument used to acquire data',               
+
+        'DATALAB'   : datalabel,
+        'DATE-OBS'  : dateobs,
+        'UTSTART'   : utstart,
+        'UTEND'     : utend,
+        'LNRS'      : lnrs,
+        'NDAVGS'    : ndavgs,
+        'EXPTIME'   : exptime,
+        'EXPREQ'    : reqtime,
+        'MIN_INT'   : min_int,
+        'DETTEMP'   : temp1,
+        'DETBIAS'   : voltage,
+        'P_MODE'    : p_mode,
+        'DCVER'     : dcver,
+        'RAWNAME'   : raw_name,
+        'COADDS'    : coadds,
         'DATMGVER': __version__
         }.items()))
+    
+    # Insert comments after EXTEND
+    position = pdu.header.index('EXTEND')
+    pdu.header.insert(position + 1, ('COMMENT', "FITS (Flexible Image Transport System) format is defined in 'Astronomy"))
+    pdu.header.insert(position + 2, ('COMMENT', "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"))
+
     
     hdulist = fits.HDUList([pdu])
 
@@ -434,7 +446,7 @@ class DataProcessor:
 
             if datalabel:
                 fitsname = datalabel
-                
+
             fits_path = dm.processing.full_path(fitsname)
             if os.access(fits_path, os.F_OK):
                 raise ProcessingError(f"{fitsname} exists already")
