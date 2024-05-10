@@ -417,7 +417,7 @@ class DataProcessor:
 
     
 
-    def process_file(self, fname):
+    def process_file(self, fname, datalabel = None):
         # First, move the files to processing
         dm = self.datamov
 
@@ -431,6 +431,10 @@ class DataProcessor:
         # Create an output file and start populating it
 
             fitsname, hdulist = create_hdulist(header, rpath) 
+
+            if datalabel:
+                fitsname = datalabel
+                
             fits_path = dm.processing.full_path(fitsname)
             if os.access(fits_path, os.F_OK):
                 raise ProcessingError(f"{fitsname} exists already")

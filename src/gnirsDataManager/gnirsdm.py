@@ -55,7 +55,6 @@ def get_repo_info_for_directories():
     directories = [
         "/gnirsdc",
         "/pycadcar",
-        "/gnirsdc-tools",
         "/gnirsdc-lib"
     ]
 
@@ -113,7 +112,7 @@ def standalone_process_task(file_path, dp, ioc, logger):
         rpath, header = manager.decode_header(dp.datamov.new, fname)
         label = header['PDU']['DATALABE']
         asyncio.run(ioc.currentLabel.write(label))
-        dp.process_file(fname)
+        dp.process_file(fname, ioc.CADInterface.observeA.value)
     except Exception as exc:
         logger.error(f"Processing {file_path}: {exc}")
         if label is None:
