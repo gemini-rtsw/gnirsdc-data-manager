@@ -1,0 +1,34 @@
+{
+  "PDU":{
+    "CAMERA":"GNIRS",
+    "DATALABE":"test-image-1x1-1ds-2024-05-02-02:05:17",
+    "LNRS":1,
+    "NDAVGS":1,
+    "RAW_COLS":2048,
+    "RAW_ROWS":1024,
+    "DATEOBS":"2024-05-02",
+    "UTSTART":"02:05:17.976554",
+    "UTEND":"02:05:18.520980",
+    "EXPTIME":0.27224208900000002,
+    "EXPREQ":0.0,
+    "MIN_INT":0.23791605999999998,
+    "DETBIAS":-0.60000000000000009,
+    "DCVER":"Seqexec-prod-test-4-11-20-g563f892",
+    "COADDS":1,
+    "P_MODE":"STARE"
+  },
+  "FRAMES":[
+    "eng_data.frame.0",
+    "eng_data.frame.1"
+  ],
+  "TIME_SAMPLES":{
+    "RESET_00":0.001970229,
+    "RESET_01":0.27415475,
+    "SIGNAL_00":0.27461201299999999,
+    "SIGNAL_01":0.54639683900000002
+  },
+  "TEMPERATURE":{
+    "TEMP IN1":0.0,
+    "TEMP IN2":0.0
+  }
+}

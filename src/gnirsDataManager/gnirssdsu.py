@@ -15,7 +15,7 @@ from multiprocessing import Process, Queue
 
 import time
 
-import os, shutil
+import os, shutil, glob
 
 from libgnirsioc import controllerInterface
 from libgnirsioc import controllerInterfaceDebug
@@ -198,10 +198,22 @@ class ObserveCAD(GnirsCAD):
             self.giapi.observeEndReadout(self.p.observeA.value)
             self.giapi.observeStartWrite(self.p.observeA.value)
 
-                        #copy debug fits
-            os.makedirs('/readout_data/fits/', exist_ok=True)
-            fullname = f"/readout_data/fits/{self.p.observeA.value}"
-            shutil.copy('../../eng_readout.fits', fullname)
+            #copy debug fits
+            #os.makedirs('/readout_data/fits/', exist_ok=True)
+            #fullname = f"/readout_data/fits/{self.p.observeA.value}"
+            #shutil.copy('../../eng_readout.fits', fullname)
+
+            #copy raw data
+            source_dir = '../../raw_data/'
+            target_dir = '/readout_data/new/'
+
+            # Use glob to get all file paths in the source directory
+            files = glob.glob(source_dir + '*')
+
+            # Loop through all files and copy each to the target directory
+            for file in files:
+                shutil.copy(file, target_dir)
+
 
             self.giapi.observeEndWrite(self.p.observeA.value)
             return True
