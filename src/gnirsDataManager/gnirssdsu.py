@@ -204,6 +204,7 @@ class ObserveCAD(GnirsCAD):
             #shutil.copy('../../eng_readout.fits', fullname)
 
             #copy raw data
+            print("copy raw to new")
             source_dir = '../../raw_data/'
             target_dir = '/readout_data/new/'
 

@@ -49,6 +49,7 @@ DEFAULT_DATADIR = '/readout_data'
 MAX_LOG_SIZE = 5
 WORKING_DIR = os.getcwd()
 
+
 def get_repo_info_for_directories():
 
     # List of directory names
@@ -82,6 +83,13 @@ def get_repo_info_for_directories():
         if commit_hash and branch and remote_origin:
             print(f"Repo: {directory}")
             print(f"Commit Hash: {commit_hash}")
+
+            if (directory == '/gnirsdc'):
+                os.environ['DC_COMMIT'] = commit_hash
+
+            if (directory == '/gnirsdc-lib'):
+                os.environ['LIB_COMMIT'] = commit_hash
+
             print(f"Branch: {branch}")
             print(f"Remote Origin: {remote_origin}")
             print("---")
@@ -106,13 +114,14 @@ class StateEnum(enum.IntEnum):
     PROCESSING = 3
 
 def standalone_process_task(file_path, dp, ioc, logger):
+
     fname = file_path.parts[-1].rpartition('.')[0]
     label = None
     try:
         rpath, header = manager.decode_header(dp.datamov.new, fname)
         label = header['PDU']['DATALABE']
         asyncio.run(ioc.currentLabel.write(label))
-        dp.process_file(fname, ioc.CADInterface.observeA.value)
+        dp.process_file(fname, ioc.CADInterface.observeA.value, os.getenv('DC_COMMIT', 'dc_commit_missing'), os.getenv('LIB_COMMIT', 'lib_commit_missing'))
     except Exception as exc:
         logger.error(f"Processing {file_path}: {exc}")
         if label is None:

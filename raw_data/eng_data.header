@@ -1,7 +1,7 @@
 {
   "PDU":{
     "CAMERA":"GNIRS",
-    "DATALABE":"test-image-1x1-1ds-2024-05-02-02:05:17",
+    "DATALABE":"eng_data",
     "LNRS":1,
     "NDAVGS":1,
     "RAW_COLS":2048,

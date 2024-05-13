@@ -55,6 +55,10 @@ from docopt import docopt
 from astropy.io import fits
 import numpy as np
 from unscramble import Processor
+
+
+from fits_header_definitions import define_hdu_list
+
 #from . import __version__
 __version__=0.1
 
@@ -298,8 +302,10 @@ def extract_timing(samples_header):
                                              names='series,order,offset'),
                             header=header)
 
-def create_hdulist(header, raw_path): 
+def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_commit = None): 
     raw_name = os.path.basename(raw_path)
+
+    '''
     try:
         pdu = header['PDU']
         datalabel = pdu['DATALABE']
@@ -332,42 +338,59 @@ def create_hdulist(header, raw_path):
     except KeyError as e:
         raise ProcessingError(f"Processing {fname}: missing keyword {e.args[0]}")
 
-    pdu = fits.PrimaryHDU(header=fits.Header({
-        'SIMPLE'    : 'T / file does conform to FITS standard',
-        'BITPIX'    : '16 / number of bits per data pixel',
-        'NAXIS'     : '0 / number of data axes',
-        'EXTEND'    : 'T / FITS dataset may contain extensions',
-        'INSTRUME'  : 'GNIRS              / Instrument used to acquire data',               
+    # Create the header
+    fits_header = fits.Header()
 
-        'DATALAB'   : datalabel,
-        'DATE-OBS'  : dateobs,
-        'UTSTART'   : utstart,
-        'UTEND'     : utend,
-        'LNRS'      : lnrs,
-        'NDAVGS'    : ndavgs,
-        'EXPTIME'   : exptime,
-        'EXPREQ'    : reqtime,
-        'MIN_INT'   : min_int,
-        'DETTEMP'   : temp1,
-        'DETBIAS'   : voltage,
-        'P_MODE'    : p_mode,
-        'DCVER'     : dcver,
-        'RAWNAME'   : raw_name,
-        'COADDS'    : coadds,
-        'DATMGVER': __version__
-        }.items()))
+    # Standard keywords with the correct boolean and integer values and comments
+    fits_header['SIMPLE']   = (True, 'file does conform to FITS standard')
+    fits_header['BITPIX']   = (16, 'number of bits per data pixel')
+    fits_header['NAXIS']    = (0, 'number of data axes')
+    fits_header['EXTEND']   = (True, 'FITS dataset may contain extensions')
+    fits_header['INSTRUME'] = ('GNIRS', 'Instrument used to acquire data')
+
+    # Adding other header keywords related to your data
+    fits_header['DATALAB']  = (data_label, 'DHS Data Label')
+    fits_header['DATE-OBS'] = (dateobs, 'UT Date of observation (YYYY-MM-DD)')
+    fits_header['TIME-OBS'] = (utstart, 'Time of observation')
+    fits_header['UTSTART']  = (utstart, 'UT at observation start')
+    fits_header['UTEND']    = (utend, 'UT at observation end')
+    fits_header['LNRS']     = (lnrs, '# of fowler samples')
+    fits_header['NDAVGS']   = (ndavgs, '# of digital averages')
+    fits_header['EXPTIME']  = (exptime, 'integration time (seconds)')
+    fits_header['MIN_INT']  = (min_int, 'minimum integration time (seconds)')
+    fits_header['DETTEMP']  = (temp1, 'detector temperature (K)')
+    fits_header['DETBIAS']  = (voltage,'Achieved Detector Bias')
+    fits_header['P_MODE']   = (p_mode, 'proc mode (stare, sep)')
+    fits_header['DCVER1']    = (dcver, 'library build tag')
+    fits_header['DCVER2']    = (lib_commit, 'library git commit')
+    fits_header['DCVER3']    = (dc_commit, 'DC git commit')
+    fits_header['COADDS']   = (coadds, '# of coadded images')
+    fits_header['CONID']    = ('ARC-III','Detector controller')
+    fits_header['ROWS']     = (1024,'array rows')
+    fits_header['COLS']     = (1024,'array cols')
+    fits_header['DATMGVER'] = __version__
+
+
+    fits_header.insert(4, ('COMMENT', "FITS (Flexible Image Transport System) format is defined in 'Astronomy"))
+    fits_header.insert(5, ('COMMENT', "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"))
+
+
+    # Create the Primary HDU with the header
+    data = np.zeros((1,1), dtype=np.int16)
+    pdu = fits.PrimaryHDU(header=fits_header, data=data)
     
-    # Insert comments after EXTEND
-    position = pdu.header.index('EXTEND')
-    pdu.header.insert(position + 1, ('COMMENT', "FITS (Flexible Image Transport System) format is defined in 'Astronomy"))
-    pdu.header.insert(position + 2, ('COMMENT', "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"))
 
     
+    for card in fits_header.cards:
+        print(card)
+
+
+    # Create an HDUList and add the Primary HDU
     hdulist = fits.HDUList([pdu])
+    
+    '''
 
-    if singleq:
-        pdu.header['SINGLEQ'] = True
-
+    hdulist, lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname = define_hdu_list(header, data_label, dc_commit, lib_commit)
 
  #   if 'FRAMES' in header:
     total_frames = lnrs * 2
@@ -385,26 +408,11 @@ def create_hdulist(header, raw_path):
             coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)
 
 
+
         hdulist.append(fits.ImageHDU(coadd_data, fits.Header({'EXTNAME': 'ENG', 'EXTVER': 1})))
     else:
         save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, p_mode == 'SEP')
 
-
-#    else:
-#        raw_data_path = f'{raw_path}.raw'
-#        raw_data = np.memmap(raw_data_path, dtype=np.uint16).reshape((raw_rows, raw_cols))
-
-#    hdulist = fits.HDUList([pdu])
-
-#    if p_mode == 'SEP':
-#        include_eng = True
-#    else:
-#        include_eng = False
-        
-#    save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, include_eng)
-
-
-    # hdulist = fits.HDUList([pdu, procimage])
     if 'TIME_SAMPLES' in header:
         hdulist.append(extract_timing(header['TIME_SAMPLES']))
     return fname, hdulist
@@ -429,7 +437,7 @@ class DataProcessor:
 
     
 
-    def process_file(self, fname, datalabel = None):
+    def process_file(self, fname, data_label = None, dc_commit = None, lib_commit = None):
         # First, move the files to processing
         dm = self.datamov
 
@@ -442,10 +450,7 @@ class DataProcessor:
 
         # Create an output file and start populating it
 
-            fitsname, hdulist = create_hdulist(header, rpath) 
-
-            if datalabel:
-                fitsname = datalabel
+            fitsname, hdulist = create_hdulist(header, rpath, data_label, dc_commit, lib_commit) 
 
             fits_path = dm.processing.full_path(fitsname)
             if os.access(fits_path, os.F_OK):

@@ -1,0 +1,82 @@
+from astropy.io import fits
+import numpy as np
+import re
+
+def define_hdu_list(header, data_label = None, dc_commit = None, lib_commit = None):
+    try:
+        pdu = header['PDU']
+        datalabel = pdu['DATALABE']
+        raw_cols = int(pdu['RAW_COLS'])
+        raw_rows = int(pdu['RAW_ROWS'])
+        dateobs = pdu.get('DATEOBS','')
+        utstart = pdu['UTSTART']
+        utend = pdu['UTEND']
+        lnrs = int(pdu['LNRS'])
+        ndavgs = int(pdu['NDAVGS'])
+        exptime = float(pdu['EXPTIME'])
+        reqtime = float(pdu['EXPREQ'])
+        min_int = float(pdu['MIN_INT'])
+        singleq = pdu.get('1Q', False)
+
+        temp  = header['TEMPERATURE']
+        temp1 = float(temp['TEMP IN1'])
+        temp2 = float(temp['TEMP IN2'])
+
+        voltage = float(pdu['DETBIAS'])
+
+        p_mode = pdu['P_MODE']
+
+        coadds = pdu['COADDS']
+
+        dcver = pdu['DCVER']
+
+        fname = re.sub(r'[^\w]', '', f"{dateobs}{utstart}") + ".fits"
+
+    except KeyError as e:
+        raise KeyError(f"Processing {fname}: missing keyword {e.args[0]}")
+
+    # Create the header
+    fits_header = fits.Header()
+
+    # Standard keywords with the correct boolean and integer values and comments
+    fits_header['SIMPLE']   = (True, 'file does conform to FITS standard')
+    fits_header['BITPIX']   = (16, 'number of bits per data pixel')
+    fits_header['NAXIS']    = (0, 'number of data axes')
+    fits_header['EXTEND']   = (True, 'FITS dataset may contain extensions')
+    fits_header['INSTRUME'] = ('GNIRS', 'Instrument used to acquire data')
+
+    # Adding other header keywords related to your data
+    fits_header['DATALAB']  = (data_label, 'DHS Data Label')
+    fits_header['DATE-OBS'] = (dateobs, 'UT Date of observation (YYYY-MM-DD)')
+    fits_header['TIME-OBS'] = (utstart, 'Time of observation')
+    fits_header['UTSTART']  = (utstart, 'UT at observation start')
+    fits_header['UTEND']    = (utend, 'UT at observation end')
+    fits_header['LNRS']     = (lnrs, '# of fowler samples')
+    fits_header['NDAVGS']   = (ndavgs, '# of digital averages')
+    fits_header['EXPTIME']  = (exptime, 'integration time (seconds)')
+    fits_header['MIN_INT']  = (min_int, 'minimum integration time (seconds)')
+    fits_header['DETTEMP']  = (temp1, 'detector temperature (K)')
+    fits_header['DETBIAS']  = (voltage,'Achieved Detector Bias')
+    fits_header['P_MODE']   = (p_mode, 'proc mode (stare, sep)')
+    fits_header['DCVER1']    = (dcver, 'library build tag')
+    fits_header['DCVER2']    = (lib_commit, 'library git commit')
+    fits_header['DCVER3']    = (dc_commit, 'DC git commit')
+    fits_header['COADDS']   = (coadds, '# of coadded images')
+    fits_header['CONID']    = ('ARC-III','Detector controller')
+    fits_header['ROWS']     = (1024,'array rows')
+    fits_header['COLS']     = (1024,'array cols')
+
+
+    fits_header.insert(4, ('COMMENT', "FITS (Flexible Image Transport System) format is defined in 'Astronomy"))
+    fits_header.insert(5, ('COMMENT', "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"))
+
+
+    # Create the Primary HDU with the header
+    data = np.zeros((1,1), dtype=np.int16)
+    pdu = fits.PrimaryHDU(header=fits_header, data=data)
+    
+    for card in fits_header.cards:
+        print(card)
+
+    return fits.HDUList([pdu]), lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname
+
