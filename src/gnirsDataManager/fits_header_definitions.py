@@ -57,6 +57,7 @@ def define_hdu_list(header, data_label = None, dc_commit = None, lib_commit = No
     fits_header['NDAVGS']   = (ndavgs, '# of digital averages')
     fits_header['EXPTIME']  = (exptime, 'integration time (seconds)')
     fits_header['MIN_INT']  = (min_int, 'minimum integration time (seconds)')
+    fits_header['DSRDTEMP']  = (temp1, 'desired detector temperature (K)')
     fits_header['DETTEMP']  = (temp1, 'detector temperature (K)')
     fits_header['DETBIAS']  = (voltage,'Achieved Detector Bias')
     fits_header['P_MODE']   = (p_mode, 'proc mode (stare, sep)')
