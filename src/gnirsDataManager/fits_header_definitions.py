@@ -75,6 +75,19 @@ def define_hdu_list(header, data_label = None, dc_commit = None, lib_commit = No
     fits_header.insert(4, ('COMMENT', "FITS (Flexible Image Transport System) format is defined in 'Astronomy"))
     fits_header.insert(5, ('COMMENT', "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"))
 
+    extenstion_header = fits.Header({
+        'EXTNAME': 'SCI',
+        'EXTVER': 1,
+        'DROINUM': 0,
+        'LOWROW': 0,
+        'LOWCOL': 0,
+        'HIROW': 1023,
+        'HICOL': 1023,
+        'FRMNAME': f'{data_label}:0',
+        'FRAMEID': '0',
+        'DATATYPE': ' '
+    })
+
 
     # Create the Primary HDU with the header
     data = np.zeros((1,1), dtype=np.int16)
@@ -86,5 +99,8 @@ def define_hdu_list(header, data_label = None, dc_commit = None, lib_commit = No
     if data_label:
         fname = data_label
 
-    return fits.HDUList([pdu]), lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname
+                # Create the header with additional keywords
+
+
+    return fits.HDUList([pdu]), extenstion_header, lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname
 

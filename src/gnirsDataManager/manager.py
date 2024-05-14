@@ -239,21 +239,34 @@ def process_image(data, lnrs, ndavgs):
         return processor.unscramble(subtracted.mean(axis=0))
     
 
-def save_processed_image(data, lrns, ndavgs, exptime, hdulist, include_eng):
+def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, include_eng):
+
+    extname = 'ENG' if include_eng else 'SCI'
+    ext_header['EXTNAME'] = extname
+
     if ndavgs == 1:
         processor = Processor(shift_delta=-8, full_frame=True)
         raw_reshaped = data.reshape((lrns * 2, 512, 2048))
         reshaped = raw_reshaped.astype(np.float32)
         subtracted = reshaped[lrns:] - reshaped[:lrns]
-        # First, save the final product
 
-        hdulist.append(fits.ImageHDU(processor.unscramble(subtracted.mean(axis=0)), fits.Header({'EXTNAME': 'ENG', 'EXTVER': 1})))
+
+        # Processed data to be saved in the primary HDU
+        primary_data = processor.unscramble(subtracted.mean(axis=0))
+
+        # Update the primary HDU with the processed data
+        hdulist[0].data = primary_data
+
+        # First, save the final product
+        hdulist.append(fits.ImageHDU(primary_data, ext_header))
 
         if include_eng == True:
               for fs_n in range(lrns):
-                   hdulist.append(fits.ImageHDU(processor.unscramble(raw_reshaped[fs_n]), fits.Header({'EXTNAME': f'R{fs_n+1:02}', 'EXTVER': 1})))
+                   ext_header['EXTNAME'] = f'R{fs_n+1:02}'
+                   hdulist.append(fits.ImageHDU(processor.unscramble(raw_reshaped[fs_n]), ext_header))
               for index, fs_n in enumerate(range(lrns, lrns*2)):
-                   hdulist.append(fits.ImageHDU(processor.unscramble(raw_reshaped[fs_n]), fits.Header({'EXTNAME': f'S{index+1:02}', 'EXTVER': 1})))
+                   ext_header['EXTNAME'] = f'S{index+1:02}'
+                   hdulist.append(fits.ImageHDU(processor.unscramble(raw_reshaped[fs_n]), ext_header))
     else:
         processor = Processor(shift_delta=0, full_frame=True)
         raw_reshaped = data.reshape((lrns * 2, 512, 2048 * ndavgs))
@@ -261,8 +274,16 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, include_eng):
         averaged_samples = processor.ads_average(reshaped, ads_per_fowler=ndavgs)
 
         subtracted = averaged_samples[lrns:] - averaged_samples[:lrns]
+
+
+        # Processed data to be saved in the primary HDU
+        primary_data = processor.unscramble(subtracted.mean(axis=0))
+
+        # Update the primary HDU with the processed data
+        hdulist[0].data = primary_data
+
         # First, save the final product
-        hdulist.append(fits.ImageHDU(processor.unscramble(subtracted.mean(axis=0)), fits.Header({'EXTNAME': 'ENG', 'EXTVER': 1})))
+        hdulist.append(fits.ImageHDU(primary_data, ext_header))
 
         if include_eng == True:
              # Separate the samples
@@ -271,17 +292,21 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, include_eng):
              cols_in_ads = (basic_cols + offsets).ravel()
              if lrns == 1:
                   for n, ads in enumerate([raw_reshaped[0][:,cols_in_ads + (32 * sample)] for sample in range(ndavgs)]):
-                       hdulist.append(fits.ImageHDU(processor.unscramble(ads), fits.Header({'EXTNAME': f'R01_{n+1}', 'EXTVER': 1})))
+                       ext_header['EXTNAME'] = f'R{fs_n+1:02}'
+                       hdulist.append(fits.ImageHDU(processor.unscramble(ads), ext_header))
                   for n, ads in enumerate([raw_reshaped[1][:,cols_in_ads + (32 * sample)] for sample in range(ndavgs)]):
-                       hdulist.append(fits.ImageHDU(processor.unscramble(ads), fits.Header({'EXTNAME': f'S01_{n+1}', 'EXTVER': 1})))
+                       ext_header['EXTNAME'] = f'S{index+1:02}'
+                       hdulist.append(fits.ImageHDU(processor.unscramble(ads), ext_header))
              else:
                   for fs_n in range(lrns):
                        for n, ads in enumerate([raw_reshaped[fs_n][:,cols_in_ads + (32 * sample)] for sample in range(ndavgs)]):
-                             hdulist.append(fits.ImageHDU(processor.unscramble(ads), fits.Header({'EXTNAME': f'R{fs_n+1:02}_{n+1}', 'EXTVER': 1})))
+                             ext_header['EXTNAME'] = f'R{fs_n+1:02}'
+                             hdulist.append(fits.ImageHDU(processor.unscramble(ads), ext_header))
                   for fs_n in range(lrns, lrns*2):
                        index = fs_n - lrns
                        for n, ads in enumerate([raw_reshaped[fs_n][:,cols_in_ads + (32 * sample)] for sample in range(ndavgs)]):
-                             hdulist.append(fits.ImageHDU(processor.unscramble(ads), fits.Header({'EXTNAME': f'S{index+1:02}_{n+1}', 'EXTVER': 1})))
+                             ext_header['EXTNAME'] = f'S{index+1:02}'
+                             hdulist.append(fits.ImageHDU(processor.unscramble(ads), ext_header))
 
 class TimingMeasurement:
     def __init__(self, name, value):
@@ -306,7 +331,7 @@ def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_co
     raw_name = os.path.basename(raw_path)
 
 
-    hdulist, lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname = define_hdu_list(header, data_label, dc_commit, lib_commit)
+    hdulist, ext_header, lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname = define_hdu_list(header, data_label, dc_commit, lib_commit)
 
  #   if 'FRAMES' in header:
     total_frames = lnrs * 2
@@ -323,11 +348,15 @@ def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_co
 
             coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)
 
+        # Update the primary HDU with the real coadded data
+        hdulist[0].data = coadd_data.astype(np.int16)  # Update primary HDU with real data
 
-
-        hdulist.append(fits.ImageHDU(coadd_data, fits.Header({'EXTNAME': 'ENG', 'EXTVER': 1})))
+        hdulist.append(fits.ImageHDU(coadd_data, ext_header))
     else:
-        save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, p_mode == 'SEP')
+        for n in range(total_frames):
+            loading[n,:] = np.fromfile(f'{raw_path}-0.frame.{n}', dtype=np.uint16)
+
+        save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, ext_header, p_mode == 'SEP')
 
     if 'TIME_SAMPLES' in header:
         hdulist.append(extract_timing(header['TIME_SAMPLES']))
