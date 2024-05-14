@@ -4,6 +4,8 @@ import re
 
 def define_hdu_list(header, data_label = None, dc_commit = None, lib_commit = None):
     try:
+
+        # extract raw header data
         pdu = header['PDU']
         datalabel = pdu['DATALABE']
         raw_cols = int(pdu['RAW_COLS'])
@@ -62,7 +64,9 @@ def define_hdu_list(header, data_label = None, dc_commit = None, lib_commit = No
     fits_header['DCVER2']    = (lib_commit, 'library git commit')
     fits_header['DCVER3']    = (dc_commit, 'DC git commit')
     fits_header['COADDS']   = (coadds, '# of coadded images')
-    fits_header['CONID']    = ('ARC-III','Detector controller')
+    fits_header['ARRAYID']   = ('SN7638228.1.2','ID # of array')
+    fits_header['ARRAYTYP']  = ('ALADDIN_III_1024','ALADDIN II or ALADDIN III')
+    fits_header['CONID']     = ('ARC-III','Detector controller')
     fits_header['ROWS']     = (1024,'array rows')
     fits_header['COLS']     = (1024,'array cols')
 
@@ -77,6 +81,9 @@ def define_hdu_list(header, data_label = None, dc_commit = None, lib_commit = No
     
     for card in fits_header.cards:
         print(card)
+
+    if data_label:
+        fname = data_label
 
     return fits.HDUList([pdu]), lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname
 
