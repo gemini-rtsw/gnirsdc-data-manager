@@ -90,8 +90,8 @@ def define_hdu_list(header, data_label = None, dc_commit = None, lib_commit = No
 
 
     # Create the Primary HDU with the header
-    data = np.zeros((1,1), dtype=np.int16)
-    pdu = fits.PrimaryHDU(header=fits_header, data=data)
+    #data = np.zeros((1,1), dtype=np.int16)
+    pdu = fits.PrimaryHDU(header=fits_header)#, data=data)
     
     for card in fits_header.cards:
         print(card)

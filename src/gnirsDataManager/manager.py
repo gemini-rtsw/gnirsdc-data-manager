@@ -255,10 +255,11 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
         primary_data = processor.unscramble(subtracted.mean(axis=0))
 
         # Update the primary HDU with the processed data
-        hdulist[0].data = primary_data
+        #hdulist[0].data = primary_data
 
         # First, save the final product
-        hdulist.append(fits.ImageHDU(primary_data, ext_header))
+        #hdulist.append(fits.ImageHDU(primary_data, ext_header))
+        hdulist.append(fits.ImageHDU(data=primary_data, header=ext_header))
 
         if include_eng == True:
               for fs_n in range(lrns):
@@ -280,10 +281,12 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
         primary_data = processor.unscramble(subtracted.mean(axis=0))
 
         # Update the primary HDU with the processed data
-        hdulist[0].data = primary_data
+        #hdulist[0].data = primary_data
 
         # First, save the final product
-        hdulist.append(fits.ImageHDU(primary_data, ext_header))
+        #hdulist.append(fits.ImageHDU(primary_data, ext_header))
+        # Append the processed data to the HDU list as an extension with the specific ext_header
+        hdulist.append(fits.ImageHDU(data=primary_data, header=ext_header))
 
         if include_eng == True:
              # Separate the samples
@@ -349,9 +352,9 @@ def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_co
             coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)
 
         # Update the primary HDU with the real coadded data
-        hdulist[0].data = coadd_data.astype(np.int16)  # Update primary HDU with real data
+        #hdulist[0].data = coadd_data.astype(np.int16)  # Update primary HDU with real data
 
-        hdulist.append(fits.ImageHDU(coadd_data, ext_header))
+        hdulist.append(fits.ImageHDU(coadd_data, header = ext_header))
     else:
         for n in range(total_frames):
             loading[n,:] = np.fromfile(f'{raw_path}-0.frame.{n}', dtype=np.uint16)
