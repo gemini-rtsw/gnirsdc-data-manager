@@ -90,6 +90,27 @@ Kernel on gn-irdc-lp1 and gn-irdc-lp3
 4.18.0-348.20.1.el8_5.x86_64
 ```
 
+## Docker Login
+
+Docker login is required to pull the images that the DC and DM screens are deployed in.
+
+GitLab Docker login with Personal Access Token:
+
+1. Login to GitLab website.
+2. Go to **Settings**.
+3. Navigate to **Access Tokens**.
+4. Create a new token with `read_registry` and `read_repository` scopes.
+5. Copy the personal access token.
+6. Login to Docker with the following command, replacing `your-gitlab-username` and `your-personal-access-token` with your details:
+   ```bash
+   docker login registry.gitlab.com -u your-gitlab-username -p your-personal-access-token
+
+For example:
+```bash 
+docker login registry.gitlab.com -u johndoe -p glpat-xxxxxxxxxxxxxx
+```
+
+
 Future notes:
 IRDC Documentation Notes
 Driver documentation
