@@ -56,6 +56,8 @@ Example:
 scp <user>@<server>:/readout_data/fits/* .
 ```
 
+
+
 ## Scripts
 
 1. `dc-start.sh`
