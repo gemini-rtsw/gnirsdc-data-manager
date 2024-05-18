@@ -53,4 +53,4 @@ pages:
     paths:
       - public
   only:
-    - irdcioc
+    - master
