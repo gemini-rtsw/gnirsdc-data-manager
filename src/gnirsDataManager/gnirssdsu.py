@@ -556,7 +556,7 @@ class GnirsCADCARController(PVGroup):
 
         await self.observe.DIR.write(CADDirective.MARK)
 
-        await self.labelTimeStamp.write(0) # turn off time stamps - seqexec will handle the name
+        #await self.labelTimeStamp.write(0) # turn off time stamps - seqexec will handle the name
         await self.dataLabel.write(value)
 
 
