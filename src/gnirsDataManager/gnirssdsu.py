@@ -35,7 +35,8 @@ def DebugMode(value):
 # Function to get the current timestamp
 def get_current_timestamp():
     now = datetime.now()
-    return now.strftime("%Y%m%d%H%M%S") + f"{now.microsecond // 1000:03d}"
+    milliseconds = int(time.time() * 1000) % 1000
+    return now.strftime("%Y%m%d%H%M%S") + f"{milliseconds:03d}"
 
 
 class GnirsCAD(CADRecord):
@@ -556,7 +557,7 @@ class GnirsCADCARController(PVGroup):
 
         await self.observe.DIR.write(CADDirective.MARK)
 
-        #await self.labelTimeStamp.write(0) # turn off time stamps - seqexec will handle the name
+        await self.labelTimeStamp.write(0) # turn off time stamps - seqexec will handle the name
         await self.dataLabel.write(value)
 
 
