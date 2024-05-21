@@ -192,14 +192,13 @@ class ObserveCAD(GnirsCAD):
 
     async def start(self):
 
-        # Add the timestamp to the observeA value if labelTimeStamp is greater than 0
-        if self.p.labelTimeStamp.value > 0:
-            timestamp = get_current_timestamp()
-            await self.p.observeA.write(f"{timestamp}")
-
         if (DEBUG_MODE):
             print("DEBUG Observe")
 
+            # Add the timestamp to the observeA value if labelTimeStamp is greater than 0
+            if self.p.labelTimeStamp.value > 0:
+                timestamp = get_current_timestamp()
+                await self.p.observeA.write(f"{timestamp}")
 
             self.giapi.observePrep(self.p.observeA.value)
             self.giapi.observeStartAcq(self.p.observeA.value)
@@ -243,7 +242,12 @@ class ObserveCAD(GnirsCAD):
                     self.p.sequence.value = 1
 
                 for i in range(self.p.sequence.value, 0, -1):   # reverse and end at i = 1
-                    
+
+                    # Add the timestamp to the observeA value if labelTimeStamp is greater than 0
+                    if self.p.labelTimeStamp.value > 0:
+                        timestamp = get_current_timestamp()
+                        await self.p.observeA.write(f"{timestamp}")
+
                     #begin readout
                     await self.p.rdout.write(1)
 
@@ -542,7 +546,6 @@ class GnirsCADCARController(PVGroup):
 
 
     activate       = pvproperty(value=1, dtype=caproto.ChannelType.ENUM, enum_strings=['Deactivate', 'Activate'], name="dc:activate", doc = "")
-    #integTimeVAL   = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "")
 
 
 
@@ -557,7 +560,7 @@ class GnirsCADCARController(PVGroup):
 
         await self.observe.DIR.write(CADDirective.MARK)
 
-        await self.labelTimeStamp.write(0) # turn off time stamps - seqexec will handle the name
+        #await self.labelTimeStamp.write(0) # turn off time stamps - seqexec will handle the name
         await self.dataLabel.write(value)
 
 
