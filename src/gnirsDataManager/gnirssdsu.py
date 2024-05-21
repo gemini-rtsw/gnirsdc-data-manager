@@ -16,6 +16,7 @@ from multiprocessing import Process, Queue
 import time
 
 import os, shutil, glob
+from datetime import datetime
 
 from libgnirsioc import controllerInterface
 from libgnirsioc import controllerInterfaceDebug
@@ -31,7 +32,10 @@ def DebugMode(value):
     print(f"Value: {DEBUG_MODE}")
 
 
-
+# Function to get the current timestamp
+def get_current_timestamp():
+    now = datetime.now()
+    return now.strftime("%Y%m%d%H%M%S") + f"{now.microsecond // 1000:03d}"
 
 
 class GnirsCAD(CADRecord):
@@ -187,6 +191,11 @@ class ObserveCAD(GnirsCAD):
 
     async def start(self):
 
+        # Add the timestamp to the observeA value if labelTimeStamp is greater than 0
+        if self.p.labelTimeStamp.value > 0:
+            timestamp = get_current_timestamp()
+            await self.p.observeA.write(f"{timestamp}")
+
         if (DEBUG_MODE):
             print("DEBUG Observe")
 
@@ -223,6 +232,7 @@ class ObserveCAD(GnirsCAD):
         elif (self.controller == None):
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not Initialized")
+
             return False
         else:
 
@@ -249,15 +259,13 @@ class ObserveCAD(GnirsCAD):
 
                 await self.MESS.write("Observe CAD Completed Successfully")
                 return True
-            
-
+        
             else:
                 await self.logMessage(f'Readout in progress')
                 await self.MESS.write("Observe Failure - Readout in Progress")
                 return False
-                
-
-   
+            
+            
 
 
     async def start_async_exposure(self):
@@ -515,11 +523,11 @@ class GnirsCADCARController(PVGroup):
     obsepoch       = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:obsepoch", doc = "")
     setWcsVALA     = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.VALA", doc = "")
 
-    obsSetupVALC   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:obsSetup.VALC", doc = "")
-    obsSetupVALD   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:obsSetup.VALD", doc = "")
-    obsSetupVALE   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:obsSetup.VALE", doc = "")
+    obsSetupVALC   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name=  "dc:obsSetup.VALC", doc = "")
+    obsSetupVALD   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name=  "dc:obsSetup.VALD", doc = "")
+    obsSetupVALE   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name=  "dc:obsSetup.VALE", doc = "")
 
-    dhsConnected   = pvproperty(value=1, dtype=caproto.ChannelType.LONG, name="sad:dc:dhsConnected", doc = "")
+    dhsConnected   = pvproperty(value=1, dtype=caproto.ChannelType.LONG, name=  "sad:dc:dhsConnected", doc = "")
     minIntVAL      = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:minInt.VAL", doc = "")
     C1Tmp          = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:C1Tmp", doc = "")
 
@@ -529,6 +537,7 @@ class GnirsCADCARController(PVGroup):
     acq            = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="sad:dc:acq", doc = "")
     rdout           = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="sad:dc:rdout", doc = "Reading out") 
 
+    labelTimeStamp = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:labelTimeStamp", doc = "add timestamp to file label") 
 
 
     activate       = pvproperty(value=1, dtype=caproto.ChannelType.ENUM, enum_strings=['Deactivate', 'Activate'], name="dc:activate", doc = "")
@@ -544,7 +553,10 @@ class GnirsCADCARController(PVGroup):
 
         ## obsSetupA has a forward link to observeCAD to mark it so it will process
         # seqexec never sets observe CAD DIR to MARK so it is done manually here
+
         await self.observe.DIR.write(CADDirective.MARK)
+
+        await self.labelTimeStamp.write(0) # turn off time stamps - seqexec will handle the name
         await self.dataLabel.write(value)
 
 
