@@ -207,11 +207,6 @@ class ObserveCAD(GnirsCAD):
             self.giapi.observeEndReadout(self.p.observeA.value)
             self.giapi.observeStartWrite(self.p.observeA.value)
 
-            #copy debug fits
-            #os.makedirs('/readout_data/fits/', exist_ok=True)
-            #fullname = f"/readout_data/fits/{self.p.observeA.value}"
-            #shutil.copy('../../eng_readout.fits', fullname)
-
             #copy raw data
             print("copy raw to new")
             source_dir = '../../raw_data/'
@@ -226,6 +221,7 @@ class ObserveCAD(GnirsCAD):
 
 
             self.giapi.observeEndWrite(self.p.observeA.value)
+
             return True
 
 
@@ -239,7 +235,7 @@ class ObserveCAD(GnirsCAD):
             if (int(self.p.rdout.value) == 0):
 
                 if self.p.sequence.value < 1:
-                    self.p.sequence.value = 1
+                    await self.p.sequence.write(1)
 
                 for i in range(self.p.sequence.value, 0, -1):   # reverse and end at i = 1
 
