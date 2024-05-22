@@ -92,6 +92,12 @@ Kernel on gn-irdc-lp1 and gn-irdc-lp3
 4.18.0-348.20.1.el8_5.x86_64
 ```
 
+The driver code and installation instruction are in this repository:
+
+```bash 
+https://gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirs-pci-driver
+```
+
 ## Docker Login
 
 Docker login is required to pull the images that the DC and DM screens are deployed in.
