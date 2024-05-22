@@ -169,7 +169,7 @@ class DCConfigCAD(GnirsCAD):
             await self.MESS.write("Controller not Initialized")
             return False
         else:
-            self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.coaddsVAL.value)
+            self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.coaddsVAL.value, self.dropReadoutsNum.value)
             #await self.logMessage(f"Config lnr: {self.p.lnrNum.value} adc: {self.p.digitalAvgs.value} exp: {self.p.exposureTime.value} coadds: {self.p.coaddsVAL.value}")
             await self.MESS.write("Configuration Set Successfully")
             return True
@@ -434,9 +434,24 @@ class GnirsCADCARController(PVGroup):
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else:
-            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value))
+            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value), self.dropReadoutsNum.value)
             await self.parent.logMessage(f"LNR: {value}")
     #------ fowlers - lnr -------------------
+
+
+    #------ readouts to drop -------------------
+    dropReadoutsNum         = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="dc:dropReadoutsNum", doc = "Low Noise Reads") 
+    @dropReadoutsNum.putter
+    async def dropReadoutsNum(self, instance, value):
+
+        if (self.sdsuController == None):
+            await self.parent.logMessage(f"Controller not initialized")
+        else:
+            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value), self.dropReadoutsNum.value)
+            await self.parent.logMessage(f"Drop Readouts: {value}")
+    #------ readouts to drop -------------------
+
+
 
     #-------------- exposureTime -------------------
     exposureTime    = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "Exposure Time") 
@@ -445,7 +460,7 @@ class GnirsCADCARController(PVGroup):
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else: 
-            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, value, int(self.coaddsVAL.value))
+            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, value, int(self.coaddsVAL.value), self.dropReadoutsNum.value)
             await self.parent.logMessage(f"Exposure Time: {value}")
     #-------------- exposureTime -------------------
 
@@ -465,7 +480,7 @@ class GnirsCADCARController(PVGroup):
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else: 
-            self.sdsuController.setExposure(self.lnrNum.value, value, self.exposureTime.value, int(self.coaddsVAL.value))
+            self.sdsuController.setExposure(self.lnrNum.value, value, self.exposureTime.value, int(self.coaddsVAL.value), self.dropReadoutsNum.value)
             await self.parent.logMessage(f"ADC: {value}")
     #-------------- digitalAvgs -------------------
 
@@ -480,7 +495,7 @@ class GnirsCADCARController(PVGroup):
             await self.parent.logMessage(f"Controller not initialized")
         else:
             await self.obsSetupVALE.write(value)             
-            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(value))
+            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(value), self.dropReadoutsNum.value)
             await self.parent.logMessage(f"Coadds: {value}")
     #-------------- coadds -------------------
 
