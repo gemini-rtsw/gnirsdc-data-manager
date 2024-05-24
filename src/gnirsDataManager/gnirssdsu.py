@@ -66,7 +66,7 @@ class InitCAD(GnirsCAD):
 
 class BiasCAD(GnirsCAD):
     async def start(self):
-        if (self.controller == None):
+        if (self.controller == None and DEBUG_MODE == False):
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
             return False
@@ -95,7 +95,7 @@ class BiasCAD(GnirsCAD):
 
 class TDLCAD(GnirsCAD):
     async def start(self):
-        if (self.controller == None):
+        if (self.controller == None and DEBUG_MODE == False):
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
             return False
@@ -164,9 +164,9 @@ class InitSDSUCAD(GnirsCAD):
 
 class DCConfigCAD(GnirsCAD):
     async def start(self):
-        if (self.controller == None):
+        if (self.controller == None and DEBUG_MODE == False):
             await self.logMessage(f"Controller not initialized")
-            await self.MESS.write("Controller not Initialized")
+            await self.MESS.write("Controller not initialized")
             return False
         else:
             self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.coaddsVAL.value, self.dropReadoutsNum.value)
@@ -177,9 +177,9 @@ class DCConfigCAD(GnirsCAD):
 
 class AbortCAD(GnirsCAD):
     async def start(self):
-        if (self.controller == None):
+        if (self.controller == None and DEBUG_MODE == False):
             await self.logMessage(f"Controller not initialized")
-            await self.MESS.write("Controller not Initialized")
+            await self.MESS.write("Controller not initialized")
             return False
         else:
             self.controller.abortExposure()
@@ -191,7 +191,7 @@ class AbortCAD(GnirsCAD):
 class ObserveCAD(GnirsCAD):
 
     async def start(self):
-
+        '''
         if (DEBUG_MODE):
             print("DEBUG Observe")
 
@@ -224,10 +224,10 @@ class ObserveCAD(GnirsCAD):
 
             return True
 
-
-        elif (self.controller == None):
+        '''
+        if (self.controller == None and DEBUG_MODE == False):
             await self.logMessage(f"Controller not initialized")
-            await self.MESS.write("Controller not Initialized")
+            await self.MESS.write("Controller not initialized")
 
             return False
         else:
@@ -289,7 +289,6 @@ class ObserveCAD(GnirsCAD):
             self.giapi.observeStartReadout(self.p.observeA.value)
 
             await self.logMessage(f'sending start readout to SDSU')
-
 
         # readout SDSU
         self.controller.startExposure(self.p.detectorTemp1.value, self.p.detectorTemp1.value, self.p.parent.include_eng.value)	
@@ -434,20 +433,20 @@ class GnirsCADCARController(PVGroup):
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else:
-            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value), self.dropReadoutsNum.value)
+            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value), int(self.dropReadoutsNum.value))
             await self.parent.logMessage(f"LNR: {value}")
     #------ fowlers - lnr -------------------
 
 
     #------ readouts to drop -------------------
-    dropReadoutsNum         = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="dc:dropReadoutsNum", doc = "Low Noise Reads") 
+    dropReadoutsNum         = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="dc:dropReadoutsNum", doc = "Drop readouts") 
     @dropReadoutsNum.putter
     async def dropReadoutsNum(self, instance, value):
 
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else:
-            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value), self.dropReadoutsNum.value)
+            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value), int(value))
             await self.parent.logMessage(f"Drop Readouts: {value}")
     #------ readouts to drop -------------------
 
@@ -460,7 +459,7 @@ class GnirsCADCARController(PVGroup):
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else: 
-            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, value, int(self.coaddsVAL.value), self.dropReadoutsNum.value)
+            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, value, int(self.coaddsVAL.value), int(self.dropReadoutsNum.value))
             await self.parent.logMessage(f"Exposure Time: {value}")
     #-------------- exposureTime -------------------
 
@@ -480,7 +479,7 @@ class GnirsCADCARController(PVGroup):
         if (self.sdsuController == None):
             await self.parent.logMessage(f"Controller not initialized")
         else: 
-            self.sdsuController.setExposure(self.lnrNum.value, value, self.exposureTime.value, int(self.coaddsVAL.value), self.dropReadoutsNum.value)
+            self.sdsuController.setExposure(self.lnrNum.value, value, self.exposureTime.value, int(self.coaddsVAL.value), int(self.dropReadoutsNum.value))
             await self.parent.logMessage(f"ADC: {value}")
     #-------------- digitalAvgs -------------------
 
@@ -495,7 +494,7 @@ class GnirsCADCARController(PVGroup):
             await self.parent.logMessage(f"Controller not initialized")
         else:
             await self.obsSetupVALE.write(value)             
-            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(value), self.dropReadoutsNum.value)
+            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(value), int(self.dropReadoutsNum.value))
             await self.parent.logMessage(f"Coadds: {value}")
     #-------------- coadds -------------------
 
