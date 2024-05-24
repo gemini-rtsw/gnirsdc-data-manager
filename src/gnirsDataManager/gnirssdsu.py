@@ -20,6 +20,7 @@ from datetime import datetime
 
 from libgnirsioc import controllerInterface
 from libgnirsioc import controllerInterfaceDebug
+from libgnirsioc import setGlobalDebug
 
 
 
@@ -111,7 +112,7 @@ class InitSDSUCAD(GnirsCAD):
     async def start(self):
 
         try:
-
+            '''
             # deallocate controller just in case this is an additional init
             self.controller = None
 
@@ -143,7 +144,33 @@ class InitSDSUCAD(GnirsCAD):
                         await self.MESS.write("SDSU Initialization successful")
                         await self.p.sdsuState.write("INITIALIZED")
                         return True
-         
+                        '''
+                     # deallocate controller just in case this is an additional init
+            self.controller = None
+
+            await self.logMessage("SDSU Initializing")
+
+            firmware_full_path = os.path.join(os.getcwd(), "firmware/AladdinIII_SDSU_Firmware.lod")
+
+            print(f"LOD Path: {firmware_full_path}")
+            # Normalize the path to resolve any symbolic links, ".." or "." etc.
+            firmware_full_path = os.path.normpath(firmware_full_path)
+
+            setGlobalDebug(DEBUG_MODE)
+            self.controller = controllerInterface("/readout_data", firmware_full_path)
+
+            self.controller.setAladdinIII(True)
+
+            result = self.controller.testDataLink()
+
+            if result:
+                if self.controller.init():
+                    await self.logMessage("SDSU Initialization successful")
+                    await self.MESS.write("SDSU Initialization successful")
+                    await self.p.sdsuState.write("INITIALIZED")
+                    return True
+                    
+
         except Exception as e:
             error_message = str(e)
             await self.logMessage(f"An exception occurred: {error_message}")
