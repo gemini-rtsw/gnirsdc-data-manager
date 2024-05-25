@@ -1,6 +1,6 @@
 {
     "name": "Your Project Name",
-    "image": "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev",
+    "image": "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev:latest",
     "overrideCommand": false,
     "runArgs": [
         "-it",

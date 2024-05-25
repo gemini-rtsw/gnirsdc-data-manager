@@ -285,6 +285,9 @@ class ObserveCAD(GnirsCAD):
                     await self.p.sequenceLeft.write(i) # keep track of the remaining exposures
                                                        # end at 1 so it will do a single exposure if sequence is not manually set
 
+                # and turn off raw data
+                await self.p.parent.include_eng.write(0)
+                
                 await self.MESS.write("Observe CAD Completed Successfully")
                 return True
         
@@ -343,7 +346,7 @@ class ObserveCAD(GnirsCAD):
         # set write to fits archive by default don't want a test write to affect a seqexec readout
         await self.p.parent.archive_fits.write(1)
         # and turn off raw data
-        await self.p.parent.include_eng.write(0)
+        #await self.p.parent.include_eng.write(0)
 
 
         await self.p.rdout.write(0)
