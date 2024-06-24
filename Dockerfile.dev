@@ -19,6 +19,7 @@ ENV DEPLOY_TOKEN=${DEPLOY_TOKEN}
 
 # Update the system and install necessary packages
 RUN dnf update -y && \
+    dnf remove -y libcurl-minimal && \
     dnf install -y procps-ng git curl libcurl python3-pip && \
     dnf clean all
 
