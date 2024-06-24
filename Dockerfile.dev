@@ -14,11 +14,17 @@ FROM registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirs
 # Maintainer label
 LABEL maintainer="hawi.stecher@noirlab.edu"
 
+ARG DEPLOY_TOKEN
+ENV DEPLOY_TOKEN=${DEPLOY_TOKEN}
 
 RUN dnf install -y procps-ng git
 
-RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics inotify-simple scipy
+# Perform GitLab login using the token
+RUN git config --global credential.helper store && \
+    echo "https://oauth2:${DEPLOY_TOKEN}@gitlab.com" > ~/.git-credentials
 
+
+RUN python3 -m pip install caproto asyncinotify astropy docopt numpy pyepics inotify-simple scipy
 
 
 COPY ./pycadcar /pycadcar

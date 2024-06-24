@@ -9,7 +9,7 @@ LABEL maintainer="hawi.stecher@noirlab.edu"
 # 
 #   git clone git@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git
 #   git switch irdcioc
-#   docker build -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-base
+#   docker build -f Dockerfile.base -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-base .
 #   docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-base
 #
 # -- To build the runtime environment follow Dockerfile.linux_run 
@@ -23,6 +23,9 @@ RUN dnf -y install gcc-c++ make cmake libstdc++ libgcc python39-devel java-1.8.0
 RUN STDCXX=11 MAKE_NPROCS=12 python3 -m pip install cppyy==2.4.0 --verbose --no-binary=cppyy-cling
 RUN ln -s /usr/local/lib64/python3.9/site-packages/cppyy_backend/lib/libcppyy_backend.so /usr/local/lib/python3.9/site-packages/cppyy_backend/lib/libcppyy_backend.so
 
+RUN dnf install -y epel-release && \
+    dnf config-manager --set-enabled powertools  && \
+    dnf -y install json-c-devel libuuid-devel pybind11-devel gcc-c++ make git
 
 RUN python3.9 -m pip install caproto
 RUN python3.9 -m pip install asyncinotify
