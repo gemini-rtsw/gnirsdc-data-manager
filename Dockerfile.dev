@@ -54,7 +54,7 @@ WORKDIR /gnirsdc/giapi-glue-cc
 # and other environment variables relative to GIAPI_ROOT
 ENV GIAPI_ROOT=/gnirsdc/giapi-glue-cc \
     BOOST_ROOT=/gnirsdc/giapi-glue-cc/external/boost \
-    LD_LIBRARY_PATH=/gnirsdc/giapi-glue-cc/external/apr/lib:/gnirsdc/giapi-glue-cc/external/apr-util/lib:/gnirsdc/giapi-glue-cc/external/activemq-cpp/lib:/gnirsdc/giapi-glue-cc/external/log4cxx/lib:/gnirsdc/giapi-glue-cc/external/cppunit/lib:/gnirsdc/giapi-glue-cc/external/curlpp/lib:/gnirsdc/giapi-glue-cc/external/curlpp/lib64:/gnirsdc/giapi-glue-cc/external/libcurl/lib:/gnirsdc/giapi-glue-cc/external/libcurl/lib64:/gnirsdc/giapi-glue-cc/install/lib
+    LD_LIBRARY_PATH=/usr/lib64:/usr/lib:/gnirsdc/giapi-glue-cc/external/apr/lib:/gnirsdc/giapi-glue-cc/external/apr-util/lib:/gnirsdc/giapi-glue-cc/external/activemq-cpp/lib:/gnirsdc/giapi-glue-cc/external/log4cxx/lib:/gnirsdc/giapi-glue-cc/external/cppunit/lib:/gnirsdc/giapi-glue-cc/external/curlpp/lib:/gnirsdc/giapi-glue-cc/external/curlpp/lib64:/gnirsdc/giapi-glue-cc/external/libcurl/lib:/gnirsdc/giapi-glue-cc/external/libcurl/lib64:/gnirsdc/giapi-glue-cc/install/lib
 
 RUN echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
 
