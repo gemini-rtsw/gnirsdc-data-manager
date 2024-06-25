@@ -31,12 +31,15 @@ RUN dnf -y update && \
         java-1.8.0-openjdk \
         json-c-devel \
         libuuid-devel \
-        pybind11-devel \
-        git && \
+        git \
+        python3-pip && \
     dnf clean all
 
+# Install pybind11 using pip
+RUN python3.9 -m pip install pybind11
+
 # Install cppyy
-RUN STDCXX=11 MAKE_NPROCS=12 python3 -m pip install cppyy==2.4.0 --verbose --no-binary=cppyy-cling && \
+RUN STDCXX=11 MAKE_NPROCS=12 python3.9 -m pip install cppyy==2.4.0 --verbose --no-binary=cppyy-cling && \
     ln -s /usr/local/lib64/python3.9/site-packages/cppyy_backend/lib/libcppyy_backend.so /usr/local/lib/python3.9/site-packages/cppyy_backend/lib/libcppyy_backend.so
 
 # Install Python packages
@@ -44,8 +47,6 @@ RUN python3.9 -m pip install caproto asyncinotify
 
 # Create directory for readout data
 RUN mkdir -p /readout_data/new
-
-
 
 # Start bash
 CMD ["/bin/bash"]
