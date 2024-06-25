@@ -18,7 +18,6 @@ ARG DEPLOY_TOKEN
 ENV DEPLOY_TOKEN=${DEPLOY_TOKEN}
 
 # Update the system and install necessary packages
-# Update the system and install necessary packages
 RUN dnf update -y && \
     dnf install -y git python3-pip && \
     dnf clean all
@@ -29,17 +28,16 @@ RUN git config --global credential.helper store && \
 
 
 # Install Python packages
-RUN python3 -m pip install --no-cache-dir --upgrade pip && \
-    python3 -m pip install --no-cache-dir caproto asyncinotify astropy docopt numpy pyepics inotify-simple scipy
+RUN RUN python3.9 -m pip install --no-cache-dir caproto asyncinotify astropy docopt numpy pyepics inotify-simple scipy
 
 
 COPY ./pycadcar /pycadcar
 WORKDIR /pycadcar
-RUN python3 -m pip install .
+RUN python3.9 -m pip install .
 
 COPY ./gnirsdc-lib /gnirsdc-lib
 WORKDIR /gnirsdc-lib
-RUN python3 -m pip install .
+RUN python3.9 -m pip install .
 
 COPY ./gnirsdc /gnirsdc
 WORKDIR /gnirsdc
