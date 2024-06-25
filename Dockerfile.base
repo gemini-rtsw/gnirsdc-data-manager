@@ -35,6 +35,9 @@ RUN dnf -y update && \
         python3-pip && \
     dnf clean all
 
+# Ensure python3 points to python3.9
+RUN ln -sf /usr/bin/python3.9 /usr/bin/python3
+
 # Install pybind11 using pip
 RUN python3.9 -m pip install pybind11
 
