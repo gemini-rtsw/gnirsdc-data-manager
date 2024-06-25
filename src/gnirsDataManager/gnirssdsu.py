@@ -271,6 +271,10 @@ class ObserveCAD(GnirsCAD):
                         timestamp = get_current_timestamp()
                         await self.p.observeA.write(f"{timestamp}")
 
+                    # Add fits extension if not going to archive
+                    if (self.p.parent.archive_fits.value == 0):
+                        await self.p.observeA.write(f"{self.p.observeA.value}.fits")
+
                     #begin readout
                     await self.p.rdout.write(1)
 
@@ -287,7 +291,9 @@ class ObserveCAD(GnirsCAD):
 
                 # and turn off raw data
                 await self.p.parent.include_eng.write(0)
-                
+                # set write to fits archive by default don't want a test write to affect a seqexec readout
+                await self.p.parent.archive_fits.write(1)
+
                 await self.MESS.write("Observe CAD Completed Successfully")
                 return True
         
@@ -306,7 +312,8 @@ class ObserveCAD(GnirsCAD):
 
         # if sending to archive let GDS know
         if (self.p.parent.archive_fits.value):
-            await self.logMessage(f'DataLabel: {self.giapi.dataLabel}')
+            #await self.logMessage(f'DataLabel: {self.giapi.dataLabel}')
+            await self.logMessage(f'DataLabel: {self.p.observeA.value}')
         
             await self.logMessage(f'sending observe prep to GMP')
 
@@ -344,7 +351,7 @@ class ObserveCAD(GnirsCAD):
         await self.logMessage(f'ObserveCAD end')
                                          
         # set write to fits archive by default don't want a test write to affect a seqexec readout
-        await self.p.parent.archive_fits.write(1)
+        #await self.p.parent.archive_fits.write(1)
         # and turn off raw data
         #await self.p.parent.include_eng.write(0)
 
