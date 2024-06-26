@@ -361,8 +361,11 @@ def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_co
 
         save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, ext_header, p_mode == 'SEP')
 
-    if 'TIME_SAMPLES' in header:
-        hdulist.append(extract_timing(header['TIME_SAMPLES']))
+# this doesn't work after the read-up-the ramp mode was added - needs work
+#    if 'TIME_SAMPLES' in header:
+#        hdulist.append(extract_timing(header['TIME_SAMPLES']))
+
+
     return fname, hdulist
 
 def decode_header(datadir, fname):
