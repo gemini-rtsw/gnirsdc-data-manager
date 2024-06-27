@@ -317,18 +317,16 @@ class TimingMeasurement:
         self.ident = (series, int(num))
         self.value = float(value)
 
-def extract_timing(samples_header):
-    extracted = sorted([TimingMeasurement(key, value) for key, value in samples_header.items()],
-                       key=attrgetter('ident'))
-    max_name_length = max(len(tm.ident[0]) for tm in extracted)
-    header = fits.Header({
-        'EXTNAME': 'TIMING',
-        'EXTVER': 1
-        })
-    return fits.BinTableHDU(np.rec.array([(tm.ident[0], tm.ident[1], tm.value) for tm in extracted],
-                                             formats=f'a{max_name_length},int16,float32',
-                                             names='series,order,offset'),
-                            header=header)
+
+
+def extract_timing(samples_header, ext_header):
+    for key, value in samples_header.items():
+        # Shorten the keys to fit within 8 characters
+        short_key = key[:8]
+        # Format the values as decimal numbers
+        formatted_value = f'{value:.6f}'
+        ext_header[short_key] = formatted_value
+
 
 def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_commit = None): 
     raw_name = os.path.basename(raw_path)
@@ -336,7 +334,10 @@ def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_co
 
     hdulist, ext_header, lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname = define_hdu_list(header, data_label, dc_commit, lib_commit)
 
- #   if 'FRAMES' in header:
+    # Append timing_header to ext_header
+    if 'TIME_SAMPLES' in header:
+        extract_timing(header['TIME_SAMPLES'], ext_header)
+
     total_frames = lnrs * 2
     frame_rows = raw_rows // total_frames
     raw_data = np.empty((raw_rows * raw_cols,), dtype=np.uint16)
@@ -351,9 +352,6 @@ def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_co
 
             coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)
 
-        # Update the primary HDU with the real coadded data
-        #hdulist[0].data = coadd_data.astype(np.int16)  # Update primary HDU with real data
-
         hdulist.append(fits.ImageHDU(coadd_data, header = ext_header))
     else:
         for n in range(total_frames):
@@ -361,9 +359,11 @@ def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_co
 
         save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, ext_header, p_mode == 'SEP')
 
-    if 'TIME_SAMPLES' in header:
-        hdulist.append(extract_timing(header['TIME_SAMPLES']))
-
+    # Print all headers in the HDU list to verify
+    for i, hdu in enumerate(hdulist):
+        print(f"Header of HDU {i}:")
+        print(repr(hdu.header))
+        print()
 
     return fname, hdulist
 
