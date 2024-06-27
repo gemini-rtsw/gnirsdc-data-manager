@@ -28,8 +28,16 @@ RUN git config --global credential.helper store && \
 
 
 # Install Python packages
-RUN python3.9 -m pip install --no-cache-dir caproto asyncinotify astropy docopt numpy pyepics inotify-simple scipy
-
+# Install Python packages with specific versions
+RUN python3.9 -m pip install --no-cache-dir \
+    caproto \
+    asyncinotify \
+    astropy==5.1 \
+    docopt \
+    numpy==1.23.1 \
+    pyepics \
+    inotify-simple \
+    scipy
 
 COPY ./pycadcar /pycadcar
 WORKDIR /pycadcar
