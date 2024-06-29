@@ -321,11 +321,9 @@ class TimingMeasurement:
 
 def extract_timing(samples_header, ext_header):
     for key, value in samples_header.items():
-        # Shorten the keys to fit within 8 characters
-        short_key = key[:8]
         # Format the values as decimal numbers
         formatted_value = f'{value:.6f}'
-        ext_header[short_key] = formatted_value
+        ext_header[key] = formatted_value
 
 
 def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_commit = None): 
