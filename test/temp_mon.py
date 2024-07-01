@@ -1,28 +1,28 @@
 import socket
 
-def read_temperature():
+def check_lakeshore_status():
     try:
-        # Open a socket connection
+        # Create a socket connection to the WTI device on port 3302
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.connect(('10.1.2.60', 3302))
             
-            # Send command to read temperature
-            command = b'KRDG? 0\n'
+            # Send the *IDN? command to the Lakeshore 325 controller
+            command = b'*IDN?\n'
             sock.sendall(command)
             
-            # Read the response
+            # Receive the response
             response = sock.recv(1024).strip()
             
-            # Convert response to string and then to float
-            temperature_value = float(response.decode('utf-8'))
-            return temperature_value
+            # Convert response to string
+            response_str = response.decode('utf-8')
+            return response_str
     except Exception as e:
-        print(f"Failed to read temperature: {e}")
+        print(f"Failed to check status: {e}")
         return None
 
 if __name__ == "__main__":
-    temperature = read_temperature()
-    if temperature is not None:
-        print(f"Current Temperature: {temperature} K")
+    status = check_lakeshore_status()
+    if status:
+        print(f"Lakeshore Status: {status}")
     else:
-        print("Could not read temperature.")
+        print("Could not check status.")
