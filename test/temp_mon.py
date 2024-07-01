@@ -1,63 +1,60 @@
 import socket
+import time
 
-def check_lakeshore_status():
-    try:
-        # Create a socket connection to the WTI device on port 3302
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(('10.1.2.60', 3302))
-        
-        # Send the *IDN? command to the Lakeshore 325 controller
-        command = b'*IDN?\n'
-        sock.sendall(command)
-        
-        # Receive the response
-        response = sock.recv(1024).strip()
-        
-        # Convert response to string
-        response_str = response.decode('utf-8')
-        
-        # Close the socket connection
-        sock.close()
-        
-        return response_str
-    except Exception as e:
-        print(f"Failed to check status: {e}")
-        return None
+class Lakeshore325:
+    def __init__(self, ip, port):
+        self.ip = ip
+        self.port = port
+        self.sock = None
 
-def read_temperature():
-    try:
-        # Create a new socket connection to the WTI device on port 3302
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(('10.1.2.60', 3302))
-        
-        # Send the KRDG? 0 command to read temperature from sensor 0
-        command = b'KRDG? 0\n'
-        sock.sendall(command)
-        
-        # Receive the response
-        response = sock.recv(1024).strip()
-        
-        # Convert response to float
-        temperature_value = float(response.decode('utf-8'))
-        
-        # Close the socket connection
-        sock.close()
-        
-        return temperature_value
-    except Exception as e:
-        print(f"Failed to read temperature: {e}")
-        return None
+    def connect(self):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.connect((self.ip, self.port))
+
+    def disconnect(self):
+        if self.sock:
+            self.sock.close()
+            self.sock = None
+
+    def send_command(self, command):
+        try:
+            self.sock.sendall(command)
+            response = self.sock.recv(1024).strip()
+            return response.decode('utf-8')
+        except Exception as e:
+            print(f"Failed to send command: {e}")
+            return None
+
+    def check_status(self):
+        response = self.send_command(b'*IDN?\n')
+        return response
+
+    def read_temperature(self):
+        response = self.send_command(b'KRDG? 0\n')
+        try:
+            temperature_value = float(response)
+            return temperature_value
+        except ValueError:
+            print(f"Failed to convert response to float: {response}")
+            return None
 
 if __name__ == "__main__":
-    status = check_lakeshore_status()
-    if status:
-        print(f"Lakeshore Status: {status}")
-    else:
-        print("Could not check status.")
-    
-    # Close and reopen the socket connection for reading temperature
-    temperature = read_temperature()
+    lakeshore = Lakeshore325(ip='10.1.2.60', port=3302)
+    lakeshore.connect()
+
+    temperature = lakeshore.read_temperature()
     if temperature is not None:
         print(f"Current Temperature: {temperature} K")
     else:
         print("Could not read temperature.")
+
+    # Adding a short delay before checking status to ensure command completion
+    time.sleep(0.5)
+
+    status = lakeshore.check_status()
+    if status:
+        print(f"Lakeshore Status: {status}")
+    else:
+        print("Could not check status.")
+
+    lakeshore.disconnect()
