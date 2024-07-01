@@ -37,7 +37,8 @@ RUN python3.9 -m pip install --no-cache-dir \
     numpy==1.23.1 \
     pyepics \
     inotify-simple \
-    scipy
+    scipy \
+    serial
 
 COPY ./pycadcar /pycadcar
 WORKDIR /pycadcar
