@@ -7,17 +7,20 @@ def read_temperature():
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         
         # Connect to the WTI device
-        ssh.connect('10.1.2.60', username='super', password='your_password')  # Replace 'your_password' with the actual password
+        ssh.connect('10.1.2.60', username='super', password='super')  # Replace 'your_password' with the actual password
 
-        # Open a session
-        stdin, stdout, stderr = ssh.exec_command('connect 2')
-        stdin.write('KRDG? 0\n')
-        stdin.flush()
+        # Start an interactive shell session
+        session = ssh.invoke_shell()
 
-        # Read response
-        response = stdout.read().strip().decode('utf-8')
+        # Send the command to connect to port 2 (Lakeshore)
+        session.send('connect 2\n')
+        session.recv(1000)  # Receive initial connection response
 
-        # Close SSH connection
+        # Send the command to read temperature
+        session.send('KRDG? 0\n')
+        response = session.recv(1000).decode('utf-8').strip()
+
+        # Close the SSH connection
         ssh.close()
 
         # Convert response to float and return temperature
