@@ -252,7 +252,7 @@ class ObserveCAD(GnirsCAD):
             return True
 
         '''
-        if (self.controller == None and DEBUG_MODE == False):
+        if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
 
@@ -487,6 +487,18 @@ class GnirsCADCARController(PVGroup):
             await self.parent.logMessage(f"Drop Readouts: {value}")
     #------ readouts to drop -------------------
 
+
+    #------ read up the ramp -------------------
+    readUpTheRamp         = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="dc:readUpTheRamp", doc = "Read Up The Ramp Mode Bool") 
+    @readUpTheRamp.putter
+    async def readUpTheRamp(self, instance, value):
+
+        if (self.sdsuController == None):
+            await self.parent.logMessage(f"Controller not initialized")
+        else:
+            self.sdsuController.setReadUpTheRamp( value > 0)
+            await self.parent.logMessage(f"Read Up the Ramp Mode: {value > 0}")
+    #------ read up the ramp -------------------
 
 
     #-------------- exposureTime -------------------

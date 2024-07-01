@@ -119,6 +119,30 @@ docker login registry.gitlab.com -u johndoe -p glpat-xxxxxxxxxxxxxx
 ```
 
 
+
+
+# How to build gnirsdc-lib
+## VSCode
+## dev con
+## pip3.9 install . 
+### rm /usr/local/lib64/python3.9/site-packages/libgnirsioc.so 
+### etc
+## pipeline generated commit
+
+# libgnirsioc python cmd line use
+
+# how do run debug modes
+## collect_dataset.py
+
+
+# run dm screen
+## linux
+## mac
+### export DISPLAY=host.docker.internal:0
+### ./irdc_dm_server.sh
+
+# debug mode in vscode
+
 Future notes:
 IRDC Documentation Notes
 Driver documentation
