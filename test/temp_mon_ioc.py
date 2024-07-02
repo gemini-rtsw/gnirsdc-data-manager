@@ -36,7 +36,7 @@ class LakeshoreIOC(PVGroup):
             status = self.lakeshore.check_status()
             if status is not None:
                 print(f"Lakeshore Status: {status}")
-                await instance.write(status)
+                await instance.write(str(status))  # Ensure status is written as a string
             else:
                 print("Status reading returned None")
         except Exception as e:
