@@ -1,7 +1,6 @@
 # lakeshore_ioc.py
 import sys
 import os
-import time
 import caproto
 from caproto.server import pvproperty, PVGroup, ioc_arg_parser, run
 
@@ -15,7 +14,7 @@ lakeshore = Lakeshore325(ip='10.1.2.60', port=3302)
 class LakeshoreIOC(PVGroup):
     temperature = pvproperty(value=0.0, read_only=True)
 
-    @temperature.scan(period=1)  # Scan every 1 second
+    @temperature.scan(period=5)  # Scan every 5 seconds
     async def temperature(self, instance, async_lib):
         try:
             lakeshore.connect()
@@ -25,6 +24,8 @@ class LakeshoreIOC(PVGroup):
                 await instance.write(temp)
         except Exception as e:
             print(f"Error reading temperature: {e}")
+            if lakeshore.sock:
+                lakeshore.disconnect()
 
 if __name__ == "__main__":
     ioc_options, run_options = ioc_arg_parser(
