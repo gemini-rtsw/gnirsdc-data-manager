@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/
 from lakeshore import Lakeshore325
 
 class LakeshoreIOC(PVGroup):
-    temperature = pvproperty(value=0.0, read_only=True)
+    temperature = pvproperty(value=0.0, read_only=True, dtype=caproto.ChannelType.DOUBLE)
     status = pvproperty(value="", read_only=True, dtype=caproto.ChannelType.STRING)
 
     def __init__(self, *args, **kwargs):
