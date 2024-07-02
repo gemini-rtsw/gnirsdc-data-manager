@@ -22,6 +22,8 @@ class LakeshoreIOC(PVGroup):
             lakeshore.disconnect()
             if temp is not None:
                 await instance.write(temp)
+            else:
+                print("Temperature reading returned None")
         except Exception as e:
             print(f"Error reading temperature: {e}")
             if lakeshore.sock:

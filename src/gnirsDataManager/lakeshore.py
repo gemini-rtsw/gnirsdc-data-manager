@@ -8,19 +8,32 @@ class Lakeshore325:
         self.sock = None
 
     def connect(self):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((self.ip, self.port))
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.connect((self.ip, self.port))
+            print(f"Connected to Lakeshore 325 at {self.ip}:{self.port}")
+        except Exception as e:
+            print(f"Failed to connect to {self.ip}:{self.port} - {e}")
+            self.sock = None
 
     def disconnect(self):
         if self.sock:
-            self.sock.close()
+            try:
+                self.sock.close()
+                print("Disconnected from Lakeshore 325")
+            except Exception as e:
+                print(f"Failed to disconnect from {self.ip}:{self.port} - {e}")
             self.sock = None
 
     def send_command(self, command):
         try:
-            self.sock.sendall(command)
-            response = self.sock.recv(1024).strip()
-            return response.decode('utf-8')
+            if self.sock:
+                self.sock.sendall(command)
+                response = self.sock.recv(1024).strip()
+                return response.decode('utf-8')
+            else:
+                print("Socket is not connected")
+                return None
         except Exception as e:
             print(f"Failed to send command: {e}")
             return None
