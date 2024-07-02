@@ -10,12 +10,8 @@ from lakeshore import Lakeshore325
 
 class LakeshoreIOC(PVGroup):
     temperature = pvproperty(value=0.0, read_only=True, dtype=ChannelType.DOUBLE)
-    status = pvproperty(
-        value=' ' * 40,
-        read_only=True,
-        dtype=ChannelType.STRING,
-        max_length=40
-    )
+    status  = pvproperty(value=0, dtype=ChannelType.STRING)
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
