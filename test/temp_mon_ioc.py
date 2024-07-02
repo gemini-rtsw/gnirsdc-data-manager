@@ -10,7 +10,7 @@ from lakeshore import Lakeshore325
 
 class LakeshoreIOC(PVGroup):
     temperature = pvproperty(value=0.0, read_only=True, dtype=ChannelType.DOUBLE)
-    status = pvproperty(value='', read_only=True, dtype=ChannelType.STRING, max_length=50)
+    status = pvproperty(value='temp con not connected', read_only=True, dtype=ChannelType.STRING, max_length=50)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -29,6 +29,8 @@ class LakeshoreIOC(PVGroup):
         except Exception as e:
             print(f"Error reading temperature: {e}")
 
+
+'''
     @status.scan(period=60)  # Scan every 60 seconds
     async def status(self, instance, async_lib):
         try:
@@ -40,6 +42,7 @@ class LakeshoreIOC(PVGroup):
                 print("Status reading returned None")
         except Exception as e:
             print(f"Error reading status: {e}")
+'''
 
 if __name__ == "__main__":
     ioc_options, run_options = ioc_arg_parser(
