@@ -32,7 +32,7 @@ class Lakeshore325:
                 response = self.sock.recv(1024).strip()
                 return response.decode('utf-8')
             else:
-                print("Socket is not connected")
+                printf("Temperature controller is not connected: {self.ip} {self.port}")
                 return None
         except Exception as e:
             print(f"Failed to send command: {e}")

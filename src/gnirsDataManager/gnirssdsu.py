@@ -22,6 +22,9 @@ from libgnirsioc import controllerInterface
 from libgnirsioc import controllerInterfaceDebug
 from libgnirsioc import setGlobalDebug
 
+from lakeshore import Lakeshore325
+
+
 
 
 
@@ -218,40 +221,6 @@ class AbortCAD(GnirsCAD):
 class ObserveCAD(GnirsCAD):
 
     async def start(self):
-        '''
-        if (DEBUG_MODE):
-            print("DEBUG Observe")
-
-            # Add the timestamp to the observeA value if labelTimeStamp is greater than 0
-            if self.p.labelTimeStamp.value > 0:
-                timestamp = get_current_timestamp()
-                await self.p.observeA.write(f"{timestamp}")
-
-            self.giapi.observePrep(self.p.observeA.value)
-            self.giapi.observeStartAcq(self.p.observeA.value)
-            self.giapi.observeEndAcq(self.p.observeA.value)
-            self.giapi.observeStartReadout(self.p.observeA.value)
-            self.giapi.observeEndReadout(self.p.observeA.value)
-            self.giapi.observeStartWrite(self.p.observeA.value)
-
-            #copy raw data
-            print("copy raw to new")
-            source_dir = '../../raw_data/'
-            target_dir = '/readout_data/new/'
-
-            # Use glob to get all file paths in the source directory
-            files = glob.glob(source_dir + '*')
-
-            # Loop through all files and copy each to the target directory
-            for file in files:
-                shutil.copy(file, target_dir)
-
-
-            self.giapi.observeEndWrite(self.p.observeA.value)
-
-            return True
-
-        '''
         if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
@@ -434,6 +403,10 @@ class GnirsCADCARController(PVGroup):
         super().__init__(*args, **kwargs)
         print(f"Debug mode: {DEBUG_MODE}")
 
+
+        self.lakeshore = Lakeshore325(ip='10.1.2.60', port=3302)
+        self.lakeshore.connect()
+
         self.sdsuController = None
 
         # CAD commands connect to top level CAR record
@@ -546,6 +519,40 @@ class GnirsCADCARController(PVGroup):
             self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(value), int(self.dropReadoutsNum.value))
             await self.parent.logMessage(f"Coadds: {value}")
     #-------------- coadds -------------------
+
+
+
+    #-------------- Temp Monitor -------------------
+    temperature = pvproperty(value=0.0, read_only=True, dtype=caproto.ChannelType.DOUBLE)
+
+    @temperature.scan(period=5)  # Scan every 5 seconds
+    async def temperature(self, instance, async_lib):
+        try:
+            temp = self.lakeshore.read_temperature()
+            if temp is not None:
+                print(f"Temperature read: {temp} K")
+                await instance.write(temp)
+            else:
+                print("Temperature reading returned None")
+        except Exception as e:
+            print(f"Error reading temperature: {e}")
+
+    status  = pvproperty(value=0, dtype=caproto.ChannelType.STRING)    
+    @status.scan(period=60)  # Scan every 60 seconds
+    async def status(self, instance, async_lib):
+        try:
+            status = self.lakeshore.check_status()
+            if status is not None:
+                print(f"Lakeshore Status: {status}")
+                status_string = status[:40].ljust(40)
+                await instance.write(status_string)
+            else:
+                print("Status reading returned None")
+        except Exception as e:
+            print(f"Error reading status: {e}")
+    #-------------- Temp Monitor -------------------
+
+
 
     #------ DC configuration values --------
     sequence        = pvproperty(value=1, dtype=caproto.ChannelType.INT, name="dc:sequence", doc = "Sequence Count") 
