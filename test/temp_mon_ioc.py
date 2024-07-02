@@ -3,6 +3,7 @@ import sys
 import os
 from caproto.server import pvproperty, PVGroup, ioc_arg_parser, run
 from caproto import ChannelType
+import array
 
 # Add the ../src/gnirsDataManager/ directory to the system path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/gnirsDataManager')))
@@ -10,7 +11,12 @@ from lakeshore import Lakeshore325
 
 class LakeshoreIOC(PVGroup):
     temperature = pvproperty(value=0.0, read_only=True, dtype=ChannelType.DOUBLE)
-    status = pvproperty(value=" " * 50, read_only=True, dtype=ChannelType.STRING)  # Initialize with a string of spaces
+    status = pvproperty(
+        value=array.array('b', b' ' * 50),
+        read_only=True,
+        dtype=ChannelType.CHAR,
+        max_length=50
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -35,7 +41,9 @@ class LakeshoreIOC(PVGroup):
             status = self.lakeshore.check_status()
             if status is not None:
                 print(f"Lakeshore Status: {status}")
-                await instance.write(status.ljust(50))  # Ensure the status string has a fixed length
+                status_bytes = status.encode('ascii')
+                status_array = array.array('b', status_bytes.ljust(50)[:50])
+                await instance.write(status_array)
             else:
                 print("Status reading returned None")
         except Exception as e:
