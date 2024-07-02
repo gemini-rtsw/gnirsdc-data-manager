@@ -11,7 +11,7 @@ from lakeshore import Lakeshore325
 
 class LakeshoreIOC(PVGroup):
     temperature = pvproperty(value=0.0, read_only=True, dtype=ChannelType.DOUBLE)
-    status = pvproperty(value="", read_only=True, dtype=ChannelType.STRING)
+    status = pvproperty(value=" " * 50, read_only=True, dtype=ChannelType.STRING)  # Initialize with a string of spaces
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -35,9 +35,8 @@ class LakeshoreIOC(PVGroup):
         try:
             status = self.lakeshore.check_status()
             if status is not None:
-                status_str = str(status)
-                print(f"Lakeshore Status: {status_str}")
-                await instance.write(status_str)
+                print(f"Lakeshore Status: {status}")
+                await instance.write(status.ljust(50))  # Ensure the status string has a fixed length
             else:
                 print("Status reading returned None")
         except Exception as e:
