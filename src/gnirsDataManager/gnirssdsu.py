@@ -539,7 +539,7 @@ class GnirsCADCARController(PVGroup):
 
     temperature_status  = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:temperature_status")    
     @temperature_status.scan(period=60)  # Scan every 60 seconds
-    async def status(self, instance, async_lib):
+    async def temperature_status(self, instance, async_lib):
         try:
             status = self.lakeshore.check_status()
             if status is not None:
