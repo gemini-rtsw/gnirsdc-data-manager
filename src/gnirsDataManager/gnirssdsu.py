@@ -27,7 +27,6 @@ from lakeshore import Lakeshore325
 
 
 
-
 DEBUG_MODE = True
 
 def DebugMode(value):
