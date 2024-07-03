@@ -226,6 +226,12 @@ class ObserveCAD(GnirsCAD):
             await self.MESS.write("Controller not initialized")
 
             return False
+        elif (float(self.p.temperature) > 30.0):
+
+            await self.logMessage(f"Detector not at temperature")
+            await self.MESS.write("Detector not at temperature")
+
+            return False
         else:
 
             if (int(self.p.rdout.value) == 0):
