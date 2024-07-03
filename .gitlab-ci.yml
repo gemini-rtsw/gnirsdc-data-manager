@@ -33,9 +33,9 @@ build_image:
     - git clone -b main               https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/pycadcar.git              pycadcar
     - git clone -b master             https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git         gnirsdc-tools
     - git clone -b master             https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git           gnirsdc-lib
-    - docker build --pull --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run -f $DOCKERFILE_RUN .
+    - docker build --no-cache --pull --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run -f $DOCKERFILE_RUN .
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run
-    - docker build --pull --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev -f $DOCKERFILE_ENV .
+    - docker build --no-cache --pull --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev -f $DOCKERFILE_ENV .
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev
     - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN -f Dockerfile.gmp -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server .
     - docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
