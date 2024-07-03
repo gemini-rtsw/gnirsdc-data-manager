@@ -523,7 +523,7 @@ class GnirsCADCARController(PVGroup):
 
 
     #-------------- Temp Monitor -------------------
-    temperature = pvproperty(value=0.0, read_only=True, dtype=caproto.ChannelType.DOUBLE)
+    temperature = pvproperty(value=0.0, read_only=True, dtype=caproto.ChannelType.DOUBLE, name="dc:temperature")
 
     @temperature.scan(period=5)  # Scan every 5 seconds
     async def temperature(self, instance, async_lib):
@@ -537,8 +537,8 @@ class GnirsCADCARController(PVGroup):
         except Exception as e:
             print(f"Error reading temperature: {e}")
 
-    status  = pvproperty(value=0, dtype=caproto.ChannelType.STRING)    
-    @status.scan(period=60)  # Scan every 60 seconds
+    temperature_status  = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:temperature_status")    
+    @temperature_status.scan(period=60)  # Scan every 60 seconds
     async def status(self, instance, async_lib):
         try:
             status = self.lakeshore.check_status()
