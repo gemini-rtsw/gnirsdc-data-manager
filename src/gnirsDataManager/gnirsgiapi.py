@@ -1,9 +1,9 @@
 
 import os, sys
 import cppyy
-import asyncio
-
 import time
+import sys
+import socket
 
 
 print(f"GIAPI_ROOT: {os.environ.get('GIAPI_ROOT')}")
@@ -45,10 +45,29 @@ from cppyy.gbl import giapi
 from cppyy.gbl import instDummy
 
 
-
 # Access the enum values
 error_status = cppyy.gbl.giapi.status.Status.ERROR
 ok_status = cppyy.gbl.giapi.status.Status.OK
+
+
+import subprocess
+import sys
+
+def check_gmp_and_exit(gmp_host='localhost', gmp_port=8008):
+    print(f"Checking GMP status on {gmp_host}:{gmp_port}")
+    
+    try:
+        with socket.create_connection((gmp_host, gmp_port), timeout=5):
+            print("GMP is available. ")
+    except (socket.timeout, ConnectionRefusedError) as e:
+        print(f"GMP is not available: {e}. Exiting.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error checking GMP: {e}. Exiting.")
+        sys.exit(1)
+
+
+    
 
 class GiapiInterface:
 
@@ -56,8 +75,43 @@ class GiapiInterface:
 
     def __init__(self):
         print("GIAPI init")
+
         self._callback_giapi = self.giapiCallback
+        self._handler = instDummy.InstCmdHandler.create(self._callback_giapi)
         self.subscribeCommands()
+
+
+    def subscribeCommands(self):
+        print("GIAPI subscribe")
+
+        #self._handler = instDummy.InstCmdHandler.create(self._callback_giapi)
+        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.TEST, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
+        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.REBOOT, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
+        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.INIT, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
+        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.APPLY, giapi.command.ActivitySet.SET_PRESET,self._handler)
+        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.OBSERVE, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
+        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.ABORT, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
+
+    
+        #print("---------------TESTING STUFF---------------")
+        #self.getTCSContext()
+
+
+        #giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_PREP, "test label")
+
+        #try: 
+        #    hostname = giapi.ServicesUtil.getProperty("GMP_HOST_NAME", 2000)
+        #    print(f"GMP_HOST_NAME: {path}")
+        #except Exception as e:
+        #    print(f"Exception while trying to get GMP_HOST_NAME from Gemini: {e}")
+        
+        #try: 
+        #    path = giapi.ServicesUtil.getProperty("DHS_SCIENCE_DATA_PATH", 2000)
+        #    print(f"PATH: {path}")
+        #except Exception as e:
+        #    print(f"Exception while trying to get DHS_SCIENCE_DATA_PATH from Gemini: {e}")
+        
+        #print("---------------DONE TESTING STUFF---------------")
 
 
 
@@ -122,43 +176,6 @@ class GiapiInterface:
 
         print()
 
-
-
-
-
-
-
-    def subscribeCommands(self):
-        print("GIAPI subscribe")
-
-        self._handler = instDummy.InstCmdHandler.create(self._callback_giapi)
-        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.TEST, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
-        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.REBOOT, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
-        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.INIT, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
-        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.APPLY, giapi.command.ActivitySet.SET_PRESET,self._handler)
-        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.OBSERVE, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
-        giapi.CommandUtil.subscribeSequenceCommand(giapi.command.SequenceCommand.ABORT, giapi.command.ActivitySet.SET_PRESET_START,self._handler)
-
-
-        #print("---------------TESTING STUFF---------------")
-        #self.getTCSContext()
-
-
-        #giapi.DataUtil.postObservationEvent(giapi.data.ObservationEvent.OBS_PREP, "test label")
-
-        #try: 
-        #    hostname = giapi.ServicesUtil.getProperty("GMP_HOST_NAME", 2000)
-        #    print(f"GMP_HOST_NAME: {path}")
-        #except Exception as e:
-        #    print(f"Exception while trying to get GMP_HOST_NAME from Gemini: {e}")
-        
-        #try: 
-        #    path = giapi.ServicesUtil.getProperty("DHS_SCIENCE_DATA_PATH", 2000)
-        #    print(f"PATH: {path}")
-        #except Exception as e:
-        #    print(f"Exception while trying to get DHS_SCIENCE_DATA_PATH from Gemini: {e}")
-        
-        #print("---------------DONE TESTING STUFF---------------")
 
 
     def handle_observation_event(self, event_type, event_description, data_label):

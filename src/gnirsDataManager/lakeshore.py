@@ -2,16 +2,23 @@
 import socket
 
 class Lakeshore325:
-    def __init__(self, ip, port):
+    def __init__(self, ip, port, timeout=5):
         self.ip = ip
         self.port = port
+        self.timeout = timeout
         self.sock = None
 
     def connect(self):
         try:
+            print(f"Connecting to Lakeshore 325 at {self.ip}:{self.port}")
+
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.settimeout(self.timeout)  # Set the connection timeout
             self.sock.connect((self.ip, self.port))
             print(f"Connected to Lakeshore 325 at {self.ip}:{self.port}")
+        except socket.timeout:
+            print(f"Connection to {self.ip}:{self.port} timed out after {self.timeout} seconds")
+            self.sock = None
         except Exception as e:
             print(f"Failed to connect to {self.ip}:{self.port} - {e}")
             self.sock = None
@@ -32,7 +39,7 @@ class Lakeshore325:
                 response = self.sock.recv(1024).strip()
                 return response.decode('utf-8')
             else:
-                printf("Temperature controller is not connected: {self.ip} {self.port}")
+                print(f"Temperature controller is not connected: {self.ip} {self.port}")
                 return None
         except Exception as e:
             print(f"Failed to send command: {e}")

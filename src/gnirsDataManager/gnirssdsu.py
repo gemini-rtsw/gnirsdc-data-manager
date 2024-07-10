@@ -535,7 +535,7 @@ class GnirsCADCARController(PVGroup):
         try:
             temp = self.lakeshore.read_temperature()
             if temp is not None:
-                print(f"Temperature read: {temp} K")
+                #print(f"Temperature read: {temp} K")
                 await instance.write(temp)
             else:
                 print("Temperature reading returned None")
@@ -548,7 +548,7 @@ class GnirsCADCARController(PVGroup):
         try:
             status = self.lakeshore.check_status()
             if status is not None:
-                print(f"Lakeshore Status: {status}")
+                #print(f"Lakeshore Status: {status}")
                 status_string = status[:40].ljust(40)
                 await instance.write(status_string)
             else:

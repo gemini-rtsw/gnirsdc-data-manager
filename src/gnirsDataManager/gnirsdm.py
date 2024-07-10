@@ -9,11 +9,12 @@ import queue
 import sys
 import threading
 import time
+import socket
+
 from concurrent import futures
 from functools import partial
 from pathlib import Path
 from logging import getLogger
-
 from gemUtilities import checkCAConnection
 from diskSpaceMonitor import DiskSpacePVGroup
 
@@ -41,13 +42,34 @@ from gnirssdsu import GnirsCADCARController
 from gnirssdsu import DebugMode
 
 import gnirsgiapi
-from gnirsgiapi import GiapiInterface
+from gnirsgiapi import GiapiInterface, check_gmp_and_exit
 
 INSTRUMENT_NAME = "GNIRS"
 DEFAULT_PREFIX = "tgnirs:"
 DEFAULT_DATADIR = '/readout_data'
 MAX_LOG_SIZE = 5
 WORKING_DIR = os.getcwd()
+GMP_HOST = 'localhost'
+GMP_PORT = 8008
+
+
+
+print("""
+      _____  _   _ _____ _____   _____   _____   _____ 
+     / ____|| \ | |_   _|  __ \ / ____| |  __ \ / ____|
+    | |  __ |  \| | | | | |__) | (___   | |  | | |     
+    | | |_ ||     | | | |  _  / \___ \  | |  | | |     
+    | |__| || |\  |_| |_| | \ \ ____) | | |__| | |____ 
+     \_____||_| \_|_____|_|  \_\_____/  |_____/ \_____|
+""")
+
+print("")
+print("Booting...")
+
+
+# Perform GMP check
+check_gmp_and_exit(GMP_HOST, GMP_PORT)
+print("GMP check passed. Continuing with initialization...")
 
 
 def get_repo_info_for_directories():
@@ -192,7 +214,7 @@ class GnirsDataManagerIOC(PVGroup):
 
 
     def __init__(self, *args, **kwargs):
-
+        
         super().__init__(*args, **kwargs)
 
         self.processor = None 
@@ -533,24 +555,9 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
 
 
 async def main():
-
-
-    print("""
-      _____  _   _ _____ _____   _____   _____   _____ 
-     / ____|| \ | |_   _|  __ \ / ____| |  __ \ / ____|
-    | |  __ |  \| | | | | |__) | (___   | |  | | |     
-    | | |_ ||     | | | |  _  / \___ \  | |  | | |     
-    | |__| || |\  |_| |_| | \ \ ____) | | |__| | |____ 
-     \_____||_| \_|_____|_|  \_\_____/  |_____/ \_____|
-    """)
-
-    print("")
-    print("Booting...")
     
     # Call the function to get repo info for the specified directories
     get_repo_info_for_directories()
-
-
 
     ioc_options, run_options = custom_ioc_arg_parser(
             default_prefix=DEFAULT_PREFIX,
@@ -607,13 +614,3 @@ def restart_entry_point():
 if __name__ == '__main__':
     sys.exit(entry_point())
 
-    '''
-def entry_point():
-    try:
-        return asyncio.run(main())
-    except KeyboardInterrupt:
-        return 0
-
-if __name__ == '__main__':
-    sys.exit(entry_point())
-    '''
