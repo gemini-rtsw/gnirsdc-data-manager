@@ -8,8 +8,6 @@ import subprocess
 import queue
 import sys
 import threading
-import time
-import socket
 
 from concurrent import futures
 from functools import partial
@@ -36,21 +34,36 @@ from datetime import datetime
 
 
 
-import gnirssdsu
 from gnirssdsu import GnirsCADCARController
 
-from gnirssdsu import DebugMode
-
-import gnirsgiapi
 from gnirsgiapi import GiapiInterface, check_gmp_and_exit
 
-INSTRUMENT_NAME = "GNIRS"
-DEFAULT_PREFIX = "tgnirs:"
-DEFAULT_DATADIR = '/readout_data'
-MAX_LOG_SIZE = 5
+from gnirsutil import config, config_mode, DEBUG_MODE, LoadConfig
+
+LoadConfig()
+
+
 WORKING_DIR = os.getcwd()
-GMP_HOST = 'localhost'
-GMP_PORT = 8008
+
+print(f"Working Directory: {WORKING_DIR}")
+
+
+#INSTRUMENT_NAME = "GNIRS"
+#DEFAULT_PREFIX = "tgnirs:"
+#DEFAULT_DATADIR = '/readout_data'
+#MAX_LOG_SIZE = 5
+#WORKING_DIR = os.getcwd()
+#GMP_HOST = 'localhost'
+#GMP_PORT = 8008
+
+# Access the configuration values
+INSTRUMENT_NAME = config[config_mode].get('INSTRUMENT_NAME')
+DEFAULT_PREFIX = config[config_mode].get('DEFAULT_PREFIX')
+DEFAULT_DATADIR = config[config_mode].get('DEFAULT_DATADIR')
+MAX_LOG_SIZE = config[config_mode].getint('MAX_LOG_SIZE')
+GMP_HOST = config[config_mode].get('GMP_HOST')
+GMP_PORT = config[config_mode].getint('GMP_PORT')
+
 
 
 
@@ -531,6 +544,8 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
                         help="EPICS top name")
     parser.add_argument('--debug', '-D', action='store_true', 
                         help="Set Debug mode - no SDSU")    
+    # debug mode is here so it shows up in help, but it is manually checked at config read to allow override of config file
+
 #    parser.add_argument('--list-pvs', action='store_true', help='List Process Variables')
     args = parser.parse_args()
     ioc_options, run_options = split_args(args)
@@ -543,12 +558,12 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
         ioc_options["prefix"] = args.top + ":"
         print(f"Top name: {ioc_options['prefix']}")
 
-    if (args.debug == True):
-        DebugMode(True)
-        print (f"Debug mode: True")
-    else:
-        DebugMode(False)
-        print (f"Debug mode: False")
+#    if (args.debug == True or DEBUG_MODE == True):
+#        DebugMode(True)
+#        print (f"Debug mode: True")
+#    else:
+#        DebugMode(False)
+#        print (f"Debug mode: False")
 
     return ioc_options, run_options
 
@@ -563,6 +578,8 @@ async def main():
             default_prefix=DEFAULT_PREFIX,
             desc=''
             )
+    
+
     print ("create IOC")
     ioc = GnirsDataManagerIOC(**ioc_options)
 

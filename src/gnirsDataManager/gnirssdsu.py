@@ -24,15 +24,14 @@ from libgnirsioc import setGlobalDebug
 
 from lakeshore import Lakeshore325
 
+from gnirsutil import config, config_mode, DEBUG_MODE, LoadConfig
+
+LoadConfig()
 
 
+TEMP_CON_IP=config[config_mode].get('TEMP_CON_IP')
+TEMP_CON_PORT=config[config_mode].getint('TEMP_CON_PORT')
 
-DEBUG_MODE = True
-
-def DebugMode(value):
-    global DEBUG_MODE
-    DEBUG_MODE = value
-    print(f"Value: {DEBUG_MODE}")
 
 
 # Function to get the current timestamp
@@ -409,7 +408,7 @@ class GnirsCADCARController(PVGroup):
         print(f"Debug mode: {DEBUG_MODE}")
 
 
-        self.lakeshore = Lakeshore325(ip='10.1.2.60', port=3302)
+        self.lakeshore = Lakeshore325(TEMP_CON_IP, TEMP_CON_PORT)
         self.lakeshore.connect()
 
         self.sdsuController = None
