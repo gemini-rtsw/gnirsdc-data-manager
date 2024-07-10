@@ -63,6 +63,7 @@ DEFAULT_DATADIR = config[config_mode].get('DEFAULT_DATADIR')
 MAX_LOG_SIZE = config[config_mode].getint('MAX_LOG_SIZE')
 GMP_HOST = config[config_mode].get('GMP_HOST')
 GMP_PORT = config[config_mode].getint('GMP_PORT')
+GMP_TEST_PORT = config[config_mode].getint('GMP_TEST_PORT')
 
 
 
@@ -81,7 +82,7 @@ print("Booting...")
 
 
 # Perform GMP check
-check_gmp_and_exit(GMP_HOST, GMP_PORT)
+check_gmp_and_exit(GMP_HOST, GMP_TEST_PORT)
 print("GMP check passed. Continuing with initialization...")
 
 
