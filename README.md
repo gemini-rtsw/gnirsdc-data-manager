@@ -148,6 +148,10 @@ docker login registry.gitlab.com -u johndoe -p glpat-xxxxxxxxxxxxxx
 ## make
 ## pip3.9 install .
 
+# git setup 
+## [root@docker-desktop gnirsdc-lib]# git config --global user.name "Hawi Stecher"
+## [root@docker-desktop gnirsdc-lib]# git config --global user.email "hawi.stecher@noirlab.edu"
+
 
 Future notes:
 IRDC Documentation Notes
