@@ -1,13 +1,26 @@
 from astropy.io import fits
 import numpy as np
 import re
+import os
+import uuid
 
-def define_hdu_list(header, data_label = None, dc_commit = None, lib_commit = None):
+def generate_new_filepath(fits_path):
+    base, ext = os.path.splitext(fits_path)
+    new_filename = f"{base}_{uuid.uuid4()}{ext}"
+    return new_filename
+
+def generate_new_filename():
+    new_filename = f"{uuid.uuid4()}"
+    return new_filename
+
+#def define_hdu_list(header, data_label = None, dc_commit = None, lib_commit = None):
+def define_hdu_list(header, dc_commit = None, lib_commit = None):
     try:
 
         # extract raw header data
         pdu = header['PDU']
-        datalabel = pdu['DATALABE']
+        rawlabel = pdu['RAWLABEL']
+        data_label = pdu['LABEL']
         raw_cols = int(pdu['RAW_COLS'])
         raw_rows = int(pdu['RAW_ROWS'])
         dateobs = pdu.get('DATEOBS','')

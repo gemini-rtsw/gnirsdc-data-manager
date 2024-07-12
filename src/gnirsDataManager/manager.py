@@ -55,14 +55,17 @@ from docopt import docopt
 from astropy.io import fits
 import numpy as np
 from unscramble import Processor
+import uuid
 
 
-from fits_header_definitions import define_hdu_list
+from fits_header_definitions import define_hdu_list, generate_new_filepath
 
 #from . import __version__
 __version__=0.1
 
 DEFAULT_DATADIR = '/home/readout_data'
+
+
 
 class ProcessingError(RuntimeError):
     pass
@@ -326,11 +329,13 @@ def extract_timing(samples_header, ext_header):
         ext_header[key] = formatted_value
 
 
-def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_commit = None): 
+#def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_commit = None): 
+def create_hdulist(header, raw_path, dc_commit = None, lib_commit = None): 
     raw_name = os.path.basename(raw_path)
 
 
-    hdulist, ext_header, lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname = define_hdu_list(header, data_label, dc_commit, lib_commit)
+#    hdulist, ext_header, lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname = define_hdu_list(header, data_label, dc_commit, lib_commit)
+    hdulist, ext_header, lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname = define_hdu_list(header, dc_commit, lib_commit)
 
     # Append timing_header to ext_header
     if 'TIME_SAMPLES' in header:
@@ -358,10 +363,10 @@ def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_co
         save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, ext_header, p_mode == 'SEP')
 
     # Print all headers in the HDU list to verify
-    for i, hdu in enumerate(hdulist):
-        print(f"Header of HDU {i}:")
-        print(repr(hdu.header))
-        print()
+#    for i, hdu in enumerate(hdulist):
+#        print(f"Header of HDU {i}:")
+#        print(repr(hdu.header))
+#        print()
 
     return fname, hdulist
 
@@ -385,7 +390,8 @@ class DataProcessor:
 
     
 
-    def process_file(self, fname, data_label = None, dc_commit = None, lib_commit = None):
+#    def process_file(self, fname, data_label = None, dc_commit = None, lib_commit = None):
+    def process_file(self, fname, dc_commit = None, lib_commit = None):
         # First, move the files to processing
         dm = self.datamov
 
@@ -398,13 +404,21 @@ class DataProcessor:
 
         # Create an output file and start populating it
 
-            fitsname, hdulist = create_hdulist(header, rpath, data_label, dc_commit, lib_commit) 
+#            fitsname, hdulist = create_hdulist(header, rpath, data_label, dc_commit, lib_commit) 
+            fitsname, hdulist = create_hdulist(header, rpath, dc_commit, lib_commit) 
 
             fits_path = dm.processing.full_path(fitsname)
             if os.access(fits_path, os.F_OK):
-                raise ProcessingError(f"{fitsname} exists already")
+                print(f"Error writing to {fits_path}: {e}")
+                fits_path = generate_new_filepath(fits_path)
+                print(f"Changed name to: {fits_path}")
+                #raise ProcessingError(f"{fitsname} exists already")
+            
             self.logger.debug(f" -> writing to {fits_path}")
-            hdulist.writeto(fits_path)
+
+            hdulist.writeto(fits_path, overwrite=True)
+            
+
 
             dm.move(dm.processing, dm.output, fitsname, error_allowed=False)
 

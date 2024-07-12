@@ -22,16 +22,18 @@ from libgnirsioc import controllerInterface
 from libgnirsioc import controllerInterfaceDebug
 from libgnirsioc import setGlobalDebug
 
+from fits_header_definitions import generate_new_filename
+
+
 from lakeshore import Lakeshore325
 
-from gnirsutil import config, config_mode, DEBUG_MODE, LoadConfig
+from gnirsutil import config, config_mode, DEBUG_MODE
 
-LoadConfig()
+TEMP_CON_IP         = config[config_mode].get('TEMP_CON_IP')
+TEMP_CON_PORT       = config[config_mode].getint('TEMP_CON_PORT')
+INTERLOCK_TEMP      = config[config_mode].getfloat('INTERLOCK_TEMP')
 
-
-TEMP_CON_IP=config[config_mode].get('TEMP_CON_IP')
-TEMP_CON_PORT=config[config_mode].getint('TEMP_CON_PORT')
-
+print(f"TEMP_CON_IP: {TEMP_CON_IP}, TEMP_CON_PORT: {TEMP_CON_PORT}, INTERLOCK_TEMP: {INTERLOCK_TEMP}")
 
 
 # Function to get the current timestamp
@@ -197,7 +199,7 @@ class DCConfigCAD(GnirsCAD):
             await self.MESS.write("Controller not initialized")
             return False
         else:
-            self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.coaddsVAL.value, self.dropReadoutsNum.value)
+            self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.coaddsVAL.value, self.dropReadoutsNum.value, self.p.observeA.value)
             #await self.logMessage(f"Config lnr: {self.p.lnrNum.value} adc: {self.p.digitalAvgs.value} exp: {self.p.exposureTime.value} coadds: {self.p.coaddsVAL.value}")
             await self.MESS.write("Configuration Set Successfully")
             return True
@@ -205,7 +207,7 @@ class DCConfigCAD(GnirsCAD):
 
 class AbortCAD(GnirsCAD):
     async def start(self):
-        if (self.controller == None and DEBUG_MODE == False):
+        if (self.controller == None):
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
             return False
@@ -224,7 +226,7 @@ class ObserveCAD(GnirsCAD):
             await self.MESS.write("Controller not initialized")
 
             return False
-        elif (self.p.temperature.value > 39.0):
+        elif (self.p.temperature.value > INTERLOCK_TEMP):
 
             await self.logMessage(f"Detector not at temperature")
             await self.MESS.write("Detector not at temperature")
@@ -238,17 +240,21 @@ class ObserveCAD(GnirsCAD):
                     await self.p.sequence.write(1)
 
                 for i in range(self.p.sequence.value, 0, -1):   # reverse and end at i = 1
-
                     # Add the timestamp to the observeA value if labelTimeStamp is greater than 0
                     if self.p.labelTimeStamp.value > 0:
-                        timestamp = get_current_timestamp()
-                        await self.p.observeA.write(f"{timestamp}")
+                        #timestamp = get_current_timestamp()
+                        timestamp = generate_new_filename()
+                        await self.p.observeA.write(f"{timestamp}{i}")
 
                     # Add fits extension if not going to archive
-                    if (self.p.parent.archive_fits.value == 0):
-                        await self.p.observeA.write(f"{self.p.observeA.value}.fits")
+                    if self.p.parent.archive_fits.value == 0:
+                        if not self.p.observeA.value.endswith('.fits'):
+                            await self.p.observeA.write(f"{self.p.observeA.value}.fits")
+
 
                     #begin readout
+                    self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value), int(self.dropReadoutsNum.value), self.p.observeA.value)
+
                     await self.p.rdout.write(1)
 
 
@@ -266,6 +272,10 @@ class ObserveCAD(GnirsCAD):
                 await self.p.parent.include_eng.write(0)
                 # set write to fits archive by default don't want a test write to affect a seqexec readout
                 await self.p.parent.archive_fits.write(1)
+                # Remove the .fits extension after readout is done
+                if self.p.observeA.value.endswith('.fits'):
+                    await self.p.observeA.write(self.p.observeA.value[:-5])
+
 
                 await self.MESS.write("Observe CAD Completed Successfully")
                 return True
@@ -444,11 +454,11 @@ class GnirsCADCARController(PVGroup):
     @lnrNum.putter
     async def lnrNum(self, instance, value):
 
-        if (self.sdsuController == None):
-            await self.parent.logMessage(f"Controller not initialized")
-        else:
-            self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value), int(self.dropReadoutsNum.value))
-            await self.parent.logMessage(f"LNR: {value}")
+ #       if (self.sdsuController == None):
+ #           await self.parent.logMessage(f"Controller not initialized")
+ #       else:
+            #self.sdsuController.setExposure(value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value), int(self.dropReadoutsNum.value), self.p.observeA.value)
+        await self.parent.logMessage(f"LNR: {value}")
     #------ fowlers - lnr -------------------
 
 
@@ -457,11 +467,11 @@ class GnirsCADCARController(PVGroup):
     @dropReadoutsNum.putter
     async def dropReadoutsNum(self, instance, value):
 
-        if (self.sdsuController == None):
-            await self.parent.logMessage(f"Controller not initialized")
-        else:
-            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value), int(value))
-            await self.parent.logMessage(f"Drop Readouts: {value}")
+#        if (self.sdsuController == None):
+#            await self.parent.logMessage(f"Controller not initialized")
+#        else:
+            #self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(self.coaddsVAL.value), int(value), self.p.observeA.value)
+        await self.parent.logMessage(f"Drop Readouts: {value}")
     #------ readouts to drop -------------------
 
 
@@ -470,11 +480,11 @@ class GnirsCADCARController(PVGroup):
     @readUpTheRamp.putter
     async def readUpTheRamp(self, instance, value):
 
-        if (self.sdsuController == None):
-            await self.parent.logMessage(f"Controller not initialized")
-        else:
-            self.sdsuController.setReadUpTheRamp( value > 0)
-            await self.parent.logMessage(f"Read Up the Ramp Mode: {value > 0}")
+#        if (self.sdsuController == None):
+#            await self.parent.logMessage(f"Controller not initialized")
+#        else:
+#            self.sdsuController.setReadUpTheRamp( value > 0)
+        await self.parent.logMessage(f"Read Up the Ramp Mode: {value > 0}")
     #------ read up the ramp -------------------
 
 
@@ -482,11 +492,11 @@ class GnirsCADCARController(PVGroup):
     exposureTime    = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:integTime.VAL", doc = "Exposure Time") 
     @exposureTime.putter
     async def exposureTime(self, instance, value):
-        if (self.sdsuController == None):
-            await self.parent.logMessage(f"Controller not initialized")
-        else: 
-            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, value, int(self.coaddsVAL.value), int(self.dropReadoutsNum.value))
-            await self.parent.logMessage(f"Exposure Time: {value}")
+#        if (self.sdsuController == None):
+#            await self.parent.logMessage(f"Controller not initialized")
+#        else: 
+#            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, value, int(self.coaddsVAL.value), int(self.dropReadoutsNum.value), self.p.observeA.value)
+        await self.parent.logMessage(f"Exposure Time: {value}")
     #-------------- exposureTime -------------------
 
 
@@ -502,11 +512,11 @@ class GnirsCADCARController(PVGroup):
     @digitalAvgs.putter
     async def digitalAvgs(self, instance, value):
 
-        if (self.sdsuController == None):
-            await self.parent.logMessage(f"Controller not initialized")
-        else: 
-            self.sdsuController.setExposure(self.lnrNum.value, value, self.exposureTime.value, int(self.coaddsVAL.value), int(self.dropReadoutsNum.value))
-            await self.parent.logMessage(f"ADC: {value}")
+#        if (self.sdsuController == None):
+#            await self.parent.logMessage(f"Controller not initialized")
+#        else: 
+#            self.sdsuController.setExposure(self.lnrNum.value, value, self.exposureTime.value, int(self.coaddsVAL.value), int(self.dropReadoutsNum.value), self.p.observeA.value)
+        await self.parent.logMessage(f"ADC: {value}")
     #-------------- digitalAvgs -------------------
 
 
@@ -516,18 +526,22 @@ class GnirsCADCARController(PVGroup):
     coaddsVAL      = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:coadds.VAL", doc = "")
     @coaddsVAL.putter
     async def coaddsVAL(self, instance, value):
-        if (self.sdsuController == None):
-            await self.parent.logMessage(f"Controller not initialized")
-        else:
-            await self.obsSetupVALE.write(value)             
-            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(value), int(self.dropReadoutsNum.value))
-            await self.parent.logMessage(f"Coadds: {value}")
+#        if (self.sdsuController == None):
+#            await self.parent.logMessage(f"Controller not initialized")
+#        else:
+#            await self.obsSetupVALE.write(value)             
+#            self.sdsuController.setExposure(self.lnrNum.value, self.digitalAvgs.value, self.exposureTime.value, int(value), int(self.dropReadoutsNum.value), self.p.observeA.value)
+        await self.parent.logMessage(f"Coadds: {value}")
     #-------------- coadds -------------------
 
 
 
     #-------------- Temp Monitor -------------------
     temperature = pvproperty(value=0.0, read_only=True, dtype=caproto.ChannelType.DOUBLE, name="dc:temperature")
+
+    @temperature.startup
+    async def temperature(self, instance, async_lib):
+        await self.parent.logMessage(f"Temperature Interlock: {INTERLOCK_TEMP}")
 
     @temperature.scan(period=5)  # Scan every 5 seconds
     async def temperature(self, instance, async_lib):

@@ -12,6 +12,8 @@ config_loaded = False
 
 def LoadConfig():
     global config_loaded
+    global config_mode
+    global DEBUG_MODE
 
     # only need to load config once
     if config_loaded is False:
@@ -47,6 +49,7 @@ def LoadConfig():
         else:
             print("------------ Debug mode is disabled ------------")
 
+LoadConfig()
 
-
+print(f"LoadConfig - DEBUG_MODE: {DEBUG_MODE}, config_mode: {config_mode}")
 

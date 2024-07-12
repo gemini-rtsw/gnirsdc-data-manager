@@ -38,9 +38,7 @@ from gnirssdsu import GnirsCADCARController
 
 from gnirsgiapi import GiapiInterface, check_gmp_and_exit
 
-from gnirsutil import config, config_mode, DEBUG_MODE, LoadConfig
-
-LoadConfig()
+from gnirsutil import config, config_mode, DEBUG_MODE
 
 
 WORKING_DIR = os.getcwd()
