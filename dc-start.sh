@@ -13,7 +13,7 @@ fi
 
 # Run the gmp container
 echo "Running the 'gmp' container..."
-output=$(docker run -d --network=host --name gmp -v /readout_data:/readout_data -v /staging/perm:/staging/perm registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server)
+output=$(docker run -d --network=host --name gmp -v /readout_data:/readout_data -v /staging/perm:/staging/perm -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server)
 
 # Check if the docker run command executed successfully
 if [ $? -eq 0 ]; then
@@ -34,7 +34,7 @@ fi
 
 # Run the gnirsdc container
 echo "Running the 'gnirsdc' container..."
-output=$(docker run -itd --name gnirsdc --privileged --network=host -v /readout_data:/readout_data registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run)
+output=$(docker run -itd --name gnirsdc --privileged --network=host -v /readout_data:/readout_data -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run)
 
 # Check if the docker run command executed successfully
 if [ $? -eq 0 ]; then

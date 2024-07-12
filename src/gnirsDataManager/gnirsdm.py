@@ -158,9 +158,9 @@ def standalone_process_task(file_path, dp, ioc, logger):
     label = None
     try:
         rpath, header = manager.decode_header(dp.datamov.new, fname)
-        label = header['PDU']['DATALABE']
+        label = header['PDU']['LABEL']
         asyncio.run(ioc.currentLabel.write(label))
-        dp.process_file(fname, ioc.CADInterface.observeA.value, os.getenv('DC_COMMIT', 'dc_commit_missing'), os.getenv('LIB_COMMIT', 'lib_commit_missing'))
+        dp.process_file(fname, os.getenv('DC_COMMIT', 'dc_commit_missing'), os.getenv('LIB_COMMIT', 'lib_commit_missing'))
     except Exception as exc:
         logger.error(f"Processing {file_path}: {exc}")
         if label is None:

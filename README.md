@@ -143,6 +143,12 @@ docker login registry.gitlab.com -u johndoe -p glpat-xxxxxxxxxxxxxx
 
 # debug mode in vscode
 
+# gnirs-lib manual build
+## /gnirsdc-lib
+## make
+## pip3.9 install .
+
+
 Future notes:
 IRDC Documentation Notes
 Driver documentation
