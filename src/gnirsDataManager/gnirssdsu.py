@@ -261,7 +261,6 @@ class ObserveCAD(GnirsCAD):
 
                     await self.start_async_exposure()
                 
-
                     await self.p.sequenceLeft.write(i) # keep track of the remaining exposures
                                                        # end at 1 so it will do a single exposure if sequence is not manually set
 
@@ -283,8 +282,6 @@ class ObserveCAD(GnirsCAD):
                 return False
             
             
-
-
     async def start_async_exposure(self):
 
         await self.logMessage(f'{self.prefix} ObserveCAD start')
@@ -312,8 +309,9 @@ class ObserveCAD(GnirsCAD):
 
         await self.logMessage(f'SDSU readout started')
 
-        while self.controller.getReadingOut(): 
-            await asyncio.sleep(0.01)
+        #while self.controller.getReadingOut(): 
+        while await asyncio.to_thread(self.controller.getReadingOut):
+            await asyncio.sleep(0.1)
 
         await self.logMessage(f'SDSU readout complete')
 
@@ -516,12 +514,10 @@ class GnirsCADCARController(PVGroup):
         try:
             temp = self.lakeshore.read_temperature()
             if temp is not None:
-                #print(f"Temperature read: {temp} K")
                 await instance.write(temp)
-            else:
-                print("Temperature reading returned None")
         except Exception as e:
-            print(f"Error reading temperature: {e}")
+            return
+            #print(f"Error reading temperature: {e}")
 
     temperature_status  = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:temperature_status")    
     @temperature_status.scan(period=60)  # Scan every 60 seconds
@@ -529,7 +525,6 @@ class GnirsCADCARController(PVGroup):
         try:
             status = self.lakeshore.check_status()
             if status is not None:
-                #print(f"Lakeshore Status: {status}")
                 status_string = status[:40].ljust(40)
                 await instance.write(status_string)
             else:
