@@ -152,6 +152,10 @@ docker login registry.gitlab.com -u johndoe -p glpat-xxxxxxxxxxxxxx
 ## [root@docker-desktop gnirsdc-lib]# git config --global user.name "Hawi Stecher"
 ## [root@docker-desktop gnirsdc-lib]# git config --global user.email "hawi.stecher@noirlab.edu"
 
+# dev container
+## docker pull
+## rebuild
+
 
 Future notes:
 IRDC Documentation Notes

@@ -70,6 +70,9 @@ DEFAULT_DATADIR = '/home/readout_data'
 class ProcessingError(RuntimeError):
     pass
 
+class RawDataNotFoundError(RuntimeError):
+    pass
+
 def setup_logging(level, name_on_message=False, fmt_string=None):
     """
     Common logging setup for all SysCo processes.
@@ -329,7 +332,6 @@ def extract_timing(samples_header, ext_header):
         ext_header[key] = formatted_value
 
 
-#def create_hdulist(header, raw_path, data_label = None, dc_commit = None, lib_commit = None): 
 def create_hdulist(header, raw_path, dc_commit = None, lib_commit = None): 
     raw_name = os.path.basename(raw_path)
 
@@ -348,19 +350,22 @@ def create_hdulist(header, raw_path, dc_commit = None, lib_commit = None):
     coadd_data = np.empty((1024, 1024), dtype=np.float32)  # Initialize the array to store coadded data
 
 
-    if (coadds > 1):
-        for coadd in range(coadds):
+    try: 
+        if (coadds > 1):
+            for coadd in range(coadds):
+                for n in range(total_frames):
+                    loading[n,:] = np.fromfile(f'{raw_path}-{coadd}.frame.{n}', dtype=np.uint16)
+
+                coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)
+
+            hdulist.append(fits.ImageHDU(coadd_data, header = ext_header))
+        else:
             for n in range(total_frames):
-                loading[n,:] = np.fromfile(f'{raw_path}-{coadd}.frame.{n}', dtype=np.uint16)
+                loading[n,:] = np.fromfile(f'{raw_path}-0.frame.{n}', dtype=np.uint16)
+    except:
+        raise RawDataNotFoundError(f"Raw Data Not Found {fname}: missing data, probably an aborted exposure")
 
-            coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)
-
-        hdulist.append(fits.ImageHDU(coadd_data, header = ext_header))
-    else:
-        for n in range(total_frames):
-            loading[n,:] = np.fromfile(f'{raw_path}-0.frame.{n}', dtype=np.uint16)
-
-        save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, ext_header, p_mode == 'SEP')
+    save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, ext_header, p_mode == 'SEP')
 
     # Print all headers in the HDU list to verify
 #    for i, hdu in enumerate(hdulist):
@@ -404,7 +409,6 @@ class DataProcessor:
 
         # Create an output file and start populating it
 
-#            fitsname, hdulist = create_hdulist(header, rpath, data_label, dc_commit, lib_commit) 
             fitsname, hdulist = create_hdulist(header, rpath, dc_commit, lib_commit) 
 
             fits_path = dm.processing.full_path(fitsname)
@@ -423,8 +427,12 @@ class DataProcessor:
             dm.move(dm.processing, dm.output, fitsname, error_allowed=False)
 
 
-        except (NotImplementedError, ProcessingError, OSError) as e:
+        except (NotImplementedError, ProcessingError, OSError, RawDataNotFoundError) as e:
             self.logger.error(str(e))
+
+            # Print the error message
+            print(f"Error: {str(e)}")
+
             dm.move_group(dm.processing, dm.error, fname)
             raise ProcessingError(str(e))
         else:

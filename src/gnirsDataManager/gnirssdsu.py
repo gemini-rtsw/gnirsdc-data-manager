@@ -418,6 +418,8 @@ class GnirsCADCARController(PVGroup):
 
         self.sdsuController = None
 
+        self.abort.set_idle_override(True)  # allows this cad to execute while other cads are busy in order to abort them
+
         # CAD commands connect to top level CAR record
 #        for cmd in [self.dcconfig, self.endObserve, self.abort, self.observe, self.stop]:
 #            cmd.car_record = self.applyC
