@@ -12,11 +12,13 @@ import threading
 from concurrent import futures
 from functools import partial
 from pathlib import Path
-from logging import getLogger
 from gemUtilities import checkCAConnection
 from diskSpaceMonitor import DiskSpacePVGroup
 
 from multiprocessing import Process
+
+
+
 #from inotify_simple import INotify, flags
 
 
@@ -40,6 +42,7 @@ from gnirsgiapi import GiapiInterface, check_gmp_and_exit
 
 from gnirsutil import config, config_mode, DEBUG_MODE
 
+from logging import getLogger
 
 WORKING_DIR = os.getcwd()
 
@@ -62,8 +65,6 @@ MAX_LOG_SIZE = config[config_mode].getint('MAX_LOG_SIZE')
 GMP_HOST = config[config_mode].get('GMP_HOST')
 GMP_PORT = config[config_mode].getint('GMP_PORT')
 GMP_TEST_PORT = config[config_mode].getint('GMP_TEST_PORT')
-
-
 
 
 print("""
@@ -162,13 +163,18 @@ def standalone_process_task(file_path, dp, ioc, logger):
         asyncio.run(ioc.currentLabel.write(label))
         dp.process_file(fname, os.getenv('DC_COMMIT', 'dc_commit_missing'), os.getenv('LIB_COMMIT', 'lib_commit_missing'))
     except Exception as exc:
-        logger.error(f"Processing {file_path}: {exc}")
-        if label is None:
-            asyncio.run(ioc.set_error(fname, "Illegal header"))
-        else:
-            asyncio.run(ioc.set_error(label, str(exc)))
+        try:
+            if label is None:
+                asyncio.run(ioc.set_error(fname, "Illegal header"))
+            else:
+                asyncio.run(ioc.set_error(label, str(exc)))
+        except Exception as async_exc:
+            logger.irdc_debug(f"Error while setting error status: {async_exc}")
     finally:
-        asyncio.run(ioc.done_task(f"Done processing {file_path.parts[-1]}"))
+        try:
+            asyncio.run(ioc.done_task(f"Done processing {file_path.parts[-1]}"))
+        except Exception as async_exc:
+            logger.irdc_debug(f"Error in done_task: {async_exc}")
 
 class GnirsDataManagerProcessor:
     def __init__(self, ioc, processor):
@@ -535,14 +541,12 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
                                              argv=argv, macros=macros,
                                              supported_async_libs=supported_async_libs)
 
-    parser.add_argument('--data-dir', '-d', type=str, 
-                        help="Working data directory,", default=DEFAULT_DATADIR)
-    parser.add_argument('--output-dir', '-o', type=str,
-                        help="FITS output directory, default: {data-dir}/fits")
-    parser.add_argument('--top', '-t', type=str,
-                        help="EPICS top name")
-    parser.add_argument('--debug', '-D', action='store_true', 
-                        help="Set Debug mode - no SDSU")    
+    parser.add_argument('--data-dir', '-d', type=str, help="Working data directory,", default=DEFAULT_DATADIR)
+    parser.add_argument('--output-dir', '-o', type=str, help="FITS output directory, default: {data-dir}/fits")
+    parser.add_argument('--top', '-t', type=str, help="EPICS top name")
+    parser.add_argument('--debug', '-D', action='store_true', help="Set Debug mode - no SDSU")
+    parser.add_argument('--debug-level', type=int, choices=[1, 2, 3, 4], help="Set debug level: 1 for WARNING, 2 for IRDC_DEBUG, 3 for IRDC_MAX_DEBUG, 4 for ERROR")
+    
     # debug mode is here so it shows up in help, but it is manually checked at config read to allow override of config file
 
 #    parser.add_argument('--list-pvs', action='store_true', help='List Process Variables')

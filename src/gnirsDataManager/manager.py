@@ -46,7 +46,7 @@ Notes:
 import json
 import os
 import shutil
-from logging import getLogger, Formatter, StreamHandler, INFO, DEBUG
+#from logging import getLogger, Formatter, StreamHandler, INFO, DEBUG, FileHandler
 from operator import attrgetter
 import re
 from pathlib import Path
@@ -56,7 +56,11 @@ from astropy.io import fits
 import numpy as np
 from unscramble import Processor
 import uuid
+import traceback
 
+from logging import getLogger
+
+import gnirsutil
 
 from fits_header_definitions import define_hdu_list, generate_new_filepath
 
@@ -73,7 +77,9 @@ class ProcessingError(RuntimeError):
 class RawDataNotFoundError(RuntimeError):
     pass
 
-def setup_logging(level, name_on_message=False, fmt_string=None):
+
+'''
+def setup_logging(level, log_file=None, name_on_message=False, fmt_string=None):
     """
     Common logging setup for all SysCo processes.
 
@@ -96,7 +102,16 @@ def setup_logging(level, name_on_message=False, fmt_string=None):
     handler = StreamHandler()
     handler.setFormatter(formatter)
     root.addHandler(handler)
+
+    # FileHandler for file output
+    if log_file:
+        file_handler = FileHandler(log_file)
+        file_handler.setFormatter(formatter)
+        root.addHandler(file_handler)
+
     root.setLevel(level)
+'''
+    
 
 class DataDir:
     def __init__(self, path):
@@ -106,7 +121,7 @@ class DataDir:
             os.makedirs(self.path, exist_ok=True)
             self.logger.info(f"Directory created or already exists: {self.path}")
         except Exception as e:
-            self.logger.error(f"Error creating directory {self.path}: {e}")
+            self.logger.irdc_debug(f"Error creating directory {self.path}: {e}")
 
 
     def full_path(self, filename):
@@ -197,7 +212,7 @@ class DataMover:
             if not error_allowed:
                 raise e
             else:
-                self.logger.error(f"Failed to move {src_path} to {dst_path}: {e}")
+                self.logger.irdc_debug(f"Failed to move {src_path} to {dst_path}: {e}")
 
     def delete_group(self, delete_from, prefix, error_allowed=True):
         """
@@ -216,7 +231,7 @@ class DataMover:
             if not error_allowed:
                 raise e
             else:
-                self.logger.error(f"Failed to delete files from {delete_from.path}: {e}")
+                self.logger.irdc_debug(f"Failed to delete files from {delete_from.path}: {e}")
 
 
     def move_group(self, move_from, move_to, prefix):
@@ -428,7 +443,10 @@ class DataProcessor:
 
 
         except (NotImplementedError, ProcessingError, OSError, RawDataNotFoundError) as e:
-            self.logger.error(str(e))
+            # Log the error message with line number
+            tb = traceback.format_exc().splitlines()[-1]
+            error_message = f"{str(e)} (line {tb.split(', ')[1]})"            
+            self.logger.irdc_debug(str(e))
 
             # Print the error message
             print(f"Error: {str(e)}")
@@ -462,7 +480,7 @@ def main():
     # keep = args['-k']
     keep = True
 
-    setup_logging(INFO if not args['-d'] else DEBUG)
+    #setup_logging(INFO if not args['-d'] and not args['--debug'] else DEBUG)
 
     dm = DataMover(DEFAULT_DATADIR, output_dir)
 

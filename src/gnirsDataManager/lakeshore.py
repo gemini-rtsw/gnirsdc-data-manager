@@ -1,5 +1,6 @@
 # lakeshore.py
 import socket
+from logging import getLogger
 
 class Lakeshore325:
     def __init__(self, ip, port, timeout=5):
@@ -7,29 +8,30 @@ class Lakeshore325:
         self.port = port
         self.timeout = timeout
         self.sock = None
+        self.logger = getLogger('Temperature Controller')
 
     def connect(self):
         try:
-            print(f"Connecting to Lakeshore 325 at {self.ip}:{self.port}")
+            self.logger.info(f"Connecting to Lakeshore 325 at {self.ip}:{self.port}")
 
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.settimeout(self.timeout)  # Set the connection timeout
             self.sock.connect((self.ip, self.port))
-            print(f"Connected to Lakeshore 325 at {self.ip}:{self.port}")
+            self.logger.info(f"Connected to Lakeshore 325 at {self.ip}:{self.port}")
         except socket.timeout:
-            print(f"Connection to {self.ip}:{self.port} timed out after {self.timeout} seconds")
+            self.logger.info(f"Connection to {self.ip}:{self.port} timed out after {self.timeout} seconds")
             self.sock = None
         except Exception as e:
-            print(f"Failed to connect to {self.ip}:{self.port} - {e}")
+            self.logger.info(f"Failed to connect to {self.ip}:{self.port} - {e}")
             self.sock = None
 
     def disconnect(self):
         if self.sock:
             try:
                 self.sock.close()
-                print("Disconnected from Lakeshore 325")
+                self.logger.info("Disconnected from Lakeshore 325")
             except Exception as e:
-                print(f"Failed to disconnect from {self.ip}:{self.port} - {e}")
+                self.logger.info(f"Failed to disconnect from {self.ip}:{self.port} - {e}")
             self.sock = None
 
     def send_command(self, command):
@@ -39,10 +41,10 @@ class Lakeshore325:
                 response = self.sock.recv(1024).strip()
                 return response.decode('utf-8')
             else:
-                print(f"Temperature controller is not connected: {self.ip} {self.port}")
+                self.logger.irdc_debug(f"Temperature controller is not connected: {self.ip} {self.port}")
                 return None
         except Exception as e:
-            print(f"Failed to send command: {e}")
+            self.logger.irdc_debug(f"Failed to send command: {e}")
             return None
 
     def check_status(self):
@@ -55,5 +57,5 @@ class Lakeshore325:
             temperature_value = float(response)
             return temperature_value
         except ValueError:
-            print(f"Failed to convert response to float: {response}")
+            self.logger.irdc_debug(f"Failed to convert response to float: {response}")
             return None

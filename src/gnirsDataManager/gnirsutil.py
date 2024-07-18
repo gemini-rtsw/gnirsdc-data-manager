@@ -2,6 +2,11 @@ import configparser
 import sys
 import os
 
+from logging import getLogger, Formatter, StreamHandler, INFO, DEBUG, WARNING, ERROR, FileHandler
+from logging_config import setup_logging, IRDC_DEBUG, IRDC_MAX_DEBUG 
+
+
+
 DEBUG_MODE = False
 config_mode = 'DEFAULT'
 
@@ -10,7 +15,9 @@ config = configparser.ConfigParser()
 
 config_loaded = False
 
+
 def LoadConfig():
+
     global config_loaded
     global config_mode
     global DEBUG_MODE
@@ -36,7 +43,7 @@ def LoadConfig():
         DEBUG_MODE = config.getboolean('DEFAULT', 'DEBUG_MODE', fallback=False)
 
         # command line will override config
-        DEBUG_MODE = '--debug' in sys.argv or '-D' in sys.argv
+        DEBUG_MODE = '--debug' in sys.argv or '-D' in sys.argv or '-d' in sys.argv
 
         # Adjust configuration based on the debug value
         if DEBUG_MODE:
@@ -49,7 +56,41 @@ def LoadConfig():
         else:
             print("------------ Debug mode is disabled ------------")
 
+
+
+    # Determine the logging level based on command line arguments
+    if DEBUG_MODE:
+        debug_level = 0
+        if '--debug-level' in sys.argv:
+            index = sys.argv.index('--debug-level')
+            if index + 1 < len(sys.argv):
+                try:
+                    debug_level = int(sys.argv[index + 1])
+                except ValueError:
+                    print("Invalid value for --debug-level, must be an integer between 1 and 4")
+        
+        if debug_level == 1:
+            log_level = WARNING
+        elif debug_level == 2:
+            log_level = IRDC_DEBUG
+        elif debug_level == 3:
+            log_level = IRDC_MAX_DEBUG
+        elif debug_level == 4:
+            log_level = ERROR
+        else:
+            log_level = IRDC_DEBUG  # Default to IRDC_DEBUG if no valid --debug-level is provided
+    else:
+        log_level = INFO
+
+    setup_logging(level = log_level)            
+
+
+
+
 LoadConfig()
+
+
+
 
 print(f"LoadConfig - DEBUG_MODE: {DEBUG_MODE}, config_mode: {config_mode}")
 
