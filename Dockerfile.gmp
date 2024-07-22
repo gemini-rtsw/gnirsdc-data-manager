@@ -1,13 +1,14 @@
 # Use Rocky Linux 9 as the base image
 FROM rockylinux:9
 
+# Update and install required packages
 RUN dnf -y update && dnf -y install procps
 
 # Install Java 8
 RUN dnf install -y java-1.8.0-openjdk
 
 # Set the JAVA_HOME environment variable
-ENV JAVA_HOME /usr/lib/jvm/jre
+ENV JAVA_HOME /usr/lib/jvm/jre-1.8.0-openjdk
 
 # Copy the gmp-server tar.gz file and the custom script into the container
 COPY gmp-server-0.2.6-SNAPSHOT.tar.gz /tmp
@@ -20,10 +21,16 @@ RUN tar -xzvf /tmp/gmp-server-0.2.6-SNAPSHOT.tar.gz -C /usr/local/share \
 # Set the working directory to the extraction directory
 WORKDIR /usr/local/share/gmp-server-0.2.6-SNAPSHOT
 
+# Copy configuration files into the container
 COPY conf/gmp /usr/local/share/gmp-server-0.2.6-SNAPSHOT/conf/
+
+# Add the required org.objectweb.asm bundle to the container
+RUN curl -L -o /usr/local/share/gmp-server-0.2.6-SNAPSHOT/bundles/org.objectweb.asm-5.2.jar \
+    https://repo1.maven.org/maven2/org/ow2/asm/asm/5.2/asm-5.2.jar
 
 # Command to start the gmp-server
 CMD ["/usr/local/bin/entrypoint-gmp.sh"]
+
 
 #run from the root dir of the gnirsdc-data-manager repo
 #docker build -f Dockerfile.gmp -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server .

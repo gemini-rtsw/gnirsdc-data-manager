@@ -58,29 +58,29 @@ def LoadConfig():
 
 
 
-    # Determine the logging level based on command line arguments
-    if DEBUG_MODE:
-        debug_level = 0
-        if '--debug-level' in sys.argv:
-            index = sys.argv.index('--debug-level')
-            if index + 1 < len(sys.argv):
-                try:
-                    debug_level = int(sys.argv[index + 1])
-                except ValueError:
-                    print("Invalid value for --debug-level, must be an integer between 1 and 4")
-        
-        if debug_level == 1:
-            log_level = WARNING
-        elif debug_level == 2:
-            log_level = IRDC_DEBUG
-        elif debug_level == 3:
-            log_level = IRDC_MAX_DEBUG
-        elif debug_level == 4:
-            log_level = ERROR
+        # Determine the logging level based on command line arguments
+        if DEBUG_MODE:
+            debug_level = 0
+            if '--debug-level' in sys.argv:
+                index = sys.argv.index('--debug-level')
+                if index + 1 < len(sys.argv):
+                    try:
+                        debug_level = int(sys.argv[index + 1])
+                    except ValueError:
+                        print("Invalid value for --debug-level, must be an integer between 1 and 4")
+
+            if debug_level == 1:
+                log_level = WARNING
+            elif debug_level == 2:
+                log_level = IRDC_DEBUG
+            elif debug_level == 3:
+                log_level = IRDC_MAX_DEBUG
+            elif debug_level == 4:
+                log_level = DEBUG
+            else:
+                log_level = WARNING  # Default to ERROR if no valid --debug-level is provided
         else:
-            log_level = IRDC_DEBUG  # Default to IRDC_DEBUG if no valid --debug-level is provided
-    else:
-        log_level = INFO
+            log_level = WARNING
 
     setup_logging(level = log_level)            
 

@@ -44,6 +44,8 @@ cppyy.include("InstCmdHandler.h")
 from cppyy.gbl import giapi
 from cppyy.gbl import instDummy
 
+from logging import getLogger
+
 
 # Access the enum values
 error_status = cppyy.gbl.giapi.status.Status.ERROR
@@ -53,21 +55,27 @@ ok_status = cppyy.gbl.giapi.status.Status.OK
 import subprocess
 import sys
 
-def check_gmp_and_exit(gmp_host='localhost', gmp_port=8008):
-    print(f"Checking GMP status on {gmp_host}:{gmp_port}")
+
+
+def check_gmp(gmp_host='localhost', gmp_port=8008):
+    logger = getLogger("GMP")
+
+    logger.irdc_debug(f"Checking GMP status on {gmp_host}:{gmp_port}")
     
     try:
         with socket.create_connection((gmp_host, gmp_port), timeout=5):
-            print("GMP is available. ")
+            logger.irdc_debug("GMP is available. ")
     except (socket.timeout, ConnectionRefusedError) as e:
-        print(f"GMP is not available: {e}. Exiting.")
-        sys.exit(1)
+        logger.irdc_error(f"GMP is not available: {e}. Exiting.")
     except Exception as e:
-        print(f"Error checking GMP: {e}. Exiting.")
-        sys.exit(1)
+        logger.irdc_error(f"Error checking GMP: {e}. Exiting.")
 
 
-    
+def check_gmp_and_exit(gmp_host='localhost', gmp_port=8008):
+    try: 
+        check_gmp(gmp_host, gmp_port)        
+    except Exception as e:
+        exit(1)
 
 class GiapiInterface:
 

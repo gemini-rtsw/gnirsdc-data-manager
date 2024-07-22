@@ -1,9 +1,19 @@
 import logging
 from logging import getLogger, Formatter, StreamHandler, INFO, DEBUG, FileHandler
 
-# Define new logging levels for project-specific debug messages
-IRDC_DEBUG = 25
-IRDC_MAX_DEBUG = 15
+# Standard logging levels
+# CRITICAL = 50
+# ERROR = 40
+# WARNING = 30
+# IRDC_DEBUG = 25
+# INFO = 20
+# IRDC_MAX_DEBUG = 15
+# DEBUG = 10
+# NOTSET = 0
+
+# Custom logging levels
+IRDC_DEBUG = 25  # Between INFO (20) and DEBUG (10)
+IRDC_MAX_DEBUG = 15  # More detailed than DEBUG (10)
 
 logging.addLevelName(IRDC_DEBUG, 'IRDC_DEBUG')
 logging.addLevelName(IRDC_MAX_DEBUG, 'IRDC_MAX_DEBUG')
