@@ -18,6 +18,19 @@ IRDC_MAX_DEBUG = 15  # More detailed than DEBUG (10)
 logging.addLevelName(IRDC_DEBUG, 'IRDC_DEBUG')
 logging.addLevelName(IRDC_MAX_DEBUG, 'IRDC_MAX_DEBUG')
 
+# Mapping of log level names to numeric values
+log_levels = {
+    "CRITICAL": logging.CRITICAL,
+    "ERROR": logging.ERROR,
+    "WARNING": logging.WARNING,
+    "IRDC_DEBUG": 25,
+    "INFO": logging.INFO,
+    "IRDC_MAX_DEBUG": 15,
+    "DEBUG": logging.DEBUG,
+    "NOTSET": logging.NOTSET,
+}
+
+
 def irdc_debug(self, message, *args, **kws):
     if self.isEnabledFor(IRDC_DEBUG):
         self._log(IRDC_DEBUG, message, args, **kws)
@@ -70,10 +83,11 @@ def setup_logging(level=INFO, log_file=None, name_on_message=False, fmt_string=N
 
 # Example usage in your project files
 if __name__ == "__main__":
-    setup_logging(level=IRDC_MAX_DEBUG)
+#    setup_logging(level=IRDC_MAX_DEBUG)
+    setup_logging(level=logging.ERROR)
     logger = logging.getLogger('your_project')
-    logger.info('This is an info message')
+    logger.error('This is an error message')
     logger.irdc_debug('This is a project-specific debug message')
+    logger.info('This is an info message')
     logger.irdc_max_debug('This is a project-specific max debug message')
     logger.debug('This is a standard debug message')
-    logger.error('This is an error message')

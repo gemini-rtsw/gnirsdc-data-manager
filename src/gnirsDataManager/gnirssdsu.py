@@ -519,7 +519,6 @@ class GnirsCADCARController(PVGroup):
                 await instance.write(temp)
         except Exception as e:
             return
-            #print(f"Error reading temperature: {e}")
 
     temperature_status  = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:temperature_status")    
     @temperature_status.scan(period=60)  # Scan every 60 seconds

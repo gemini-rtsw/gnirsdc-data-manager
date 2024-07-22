@@ -38,7 +38,7 @@ from datetime import datetime
 
 from gnirssdsu import GnirsCADCARController
 
-from gnirsgiapi import GiapiInterface, check_gmp_and_exit
+from gnirsgiapi import GiapiInterface, check_gmp_and_exit, check_gmp
 
 from gnirsutil import config, config_mode, DEBUG_MODE
 
@@ -48,14 +48,6 @@ WORKING_DIR = os.getcwd()
 
 print(f"Working Directory: {WORKING_DIR}")
 
-
-#INSTRUMENT_NAME = "GNIRS"
-#DEFAULT_PREFIX = "tgnirs:"
-#DEFAULT_DATADIR = '/readout_data'
-#MAX_LOG_SIZE = 5
-#WORKING_DIR = os.getcwd()
-#GMP_HOST = 'localhost'
-#GMP_PORT = 8008
 
 # Access the configuration values
 INSTRUMENT_NAME = config[config_mode].get('INSTRUMENT_NAME')
@@ -323,6 +315,20 @@ class GnirsDataManagerIOC(PVGroup):
     @pvproperty(dtype=ChannelType.STRING, doc="Name of the instrument")
     async def instrument(self, instance):
         return INSTRUMENT_NAME
+    
+#-------------- GMP status -------------------
+
+    gmp_status = pvproperty(value=0.0, read_only=True, dtype=ChannelType.STRING, name="gmp_status")
+
+    @gmp_status.scan(period=5)  # Scan every 5 seconds
+    async def gmp_status(self, instance, async_lib):
+        try:
+            check_gmp()
+            await instance.write("CONNECTED")
+        except Exception as e:
+            await instance.write("DISCONNECTED")
+        
+
 
 #-----------------------------------------------------------------------------
     currentLabel = pvproperty(
@@ -545,7 +551,6 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
     parser.add_argument('--output-dir', '-o', type=str, help="FITS output directory, default: {data-dir}/fits")
     parser.add_argument('--top', '-t', type=str, help="EPICS top name")
     parser.add_argument('--debug', '-D', action='store_true', help="Set Debug mode - no SDSU")
-    parser.add_argument('--debug-level', type=int, choices=[1, 2, 3, 4], help="Set debug level: 1 for WARNING, 2 for IRDC_DEBUG, 3 for IRDC_MAX_DEBUG, 4 for ERROR")
     
     # debug mode is here so it shows up in help, but it is manually checked at config read to allow override of config file
 

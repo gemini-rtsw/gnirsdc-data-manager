@@ -2,9 +2,8 @@ import configparser
 import sys
 import os
 
-from logging import getLogger, Formatter, StreamHandler, INFO, DEBUG, WARNING, ERROR, FileHandler
-from logging_config import setup_logging, IRDC_DEBUG, IRDC_MAX_DEBUG 
-
+from logging import getLogger, Formatter, StreamHandler, INFO, DEBUG, WARNING, ERROR, FileHandler, NOTSET
+from logging_config import setup_logging, log_levels, IRDC_DEBUG, IRDC_MAX_DEBUG
 
 
 DEBUG_MODE = False
@@ -43,7 +42,7 @@ def LoadConfig():
         DEBUG_MODE = config.getboolean('DEFAULT', 'DEBUG_MODE', fallback=False)
 
         # command line will override config
-        DEBUG_MODE = '--debug' in sys.argv or '-D' in sys.argv or '-d' in sys.argv
+        DEBUG_MODE = '--debug' in sys.argv or '-D' in sys.argv
 
         # Adjust configuration based on the debug value
         if DEBUG_MODE:
@@ -56,34 +55,10 @@ def LoadConfig():
         else:
             print("------------ Debug mode is disabled ------------")
 
-
-
-        # Determine the logging level based on command line arguments
-        if DEBUG_MODE:
-            debug_level = 0
-            if '--debug-level' in sys.argv:
-                index = sys.argv.index('--debug-level')
-                if index + 1 < len(sys.argv):
-                    try:
-                        debug_level = int(sys.argv[index + 1])
-                    except ValueError:
-                        print("Invalid value for --debug-level, must be an integer between 1 and 4")
-
-            if debug_level == 1:
-                log_level = WARNING
-            elif debug_level == 2:
-                log_level = IRDC_DEBUG
-            elif debug_level == 3:
-                log_level = IRDC_MAX_DEBUG
-            elif debug_level == 4:
-                log_level = DEBUG
-            else:
-                log_level = WARNING  # Default to ERROR if no valid --debug-level is provided
-        else:
-            log_level = WARNING
-
+    # Get the logging level from the configuration
+    log_level_str = config[config_mode].get('DEBUG_LEVEL')
+    log_level = log_levels.get(log_level_str, NOTSET)
     setup_logging(level = log_level)            
-
 
 
 

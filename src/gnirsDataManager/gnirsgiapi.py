@@ -60,15 +60,17 @@ import sys
 def check_gmp(gmp_host='localhost', gmp_port=8008):
     logger = getLogger("GMP")
 
-    logger.irdc_debug(f"Checking GMP status on {gmp_host}:{gmp_port}")
+    logger.irdc_max_debug(f"Checking GMP status on {gmp_host}:{gmp_port}")
     
     try:
         with socket.create_connection((gmp_host, gmp_port), timeout=5):
-            logger.irdc_debug("GMP is available. ")
+            logger.irdc_max_debug("GMP is available. ")
     except (socket.timeout, ConnectionRefusedError) as e:
-        logger.irdc_error(f"GMP is not available: {e}. Exiting.")
+        logger.error(f"GMP is not available: {e}. Exiting.")
+        raise
     except Exception as e:
-        logger.irdc_error(f"Error checking GMP: {e}. Exiting.")
+        logger.error(f"Error checking GMP: {e}. Exiting.")
+        raise
 
 
 def check_gmp_and_exit(gmp_host='localhost', gmp_port=8008):

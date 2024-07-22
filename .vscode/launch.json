@@ -11,7 +11,7 @@
             "program": "${file}",
             "cwd": "${workspaceFolder}/src/gnirsDataManager",
             "console": "integratedTerminal",
-            "args": ["--debug", "--debug-level", "2", "--list-pvs"],
+            "args": ["--debug", "--list-pvs"],
             "env": {
                 "GIAPI_ROOT": "/workspaces/gnirsdc-data-manager/giapi-glue-cc",
                 "LD_LIBRARY_PATH": "/workspaces/gnirsdc-data-manager/giapi-glue-cc/external/apr/lib:/workspaces/gnirsdc-data-manager/giapi-glue-cc/external/apr-util/lib:/workspaces/gnirsdc-data-manager/giapi-glue-cc/external/activemq-cpp/lib:/workspaces/gnirsdc-data-manager/giapi-glue-cc/external/log4cxx/lib:/workspaces/gnirsdc-data-manager/giapi-glue-cc/external/cppunit/lib:/workspaces/gnirsdc-data-manager/giapi-glue-cc/external/curlpp/lib:/workspaces/gnirsdc-data-manager/giapi-glue-cc/external/curlpp/lib64:/workspaces/gnirsdc-data-manager/giapi-glue-cc/external/libcurl/lib:/workspaces/gnirsdc-data-manager/giapi-glue-cc/external/libcurl/lib64:/workspaces/gnirsdc-data-manager/giapi-glue-cc/install/lib"
