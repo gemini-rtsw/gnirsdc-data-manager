@@ -59,7 +59,10 @@ GMP_PORT = config[config_mode].getint('GMP_PORT')
 GMP_TEST_PORT = config[config_mode].getint('GMP_TEST_PORT')
 
 
-print("""
+logger = getLogger('GNIRSDC')
+
+
+logger.message("""
       _____  _   _ _____ _____   _____   _____   _____ 
      / ____|| \ | |_   _|  __ \ / ____| |  __ \ / ____|
     | |  __ |  \| | | | | |__) | (___   | |  | | |     
@@ -68,13 +71,13 @@ print("""
      \_____||_| \_|_____|_|  \_\_____/  |_____/ \_____|
 """)
 
-print("")
-print("Booting...")
+logger.message("")
+logger.message("Booting...")
 
 
 # Perform GMP check
 check_gmp_and_exit(GMP_HOST, GMP_TEST_PORT)
-print("GMP check passed. Continuing with initialization...")
+logger.message("GMP check passed. Continuing with initialization...")
 
 
 def get_repo_info_for_directories():
@@ -110,8 +113,8 @@ def get_repo_info_for_directories():
     for directory in directories:
         commit_hash, branch, remote_origin, last_commit_message = get_repo_info(directory)
         if commit_hash and branch and remote_origin:
-            print(f"Repo: {directory}")
-            print(f"Commit Hash: {commit_hash}")
+            logger.message(f"Repo: {directory}")
+            logger.message(f"Commit Hash: {commit_hash}")
 
             # use env variable to pass dc and lib commit hash to fits header
             if (directory == '/gnirsdc'):
@@ -120,14 +123,14 @@ def get_repo_info_for_directories():
             if (directory == '/gnirsdc-lib'):
                 os.environ['LIB_COMMIT'] = commit_hash
 
-            print(f"Branch: {branch}")
-            print(f"Remote Origin: {remote_origin}")
-            print(f"Last Commit Message: {last_commit_message}")
-            print("---")
+            logger.message(f"Branch: {branch}")
+            logger.message(f"Remote Origin: {remote_origin}")
+            logger.message(f"Last Commit Message: {last_commit_message}")
+            logger.message("---")
         else:
-            print(f"Repo: {directory}")
-            print("Failed to retrieve repo information.")
-            print("---")
+            logger.message(f"Repo: {directory}")
+            logger.message("Failed to retrieve repo information.")
+            logger.message("---")
 
 
     os.chdir(WORKING_DIR)
@@ -175,7 +178,7 @@ class GnirsDataManagerProcessor:
         self.queue = queue.Queue()
         self.ready = threading.Event()
         self.shutting_down = False
-        self.logger = getLogger('GnirsDataManagerProcessor')
+        self.logger = getLogger('GNIRSDC')
         self.processes = []
 
     def set_ready(self):

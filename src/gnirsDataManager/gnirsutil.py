@@ -56,9 +56,17 @@ def LoadConfig():
             print("------------ Debug mode is disabled ------------")
 
     # Get the logging level from the configuration
-    log_level_str = config[config_mode].get('DEBUG_LEVEL')
+    log_level_str = config[config_mode].get('LOG_LEVEL')
     log_level = log_levels.get(log_level_str, NOTSET)
-    setup_logging(level = log_level)            
+
+    console_level_str = config[config_mode].get('CONSOLE_LEVEL')
+    console_level = log_levels.get(console_level_str, NOTSET)    
+
+    log_file = config[config_mode].get('LOG_FILE')
+
+    log_rotate_time = config[config_mode].getint('LOG_ROTATE_TIME')
+
+    setup_logging(console_level = console_level, file_level = log_level, log_file = log_file, log_rotate_time=log_rotate_time)            
 
 
 
