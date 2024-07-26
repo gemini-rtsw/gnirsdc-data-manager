@@ -4,8 +4,8 @@ import os
 from caproto.server import pvproperty, PVGroup, ioc_arg_parser, run
 from caproto import ChannelType
 
-# Add the ../src/gnirsDataManager/ directory to the system path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/gnirsDataManager')))
+# Add the ../src directory to the system path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 from lakeshore import Lakeshore325
 
 class LakeshoreIOC(PVGroup):

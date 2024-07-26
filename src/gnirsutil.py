@@ -26,7 +26,7 @@ def LoadConfig():
         config_loaded = True
 
         # Define the path to the configuration file
-        config_file_path = '../../conf/gnirsdc/config.ini'
+        config_file_path = '../conf/gnirsdc/config.ini'
 
         # Read the configuration file
         config.read(config_file_path)

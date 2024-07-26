@@ -4,7 +4,7 @@ cd /gnirsdc/giapi-glue-cc
 source defineGiapiglueEnv.sh
 
 # Change to the appropriate directory
-cd /gnirsdc/src/gnirsDataManager
+cd /gnirsdc/src
 
 # Execute your Python script with any required arguments
 mkdir -p /readout_data/log/ > /dev/null 2>&1

@@ -9,7 +9,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "cwd": "${workspaceFolder}/src/gnirsDataManager",
+            "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "args": ["--debug", "--list-pvs"],
             "env": {

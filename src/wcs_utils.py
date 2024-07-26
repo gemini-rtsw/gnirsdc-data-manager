@@ -25,7 +25,7 @@ def load_all_files():
         'aognirs_1_short.wcs', 'aognirs_3_short.wcs', 'aognirs_5_short.wcs',
         'gnirs_1_short.wcs', 'gnirs_3_short.wcs', 'gnirs_5_short.wcs'
     ]
-    base_dir = '../../conf/wcs/'  
+    base_dir = '../conf/wcs/'  
 
     for file_name in files:
         file_path = base_dir + file_name
