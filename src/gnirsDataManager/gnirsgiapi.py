@@ -4,6 +4,7 @@ import cppyy
 import time
 import sys
 import socket
+import time
 
 
 print(f"GIAPI_ROOT: {os.environ.get('GIAPI_ROOT')}")
@@ -66,18 +67,25 @@ def check_gmp(gmp_host='localhost', gmp_port=8008):
         with socket.create_connection((gmp_host, gmp_port), timeout=5):
             logger.irdc_max_debug("GMP is available. ")
     except (socket.timeout, ConnectionRefusedError) as e:
-        logger.error(f"GMP is not available: {e}. Exiting.")
+        logger.error(f"GMP is not available: {e}.")
         raise
     except Exception as e:
-        logger.error(f"Error checking GMP: {e}. Exiting.")
+        logger.error(f"Error checking GMP: {e}.")
         raise
-
 
 def check_gmp_and_exit(gmp_host='localhost', gmp_port=8008):
-    try: 
-        check_gmp(gmp_host, gmp_port)        
-    except Exception as e:
-        exit(1)
+    logger = getLogger("GMP")
+
+    for _ in range(10):
+        try: 
+            check_gmp(gmp_host, gmp_port)
+            return  # Exit the function if the check is successful
+        except Exception as e:
+            logger.error(f"Error GMP not available: {e}. Retrying...")
+            time.sleep(1)
+
+    logger.error("GMP not available after 10 attempts. Exiting")
+    exit(1)
 
 class GiapiInterface:
 
