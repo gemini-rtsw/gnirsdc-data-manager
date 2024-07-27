@@ -5,6 +5,20 @@ from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime, time, timedelta
 
 
+import asyncio
+
+
+log_message_pv = None
+log_datetime_pv = None
+
+def set_epics_log_pvs(log_message, log_datetime):
+    global log_message_pv
+    global log_datetime_pv
+
+    log_message_pv = log_message
+    log_datetime_pv = log_datetime
+
+
 # Standard logging levels
 # MESSAGE = 60  
 # CRITICAL = 50
@@ -19,21 +33,21 @@ from datetime import datetime, time, timedelta
 # Custom logging levels
 IRDC_DEBUG = 25  # Between INFO (20) and DEBUG (10)
 IRDC_MAX_DEBUG = 15  # More detailed than DEBUG (10)
-MESSAGE = 60  # Higher than CRITICAL
+PRINT = 60  # Higher than CRITICAL
 
 logging.addLevelName(IRDC_DEBUG, 'IRDC_DEBUG')
 logging.addLevelName(IRDC_MAX_DEBUG, 'IRDC_MAX_DEBUG')
-logging.addLevelName(MESSAGE, 'MESSAGE')
+logging.addLevelName(PRINT, 'PRINT')
 
 # Mapping of log level names to numeric values
 log_levels = {
-    "MESSAGE": MESSAGE,
+    "PRINT": PRINT,
     "CRITICAL": logging.CRITICAL,
     "ERROR": logging.ERROR,
     "WARNING": logging.WARNING,
-    "IRDC_DEBUG": 25,
+    "IRDC_DEBUG": IRDC_DEBUG,
     "INFO": logging.INFO,
-    "IRDC_MAX_DEBUG": 15,
+    "IRDC_MAX_DEBUG": IRDC_MAX_DEBUG,
     "DEBUG": logging.DEBUG,
     "NOTSET": logging.NOTSET,
 }
@@ -47,14 +61,31 @@ def irdc_max_debug(self, message, *args, **kws):
     if self.isEnabledFor(IRDC_MAX_DEBUG):
         self._log(IRDC_MAX_DEBUG, message, args, **kws)
 
-def message(self, message, *args, **kws):
-    self._log(MESSAGE, message, args, **kws)        
+def log_print(self, message, *args, **kws):
+    self._log(PRINT, message, args, **kws)        
 
 logging.Logger.irdc_debug = irdc_debug
 logging.Logger.irdc_max_debug = irdc_max_debug
-logging.Logger.message = message
+logging.Logger.print = log_print
 
-def setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file=None, name_on_message=False, fmt_string=None, log_rotate_time = 8):
+
+class CustomHandler(logging.Handler):
+    def emit(self, record):
+        if record.levelno >= IRDC_DEBUG and log_message_pv != None:
+            # Run the coroutine in the current thread
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.update_pvs(record))
+            else:
+                loop.run_until_complete(self.update_pvs(record))
+    
+    async def update_pvs(self, record):
+        await log_message_pv.write(record.message)
+        await log_datetime_pv.write(record.asctime)
+
+
+
+def setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file=None, log_rotate_time = 8):
     """
     Common logging setup for all SysCo processes.
 
@@ -67,11 +98,9 @@ def setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file=None
     root = logging.getLogger()
     root.handlers = []  # Clear existing handlers to avoid duplicate logs
 
-    if fmt_string is None:
-        if name_on_message:
-            fmt_string = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
-        else:
-            fmt_string = "%(asctime)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+
+    fmt_string = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+
             
     formatter = Formatter(fmt_string)
 
@@ -80,6 +109,13 @@ def setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file=None
     stream_handler.setFormatter(formatter)
     stream_handler.setLevel(console_level)
     root.addHandler(stream_handler)
+
+
+    # CustomHandler for epics channel out
+    custom_handler = CustomHandler()
+    custom_handler.setLevel(console_level)
+    root.addHandler(custom_handler)
+
 
     # FileHandler for file output
     if log_file:
@@ -102,8 +138,7 @@ def setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file=None
 # Example usage in your project files
 if __name__ == "__main__":
 #    setup_logging(level=IRDC_MAX_DEBUG)
-    setup_logging(level=logging.ERROR)
-    setup_logging(level=DEBUG, log_file='/logs/gnirsdc.log')
+    setup_logging()
     logger = logging.getLogger('your_project')
     logger.error('This is an error message')
     logger.irdc_debug('This is a project-specific debug message')

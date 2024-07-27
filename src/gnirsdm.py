@@ -43,6 +43,7 @@ from gnirsgiapi import GiapiInterface, check_gmp_and_exit, check_gmp
 from gnirsutil import config, config_mode, DEBUG_MODE
 
 from logging import getLogger
+from logging_config import set_epics_log_pvs
 
 WORKING_DIR = os.getcwd()
 
@@ -62,7 +63,7 @@ GMP_TEST_PORT = config[config_mode].getint('GMP_TEST_PORT')
 logger = getLogger('GNIRSDC')
 
 
-logger.message("""
+logger.print("""
       _____  _   _ _____ _____   _____   _____   _____ 
      / ____|| \ | |_   _|  __ \ / ____| |  __ \ / ____|
     | |  __ |  \| | | | | |__) | (___   | |  | | |     
@@ -71,13 +72,13 @@ logger.message("""
      \_____||_| \_|_____|_|  \_\_____/  |_____/ \_____|
 """)
 
-logger.message("")
-logger.message("Booting...")
+logger.print("")
+logger.print("Booting...")
 
 
 # Perform GMP check
 check_gmp_and_exit(GMP_HOST, GMP_TEST_PORT)
-logger.message("GMP check passed. Continuing with initialization...")
+logger.print("GMP check passed. Continuing with initialization...")
 
 
 def get_repo_info_for_directories():
@@ -113,8 +114,8 @@ def get_repo_info_for_directories():
     for directory in directories:
         commit_hash, branch, remote_origin, last_commit_message = get_repo_info(directory)
         if commit_hash and branch and remote_origin:
-            logger.message(f"Repo: {directory}")
-            logger.message(f"Commit Hash: {commit_hash}")
+            logger.print(f"Repo: {directory}")
+            logger.print(f"Commit Hash: {commit_hash}")
 
             # use env variable to pass dc and lib commit hash to fits header
             if (directory == '/gnirsdc'):
@@ -123,14 +124,14 @@ def get_repo_info_for_directories():
             if (directory == '/gnirsdc-lib'):
                 os.environ['LIB_COMMIT'] = commit_hash
 
-            logger.message(f"Branch: {branch}")
-            logger.message(f"Remote Origin: {remote_origin}")
-            logger.message(f"Last Commit Message: {last_commit_message}")
-            logger.message("---")
+            logger.print(f"Branch: {branch}")
+            logger.print(f"Remote Origin: {remote_origin}")
+            logger.print(f"Last Commit Message: {last_commit_message}")
+            logger.print("---")
         else:
-            logger.message(f"Repo: {directory}")
-            logger.message("Failed to retrieve repo information.")
-            logger.message("---")
+            logger.print(f"Repo: {directory}")
+            logger.print("Failed to retrieve repo information.")
+            logger.print("---")
 
 
     os.chdir(WORKING_DIR)
@@ -179,6 +180,7 @@ class GnirsDataManagerProcessor:
         self.ready = threading.Event()
         self.shutting_down = False
         self.logger = getLogger('GNIRSDC')
+
         self.processes = []
 
     def set_ready(self):
@@ -233,6 +235,7 @@ class GnirsDataManagerIOC(PVGroup):
         self.processor = None 
 
         print(f'{self.CADInterface.apply.prefix} Apply sub recs: {len(self.CADInterface.apply.cads.records)}')
+
 
 
     CADInterface = SubGroup(GnirsCADCARController, prefix="")
@@ -296,6 +299,9 @@ class GnirsDataManagerIOC(PVGroup):
     log_message = pvproperty( value = "", dtype=ChannelType.STRING, doc="Record the last log message" )
     log_datetime = pvproperty( value = "", dtype=ChannelType.STRING, doc="Record the last log date" )
 
+    @log_message.startup
+    async def log_message(self, instance, async_lib):
+        set_epics_log_pvs(self.log_message, self.log_datetime)
 
     async def logMessage(self, message):
         if self.log_message.value != message:
@@ -615,6 +621,7 @@ async def main():
     finally:
         proc.shutdown()
         thrd.join()
+
 
 async def shutdown(proc, thrd):
     """Shut down the IOC components."""
