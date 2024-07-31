@@ -17,7 +17,7 @@ start_container() {
 
     # Run the container
     echo "Running the '${container_name}' container..."
-    output=$(docker run -d --network=host --name ${container_name} -v /readout_data:/readout_data -v /staging/perm:/staging/perm -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro ${image_name})
+    output=$(docker run -d --network=host --privileged --name ${container_name} -v /readout_data:/readout_data -v /staging/perm:/staging/perm -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro ${image_name})
 
     # Check if the docker run command executed successfully
     if [ $? -eq 0 ]; then
