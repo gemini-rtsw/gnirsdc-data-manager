@@ -2,44 +2,48 @@
 
 echo "Starting Detector Controller Software"
 
-# Check if the "gmp" container exists and remove it forcefully
-if docker ps -a --format '{{.Names}}' | grep -q "^gmp$"; then
-    echo "Removing the 'gmp' container..."
-    docker rm -f gmp > /dev/null 2>&1
-    echo "The 'gmp' container has been removed."
-else
-    echo "The 'gmp' container does not exist."
-fi
+start_container() {
+    container_name=$1
+    image_name=$2
 
-# Run the gmp container
-echo "Running the 'gmp' container..."
-output=$(docker run -d --network=host --name gmp -v /readout_data:/readout_data -v /staging/perm:/staging/perm -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:current)
+    # Check if the container exists and remove it forcefully
+    if docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
+        echo "Removing the '${container_name}' container..."
+        docker rm -f ${container_name} > /dev/null 2>&1
+        echo "The '${container_name}' container has been removed."
+    else
+        echo "The '${container_name}' container does not exist."
+    fi
 
-# Check if the docker run command executed successfully
-if [ $? -eq 0 ]; then
-    echo "The 'gmp' container has been started successfully."
-    echo "Container ID: $output"
-else
-    echo "Failed to start the 'gmp' container."
-fi
+    # Run the container
+    echo "Running the '${container_name}' container..."
+    output=$(docker run -d --network=host --name ${container_name} -v /readout_data:/readout_data -v /staging/perm:/staging/perm -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro ${image_name})
 
-# Check if the "gnirsdc" container exists and remove it forcefully
-if docker ps -a --format '{{.Names}}' | grep -q "^gnirsdc$"; then
-    echo "Removing the 'gnirsdc' container..."
-    docker rm -f gnirsdc > /dev/null 2>&1
-    echo "The 'gnirsdc' container has been removed."
-else
-    echo "The 'gnirsdc' container does not exist."
-fi
+    # Check if the docker run command executed successfully
+    if [ $? -eq 0 ]; then
+        echo "The '${container_name}' container has been started successfully."
+        echo "Container ID: $output"
+        return 0
+    else
+        echo "Failed to start the '${container_name}' container."
+        return 1
+    fi
+}
 
-# Run the gnirsdc container
-echo "Running the 'gnirsdc' container..."
-output=$(docker run -itd --name gnirsdc --privileged --network=host -v /readout_data:/readout_data -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:current)
+# Start gmp container
+start_container "gmp" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:current"
+gmp_status=$?
 
-# Check if the docker run command executed successfully
-if [ $? -eq 0 ]; then
-    echo "The 'gnirsdc' container has been started successfully."
-    echo "Container ID: $output"
-else
-    echo "Failed to start the 'gnirsdc' container."
+# Start gnirsdc container
+start_container "gnirsdc" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:current"
+gnirsdc_status=$?
+
+# If any of the containers failed to start, run dc-production.sh and try again
+if [ $gmp_status -ne 0 ] || [ $gnirsdc_status -ne 0 ]; then
+    echo "One or more containers failed to start. Running dc-production.sh..."
+    ./dc-production.sh
+
+    # Try starting the containers again
+    start_container "gmp" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:current"
+    start_container "gnirsdc" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:current"
 fi
