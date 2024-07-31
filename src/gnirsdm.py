@@ -39,7 +39,7 @@ from logging import getLogger
 from logging_config import set_epics_log_pvs
 
 WORKING_DIR = os.getcwd()
-os.environ['EPICS_CA_ADDR_LIST'] = config[config_mode].getint('EPICS_CA_ADDR_LIST')
+os.environ['EPICS_CA_ADDR_LIST'] = config[config_mode].get('EPICS_CA_ADDR_LIST')
 
 print(f"Working Directory: {WORKING_DIR}")
 
