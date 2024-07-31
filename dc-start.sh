@@ -41,7 +41,7 @@ gnirsdc_status=$?
 # If any of the containers failed to start, run dc-production.sh and try again
 if [ $gmp_status -ne 0 ] || [ $gnirsdc_status -ne 0 ]; then
     echo "One or more containers failed to start. Running dc-production.sh..."
-    ./dc-production.sh
+    dc-production.sh
 
     # Try starting the containers again
     start_container "gmp" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:current"
