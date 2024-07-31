@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the Docker image names
-GNIRSDC_IMAGE="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-dm-screens/gnirsdc-dm-run bash"
+GNIRSDC_GM_IMAGE="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-dm-screens/gnirsdc-dm-run bash"
 GMP_IMAGE="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server"
 GNIRSDC_IMAGE="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run"
 
@@ -20,6 +20,7 @@ update_tag() {
 }
 
 # Update tags for both images to testing
+update_tag "${GNIRSDC_GM_IMAGE}" "latest"
 update_tag "${GMP_IMAGE}" "latest"
 update_tag "${GNIRSDC_IMAGE}" "latest"
 
