@@ -2,7 +2,7 @@
 FROM rockylinux:9
 
 # Update and install required packages
-RUN dnf -y update && dnf -y install procps
+RUN dnf -y update && dnf -y install procps sudo
 
 # Install Java 8
 RUN dnf install -y java-1.8.0-openjdk
