@@ -17,13 +17,6 @@ from diskSpaceMonitor import DiskSpacePVGroup
 
 from multiprocessing import Process
 
-
-
-#from inotify_simple import INotify, flags
-
-
-#from gnirs_data import manager
-
 import manager
 
 from asyncinotify import Inotify, Mask
@@ -46,6 +39,7 @@ from logging import getLogger
 from logging_config import set_epics_log_pvs
 
 WORKING_DIR = os.getcwd()
+os.environ['EPICS_CA_ADDR_LIST'] = config[config_mode].getint('EPICS_CA_ADDR_LIST')
 
 print(f"Working Directory: {WORKING_DIR}")
 
