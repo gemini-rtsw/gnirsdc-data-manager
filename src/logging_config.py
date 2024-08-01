@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from logging import getLogger, Formatter, StreamHandler, INFO, DEBUG, FileHandler
 from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime, time, timedelta
@@ -10,13 +11,6 @@ import asyncio
 
 log_message_pv = None
 log_datetime_pv = None
-
-def set_epics_log_pvs(log_message, log_datetime):
-    global log_message_pv
-    global log_datetime_pv
-
-    log_message_pv = log_message
-    log_datetime_pv = log_datetime
 
 
 # Standard logging levels
@@ -67,6 +61,30 @@ def log_print(self, message, *args, **kws):
 logging.Logger.irdc_debug = irdc_debug
 logging.Logger.irdc_max_debug = irdc_max_debug
 logging.Logger.print = log_print
+
+
+
+def set_epics_log_pvs(log_message, log_datetime):
+    global log_message_pv
+    global log_datetime_pv
+
+    log_message_pv = log_message
+    log_datetime_pv = log_datetime
+
+
+class TeeStream:
+    def __init__(self, original_stream, logger):
+        self.original_stream = original_stream
+        self.logger = logger
+
+    def write(self, message):
+        self.original_stream.write(message)
+        message = message.strip()
+        if message:
+            self.logger.info(message)
+
+    def flush(self):
+        self.original_stream.flush()
 
 
 class CustomHandler(logging.Handler):
@@ -134,6 +152,17 @@ def setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file=None
 
     # Set caproto's logging level to WARNING to avoid flooding
     logging.getLogger('caproto').setLevel(logging.WARNING)
+
+    # Create a logger for stdout
+    stdout_logger = logging.getLogger('stdout')
+    stdout_logger.setLevel(logging.INFO)
+    stdout_logger.addHandler(stream_handler)
+    if log_file:
+        stdout_logger.addHandler(handler)
+
+    # Redirect stdout
+    sys.stdout = TeeStream(sys.stdout, stdout_logger)
+
 
 # Example usage in your project files
 if __name__ == "__main__":
