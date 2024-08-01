@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# This script updates Docker images by pulling the latest 'production' tag
+# and tagging it as 'current'. It helps ensure that the 'current' tag always
+# points to the latest 'production' version of the images.
+
 # Define the Docker image names
 GNIRSDC_DM_IMAGE="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-dm-screens/gnirsdc-dm-run"
 GMP_IMAGE="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server"
@@ -19,7 +23,24 @@ update_tag() {
     docker tag "${image}:${new_tag}" "${image}:current"
 }
 
-# Update tags for both images to production
+# Display help information
+show_help() {
+    echo "Usage: $0 [--help]"
+    echo
+    echo "This script updates Docker images by pulling the latest 'production' tag"
+    echo "and tagging it as 'current'."
+    echo
+    echo "Options:"
+    echo "  --help     Display this help message and exit."
+}
+
+# Check for --help option
+if [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+# Update tags for all images to 'production'
 update_tag "${GNIRSDC_DM_IMAGE}" "production"
 update_tag "${GMP_IMAGE}" "production"
 update_tag "${GNIRSDC_IMAGE}" "production"
