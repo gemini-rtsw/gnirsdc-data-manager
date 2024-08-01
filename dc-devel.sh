@@ -41,6 +41,8 @@ show_help() {
     echo
     echo "This script starts Docker containers for the Detector Controller Software in a development environment."
     echo
+    echo "The old containers will be deleted and replaced."
+    echo
     echo "Options:"
     echo "  --help     Display this help message and exit."
 }
@@ -56,5 +58,6 @@ start_container "gmp" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-
 gmp_status=$?
 
 # Start gnirsdc container
+docker rm -rf gnirsdc
 docker run -it --network=host --privileged --name gnirsdc -v /readout_data:/readout_data -v /staging/perm:/staging/perm -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev:latest bash
 gnirsdc_status=$?

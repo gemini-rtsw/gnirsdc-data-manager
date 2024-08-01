@@ -30,6 +30,21 @@ start_container() {
     fi
 }
 
+
+# Display help information
+show_help() {
+    echo "Usage: $0 [--help]"
+    echo
+    echo "This script starts Docker containers for the Detector Controller Software using the current image tag."
+    echo
+    echo "The old containers will be deleted and replaced."
+    echo
+    echo "Options:"
+    echo "  --help     Display this help message and exit."
+}
+
+
+
 # Start gmp container
 start_container "gmp" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:current"
 gmp_status=$?
