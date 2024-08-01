@@ -15,8 +15,7 @@ FROM registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirs
 # Maintainer label
 LABEL maintainer="hawi.stecher@noirlab.edu"
 
-# Start bash
-CMD ["/gnirsdc/entrypoint.sh"]
-
+# Set the entry point to your script
+ENTRYPOINT ["/gnirsdc/entrypoint.sh"]
 
 
