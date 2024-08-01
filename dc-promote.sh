@@ -19,16 +19,20 @@ promote_to_production() {
 
     # Tag the current production image with the current date and time
     local date_time_tag=$(date +"%Y-%m-%d_%H-%M-%S")
-    echo "Tagging local production image for $name as ${image}:${date_time_tag}..."
+    echo
+    echo "Backing up local production image for $name as ${image}:${date_time_tag}..."
     docker tag "${image}:production" "${image}:${date_time_tag}"
     docker push "${image}:${date_time_tag}"
     echo "Archived as ${image}:${date_time_tag}."
+    echo
 
     # Promote the local current image to production
+    echo
     echo "Promoting local current image for $name to production..."
     docker tag "${image}:current" "${image}:production"
     docker push "${image}:production"
     echo "Successfully promoted to production."
+    echo
 }
 
 
@@ -61,7 +65,8 @@ fi
 
 # Promote the current tag to production for both images
 promote_to_production "$GNIRSDC_DM_IMAGE" "GNIRSDC DM Screen"
-promote_to_production "$GMP_IMAGE""GMP Server"
+promote_to_production "$GMP_IMAGE" "GMP Server"
 promote_to_production "$GNIRSDC_IMAGE" "GNIRSDC Run"
 
+echo
 echo "Promotion process completed."
