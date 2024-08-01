@@ -81,7 +81,7 @@ class TeeStream:
         self.original_stream.write(message)
         message = message.strip()
         if message:
-            self.logger.info(message)
+            self.logger.irdc_debug(message)
 
     def flush(self):
         self.original_stream.flush()
