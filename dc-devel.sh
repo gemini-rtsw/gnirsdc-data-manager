@@ -58,6 +58,6 @@ start_container "gmp" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-
 gmp_status=$?
 
 # Start gnirsdc container
-docker rm -rf gnirsdc
+docker rm -f gnirsdc
 docker run -it --network=host --privileged --name gnirsdc -v /readout_data:/readout_data -v /staging/perm:/staging/perm -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev:latest bash
 gnirsdc_status=$?
