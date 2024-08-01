@@ -46,7 +46,7 @@ print(f"Working Directory: {WORKING_DIR}")
 
 # Access the configuration values
 INSTRUMENT_NAME = config[config_mode].get('INSTRUMENT_NAME')
-DEFAULT_PREFIX = config[config_mode].get('DEFAULT_PREFIX')
+DEFAULT_PREFIX = config[config_mode].get('DEFAULT_PREFIX') + ":"
 DEFAULT_DATADIR = config[config_mode].get('DEFAULT_DATADIR')
 MAX_LOG_SIZE = config[config_mode].getint('MAX_LOG_SIZE')
 GMP_HOST = config[config_mode].get('GMP_HOST')

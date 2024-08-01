@@ -3,6 +3,9 @@
 # This script updates Docker images by pulling the latest 'latest' tag
 # and tagging it as 'current'. It helps ensure that the 'current' tag always
 # points to the latest version of the images.
+#
+# A DC restart is required for the changes to take effect.
+#
 
 # Define the Docker image names
 GNIRSDC_GM_IMAGE="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-dm-screens/gnirsdc-dm-run"
@@ -30,6 +33,8 @@ show_help() {
     echo "This script updates Docker images by pulling the latest 'latest' tag"
     echo "and tagging it as 'current'."
     echo
+    echo "A DC restart is required for the changes to take effect."
+    echo     
     echo "Options:"
     echo "  --help     Display this help message and exit."
 }
