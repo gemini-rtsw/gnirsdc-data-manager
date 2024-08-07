@@ -225,7 +225,7 @@ class ObserveCAD(GnirsCAD):
             await self.MESS.write("Controller not initialized")
 
             return False
-        elif (self.p.temperature.value > INTERLOCK_TEMP):
+        elif (self.p.temperature.value > INTERLOCK_TEMP and self.p.disable_interlock.value <= 0):
 
             await self.logMessage(f"Detector not at temperature")
             await self.MESS.write("Detector not at temperature")
@@ -532,6 +532,9 @@ class GnirsCADCARController(PVGroup):
                 print("Status reading returned None")
         except Exception as e:
             print(f"Error reading status: {e}")
+
+    disable_interlock  = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="dc:disable_interlock")    
+
     #-------------- Temp Monitor -------------------
 
 
