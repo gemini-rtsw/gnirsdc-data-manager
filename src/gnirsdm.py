@@ -27,7 +27,9 @@ from caproto.sync.client import read
 
 from datetime import datetime
 
+from enum import Enum
 
+import multiprocessing as mp
 
 from gnirssdsu import GnirsCADCARController
 
@@ -143,31 +145,60 @@ class StateEnum(enum.IntEnum):
     RUNNING = 2,
     PROCESSING = 3
 
-def standalone_process_task(file_path, dp, ioc, logger):
+class Command(Enum):
+    OBSERVE_START_WRITE = 1
+    OBSERVE_END_WRITE = 2
+
+
+
+def parent_process_commands(pipe, ioc):
+    while True:
+        command, label = pipe.recv()
+        if command == Command.OBSERVE_START_WRITE:
+
+            asyncio.run(ioc.currentLabel.write(label))
+            ioc.GIAPIInterface.observeStartWrite(label)
+
+        elif command == Command.OBSERVE_END_WRITE:
+
+            ioc.GIAPIInterface.observeEndWrite(label)
+
+        elif command is None:
+            break
+
+
+def standalone_process_task(file_path, dp, pipe):
 
     fname = file_path.parts[-1].rpartition('.')[0]
     label = None
     try:
         rpath, header = manager.decode_header(dp.datamov.new, fname)
         label = header['PDU']['LABEL']
-        asyncio.run(ioc.currentLabel.write(label))
+#        asyncio.run(ioc.currentLabel.write(label))
+
+        print(f'GDS writing fits')
+
+        pipe.send((Command.OBSERVE_START_WRITE, label))
+
         dp.process_file(fname, os.getenv('DC_COMMIT', 'dc_commit_missing'), os.getenv('LIB_COMMIT', 'lib_commit_missing'))
+
+        pipe.send((Command.OBSERVE_END_WRITE, label))
+
     except Exception as exc:
-        try:
-            if label is None:
-                asyncio.run(ioc.set_error(fname, "Illegal header"))
-            else:
-                asyncio.run(ioc.set_error(label, str(exc)))
-        except Exception as async_exc:
-            logger.irdc_debug(f"Error while setting error status: {async_exc}")
-    finally:
-        try:
-            asyncio.run(ioc.done_task(f"Done processing {file_path.parts[-1]}"))
-        except Exception as async_exc:
-            logger.irdc_debug(f"Error in done_task: {async_exc}")
+        if label is None:
+            print(f"Error reading raw header file: {fname}")
+        else:
+            print(f"Error processing header: {exc}")
+
+#    finally:
+#        try:
+#            asyncio.run(ioc.done_task(f"Done processing {file_path.parts[-1]}"))
+#        except Exception as async_exc:
+#            logger.irdc_debug(f"Error in done_task: {async_exc}")
 
 class GnirsDataManagerProcessor:
     def __init__(self, ioc, processor):
+
         self.ioc = ioc
         self.dp = processor
         self.queue = queue.Queue()
@@ -177,11 +208,19 @@ class GnirsDataManagerProcessor:
 
         self.processes = []
 
+        self.parent_conn, self.child_conn = mp.Pipe()
+        self.command_thread = threading.Thread(target=parent_process_commands, args=(self.parent_conn, self.ioc))
+        self.command_thread.start()
+
     def set_ready(self):
         self.ready.set()
 
     def shutdown(self):
         self.shutting_down = True
+
+        self.parent_conn.send((None, None))  # Signal to stop the command thread
+        self.command_thread.join()
+
         for p in self.processes:
             p.join()
 
@@ -191,7 +230,7 @@ class GnirsDataManagerProcessor:
             try:
                 next_task = self.queue.get(timeout=0.5)
                 asyncio.run(self.ioc.state.write(StateEnum.PROCESSING))
-                p = Process(target=standalone_process_task, args=(next_task, self.dp, self.ioc, self.logger))
+                p = mp.Process(target=standalone_process_task, args=(next_task, self.dp, self.child_conn))
                 p.start()
                 self.processes.append(p)
                 asyncio.run(self.ioc.currentLabel.write(''))

@@ -319,11 +319,11 @@ class ObserveCAD(GnirsCAD):
         if (self.p.parent.archive_fits.value):
             self.giapi.observeEndReadout(self.p.observeA.value)
 
-            await self.logMessage(f'GDS writing fits')
+            #await self.logMessage(f'GDS writing fits')
 
-            self.giapi.observeStartWrite(self.p.observeA.value)
+            #self.giapi.observeStartWrite(self.p.observeA.value)
 
-            self.giapi.observeEndWrite(self.p.observeA.value)
+            #self.giapi.observeEndWrite(self.p.observeA.value)
 
         #complete readout
         await self.logMessage(f'ObserveCAD end')
