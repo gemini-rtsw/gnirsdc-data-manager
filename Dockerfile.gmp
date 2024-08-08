@@ -10,22 +10,15 @@ RUN dnf install -y java-1.8.0-openjdk
 # Set the JAVA_HOME environment variable
 ENV JAVA_HOME /usr/lib/jvm/jre-1.8.0-openjdk
 
+# Create a user called gemdhs
+RUN useradd -m gemdhs
+
 # Copy the gmp-server tar.gz file and the custom script into the container
 RUN mkdir -p /gmp-install
 COPY gmp-server-0.2.6-SNAPSHOT.tar.gz /gmp-install
 COPY conf/gmp /gmp-install/gmp
 COPY entrypoint-gmp.sh /usr/local/bin/
 
-
-# Extract the tar.gz file into /usr/local/share
-#RUN cd /gmp-install && tar -xvf gmp-server-0.2.6-SNAPSHOT.tar.gz 
-#RUN ln -s /gmp-install/gmp-server-0.2.6-SNAPSHOT /usr/local/share/gmp-server
-#RUN chmod +x /usr/local/bin/entrypoint-gmp.sh
-
-# Set the working directory to the extraction directory
-#WORKDIR /usr/local/share/gmp-server
-
-# Copy configuration files into the container
 
 # Command to start the gmp-server
 CMD ["/usr/local/bin/entrypoint-gmp.sh"]
