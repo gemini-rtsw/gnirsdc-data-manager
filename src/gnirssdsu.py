@@ -505,7 +505,7 @@ class GnirsCADCARController(PVGroup):
 
 
     #-------------- Temp Monitor -------------------
-    temperature = pvproperty(value=0.0, read_only=True, dtype=caproto.ChannelType.DOUBLE, name="dc:temperature")
+    temperature = pvproperty(value=300.0, read_only=True, dtype=caproto.ChannelType.DOUBLE, name="dc:temperature")
 
     @temperature.startup
     async def temperature(self, instance, async_lib):
