@@ -88,6 +88,10 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
     fits_header.insert(4, ('COMMENT', "FITS (Flexible Image Transport System) format is defined in 'Astronomy"))
     fits_header.insert(5, ('COMMENT', "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"))
 
+    # If WCS is provided, update the header with WCS information
+ #   if wcs is not None:
+ #       fits_header.update(wcs.to_header())
+
     extention_header = fits.Header({
         'EXTNAME': 'SCI',
         'EXTVER': 1,

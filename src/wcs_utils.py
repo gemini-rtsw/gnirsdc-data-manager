@@ -5,6 +5,8 @@ from astropy import units as u
 from astropy.time import Time
 from astropy.wcs.utils import fit_wcs_from_points
 
+#from gnirsutil import DEBUG_MODE
+
 # Global dictionary to hold all WCS data in memory
 wcs_data = {}
 wcs_params_cache = {}
@@ -103,17 +105,22 @@ def process_wcs_data(port, camera, ao, tcs_context):
         else:
             wcs = wcs_params_cache[file_name]
 
-        # Print the WCS data
-        print(f"Processing file: {file_name}")
-        print_wcs_data(wcs)
+#        if DEBUG_MODE:
+            # Print the WCS data
+#            print(f"Processing file: {file_name}")
+#            print_wcs_data(wcs)
 
-        # Optionally, print the world coordinates
-        pixel_coords = wcs_data[file_name]['pixel_coords']
-        world_coords = wcs.all_pix2world(pixel_coords, 1)
-        print("World coordinates (RA, DEC):")
-        print(world_coords)
-    else:
-        print(f"File {file_name} not found in memory. Please reload the files.")
+            # Optionally, print the world coordinates
+#            pixel_coords = wcs_data[file_name]['pixel_coords']
+#            world_coords = wcs.all_pix2world(pixel_coords, 1)
+#            print("World coordinates (RA, DEC):")
+#            print(world_coords)
+
+#        return wcs  # Return the WCS object instead of printing
+
+#    else:
+#        raise ValueError(f"File {file_name} not found in memory. Please reload the files.")
+
 
 # Function to reload all files
 def reload_all_files():
