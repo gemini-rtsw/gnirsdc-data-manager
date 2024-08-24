@@ -171,3 +171,6 @@ Build
 Install
 Run
 Use
+
+
+for debug in vscode you must "tar -xvf giapi-gluecc_rocky8.tar.gz"
