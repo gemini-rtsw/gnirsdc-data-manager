@@ -64,7 +64,9 @@ import gnirsutil
 
 from fits_header_definitions import define_hdu_list, generate_new_filepath
 
-#from wcs_utils import process_wcs_data
+from wcs_utils import process_wcs_data
+
+from astropy.time import Time
 
 #from . import __version__
 __version__=0.1
@@ -354,20 +356,19 @@ def create_hdulist(header, raw_path, dc_commit = None, lib_commit = None):
 
 
 
-    # Example usage
- #   tcs_context = {
- #       'track_ra': 231.657670833333,
- #       'track_dec': -20.8335166666667,
- #       'track_frame': 'FK5',
- #       'track_equinox': 2000.0,
- #       'time_tai': Time('2024-04-01T13:10:15.9').tai.mjd  # Convert to TAI MJD
- #   }
+    tcs_context = {
+        'track_ra': 231.657670833333,
+        'track_dec': -20.8335166666667,
+        'track_frame': 'FK5',
+        'track_equinox': 2000.0,
+        'time_tai': Time('2024-04-01T13:10:15.9').tai.mjd
+    }
 
-  #  port = 3
-  #  camera = 'short'
-  #  ao = False
+    port = 3
+    camera = 'short'
+    ao = False
 
-    #wcs = process_wcs_data(port, camera, ao, tcs_context)
+    wcs = process_wcs_data(port, camera, ao, tcs_context)
 
 
 

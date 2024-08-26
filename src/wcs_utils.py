@@ -4,12 +4,21 @@ from astropy.coordinates import SkyCoord, FK5, ICRS
 from astropy import units as u
 from astropy.time import Time
 from astropy.wcs.utils import fit_wcs_from_points
+import logging
+from logging_config import IRDC_DEBUG
 
-#from gnirsutil import DEBUG_MODE
+from gnirsutil import DEBUG_MODE
+
+
+# or
+# DEBUG_MODE = False  # Set this to True when debugging is needed
 
 # Global dictionary to hold all WCS data in memory
 wcs_data = {}
 wcs_params_cache = {}
+
+# Get a logger for this module
+logger = logging.getLogger(__name__)
 
 # Function to read a WCS file and return the pixel coordinates and instrument offsets
 def read_wcs_file(file_path):
@@ -71,18 +80,18 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
 
 # Function to print the WCS data
 def print_wcs_data(wcs):
-    print(f"CTYPE1  = '{wcs.wcs.ctype[0]}'           / R.A. in tangent plane projection")
-    print(f"CRPIX1  = {wcs.wcs.crpix[0]} / Ref pix of axis 1")
-    print(f"CRVAL1  = {wcs.wcs.crval[0]} / RA at Ref pix in decimal degrees")
-    print(f"CTYPE2  = '{wcs.wcs.ctype[1]}'           / DEC. in tangent plane projection")
-    print(f"CRPIX2  = {wcs.wcs.crpix[1]} / Ref pix of axis 2")
-    print(f"CRVAL2  = {wcs.wcs.crval[1]} / DEC at Ref pix in decimal degrees")
-    print(f"CD1_1   = {wcs.wcs.cd[0, 0]} / WCS matrix element 1 1")
-    print(f"CD1_2   = {wcs.wcs.cd[0, 1]} / WCS matrix element 1 2")
-    print(f"CD2_1   = {wcs.wcs.cd[1, 0]} / WCS matrix element 2 1")
-    print(f"CD2_2   = {wcs.wcs.cd[1, 1]} / WCS matrix element 2 2")
-    print(f"EQUINOX = {wcs.wcs.equinox} / Equinox of coordinates")
-    print(f"RADESYS = '{wcs.wcs.radesys}' / Coordinate frame")
+    logger.log(IRDC_DEBUG, f"CTYPE1  = '{wcs.wcs.ctype[0]}'           / R.A. in tangent plane projection")
+    logger.log(IRDC_DEBUG, f"CRPIX1  = {wcs.wcs.crpix[0]} / Ref pix of axis 1")
+    logger.log(IRDC_DEBUG, f"CRVAL1  = {wcs.wcs.crval[0]} / RA at Ref pix in decimal degrees")
+    logger.log(IRDC_DEBUG, f"CTYPE2  = '{wcs.wcs.ctype[1]}'           / DEC. in tangent plane projection")
+    logger.log(IRDC_DEBUG, f"CRPIX2  = {wcs.wcs.crpix[1]} / Ref pix of axis 2")
+    logger.log(IRDC_DEBUG, f"CRVAL2  = {wcs.wcs.crval[1]} / DEC at Ref pix in decimal degrees")
+    logger.log(IRDC_DEBUG, f"CD1_1   = {wcs.wcs.cd[0, 0]} / WCS matrix element 1 1")
+    logger.log(IRDC_DEBUG, f"CD1_2   = {wcs.wcs.cd[0, 1]} / WCS matrix element 1 2")
+    logger.log(IRDC_DEBUG, f"CD2_1   = {wcs.wcs.cd[1, 0]} / WCS matrix element 2 1")
+    logger.log(IRDC_DEBUG, f"CD2_2   = {wcs.wcs.cd[1, 1]} / WCS matrix element 2 2")
+    logger.log(IRDC_DEBUG, f"EQUINOX = {wcs.wcs.equinox} / Equinox of coordinates")
+    logger.log(IRDC_DEBUG, f"RADESYS = '{wcs.wcs.radesys}' / Coordinate frame")
 
 # Function to choose the file based on port, camera, and ao
 def choose_file(port, camera, ao):
@@ -105,34 +114,34 @@ def process_wcs_data(port, camera, ao, tcs_context):
         else:
             wcs = wcs_params_cache[file_name]
 
-#        if DEBUG_MODE:
+        if DEBUG_MODE:
             # Print the WCS data
-#            print(f"Processing file: {file_name}")
-#            print_wcs_data(wcs)
+            logger.log(IRDC_DEBUG, f"Processing file: {file_name}")
+            print_wcs_data(wcs)
 
-            # Optionally, print the world coordinates
-#            pixel_coords = wcs_data[file_name]['pixel_coords']
-#            world_coords = wcs.all_pix2world(pixel_coords, 1)
-#            print("World coordinates (RA, DEC):")
-#            print(world_coords)
+            # Print the world coordinates
+            pixel_coords = wcs_data[file_name]['pixel_coords']
+            world_coords = wcs.all_pix2world(pixel_coords, 1)
+            logger.log(IRDC_DEBUG, "World coordinates (RA, DEC):")
+            logger.log(IRDC_DEBUG, str(world_coords))
 
-#        return wcs  # Return the WCS object instead of printing
+        return wcs  # Return the WCS object
 
-#    else:
-#        raise ValueError(f"File {file_name} not found in memory. Please reload the files.")
-
+    else:
+        raise ValueError(f"File {file_name} not found in memory. Please reload the files.")
 
 # Function to reload all files
 def reload_all_files():
     global wcs_params_cache
     load_all_files()
     wcs_params_cache = {}  # Clear the cache when reloading files
-    print("All files reloaded.")
+    logger.log(IRDC_DEBUG, "All files reloaded.")
 
 # Load all files initially
 load_all_files()
 
 # Example usage
+'''
 tcs_context = {
     'track_ra': 231.657670833333,
     'track_dec': -20.8335166666667,
@@ -146,3 +155,4 @@ camera = 'short'
 ao = False
 
 process_wcs_data(port, camera, ao, tcs_context)
+'''
