@@ -64,7 +64,6 @@ import gnirsutil
 
 from fits_header_definitions import define_hdu_list, generate_new_filepath
 
-from wcs_utils import process_wcs_data
 
 from astropy.time import Time
 
@@ -353,23 +352,6 @@ def extract_timing(samples_header, ext_header):
 
 def create_hdulist(header, raw_path, dc_commit = None, lib_commit = None): 
     raw_name = os.path.basename(raw_path)
-
-
-
-    tcs_context = {
-        'track_ra': 231.657670833333,
-        'track_dec': -20.8335166666667,
-        'track_frame': 'FK5',
-        'track_equinox': 2000.0,
-        'time_tai': Time('2024-04-01T13:10:15.9').tai.mjd
-    }
-
-    port = 3
-    camera = 'short'
-    ao = False
-
-    wcs = process_wcs_data(port, camera, ao, tcs_context)
-
 
 
     hdulist, ext_header, lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname = define_hdu_list(header, dc_commit, lib_commit)

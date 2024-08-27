@@ -15,6 +15,10 @@ from multiprocessing import Process, Queue
 
 import time
 
+from tcs_monitor import TCSMonitor
+
+import time
+
 import os, shutil, glob
 from datetime import datetime
 
@@ -304,8 +308,21 @@ class ObserveCAD(GnirsCAD):
 
             await self.logMessage(f'sending start readout to SDSU')
 
+        # Get the current TCS context
+        tcs_context = self.parent.tcs_monitor.get_context()
+
+        # Log the TCS context
+        await self.logMessage(f'TCS Context: {tcs_context}')
+
+        # Send TCS context separately
+        self.controller.setTCSContext(tcs_context)
+
         # readout SDSU
-        self.controller.startExposure(self.p.detectorTemp1.value, self.p.detectorTemp1.value, self.p.parent.include_eng.value)	
+        self.controller.startExposure(
+            self.p.detectorTemp1.value, 
+            self.p.detectorTemp2.value, 
+            self.p.parent.include_eng.value
+        )
 
         await self.logMessage(f'SDSU readout started')
 
@@ -390,6 +407,7 @@ class StopCAD(GnirsCAD):
         return True
 
 
+
 class GnirsCADCARController(PVGroup):
 
 
@@ -416,6 +434,10 @@ class GnirsCADCARController(PVGroup):
         self.lakeshore = Lakeshore325(TEMP_CON_IP, TEMP_CON_PORT)
         self.lakeshore.connect()
 
+        # Initialize TCS Monitor
+        self.tcs_monitor = TCSMonitor()
+        self.tcs_monitor.initialize()
+
         self.sdsuController = None
 
         self.abort.set_idle_override(True)  # allows this cad to execute while other cads are busy in order to abort them
@@ -435,6 +457,8 @@ class GnirsCADCARController(PVGroup):
         # Observe has it's own CAR
         self.observe.cars.records = [self.observeC]
         self.observeC.cars.records = [self.applyC]
+
+
 
 
     #------ DC configuration values --------

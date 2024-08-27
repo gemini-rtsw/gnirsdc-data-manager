@@ -3,6 +3,8 @@ import numpy as np
 import re
 import os
 import uuid
+from wcs_utils import process_wcs_data
+
 
 def generate_new_filepath(fits_path):
     base, ext = os.path.splitext(fits_path)
@@ -44,6 +46,25 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         coadds = pdu['COADDS']
 
         dcver = pdu['DCVER']
+
+
+        # TCS context information
+        tcs_ra = pdu['TCS_RA']
+        tcs_dec = pdu['TCS_DEC']
+        tcs_frame = pdu['TCS_FRAME']
+        tcs_equinox = pdu['TCS_EQUINOX']
+        tcs_tai = pdu['TCS_TAI']
+        tcs_port = pdu['TCS_PORT']
+        tcs_camera = pdu['TCS_CAMERA']
+        tcs_ao = pdu['TCS_AO']
+
+        tcs_context = {
+            'track_ra': float(tcs_ra),
+            'track_dec': float(tcs_dec),
+            'track_frame': tcs_frame,
+            'track_equinox': float(tcs_equinox),
+            'time_tai': float(tcs_tai)
+        }
 
         fname = re.sub(r'[^\w]', '', f"{dateobs}{utstart}") + ".fits"
 
@@ -88,9 +109,12 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
     fits_header.insert(4, ('COMMENT', "FITS (Flexible Image Transport System) format is defined in 'Astronomy"))
     fits_header.insert(5, ('COMMENT', "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"))
 
-    # If WCS is provided, update the header with WCS information
- #   if wcs is not None:
- #       fits_header.update(wcs.to_header())
+    wcs = process_wcs_data(tcs_port, tcs_camera, tcs_ao, tcs_context)
+
+    # Add WCS information to the primary header
+    fits_header.update(wcs.to_header())
+
+
 
     extention_header = fits.Header({
         'EXTNAME': 'SCI',
