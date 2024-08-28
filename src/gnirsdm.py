@@ -71,7 +71,7 @@ logger.print("""
 logger.print("")
 logger.print("Booting...")
 
-
+logger.print(f"EPICS top: {DEFAULT_PREFIX}")
 # Perform GMP check
 check_gmp_and_exit(GMP_HOST, GMP_TEST_PORT)
 logger.print("GMP check passed. Continuing with initialization...")
