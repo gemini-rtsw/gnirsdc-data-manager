@@ -4,6 +4,7 @@ import re
 import os
 import uuid
 from wcs_utils import process_wcs_data
+from gnirsutil import config, config_mode, DEBUG_MODE
 
 
 def generate_new_filepath(fits_path):
@@ -114,7 +115,17 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
     # Add WCS information to the primary header
     fits_header.update(wcs.to_header())
 
+    # Add READMODE to the header
+    read_modes = eval(config[config_mode].get('READ_MODES', '{}'))
+    print(f"lnrs: {lnrs}, ndavgs: {ndavgs}")
+    print(f"read_modes keys: {read_modes.keys()}")
 
+    # Convert lnrs and ndavgs to strings and create the key
+    key = f"({lnrs}, {ndavgs})"
+    readmode = read_modes.get(key, 'Unknown')
+
+    fits_header['READMODE'] = (readmode, 'Detector read mode')
+    print(f"Final readmode: {readmode}")
 
     extention_header = fits.Header({
         'EXTNAME': 'SCI',

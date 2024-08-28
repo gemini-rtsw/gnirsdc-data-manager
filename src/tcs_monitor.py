@@ -15,14 +15,15 @@ class TCSMonitor:
         self.monitor_thread = None
         self.reconnect_interval = 10  # seconds
 
+    def _process_value(self, value: Any) -> str:
+        if isinstance(value, (list, np.ndarray)):
+            return ''.join(chr(i) for i in value if i != 0)  # Convert ASCII array to string
+        return str(value)  # Convert other types to string
+
     def on_change(self, pvname: str, value: Any, **kwargs):
         pv_short_name = pvname.split(':')[-1]
-        if isinstance(value, (list, np.ndarray)):
-            value = ''.join(chr(i) for i in value if i != 0)  # Convert ASCII array to string
-        else:
-            value = str(value)  # Convert other types to string
-        self.context[pv_short_name] = value
-        print(f"Updated {pvname}: {value}")
+        processed_value = self._process_value(value)
+        self.context[pv_short_name] = processed_value
 
     def initialize(self):
         self.connect_and_monitor()
@@ -38,12 +39,9 @@ class TCSMonitor:
             # Get initial value
             value = caget(full_pv_name, timeout=1)
             if value is not None:
-                if isinstance(value, (list, np.ndarray)):
-                    value = ''.join(chr(i) for i in value if i != 0)  # Convert ASCII array to string
-                else:
-                    value = str(value)  # Convert other types to string
-                self.context[pv_name] = value
-                print(f"Initial value of {full_pv_name}: {value}")
+                processed_value = self._process_value(value)
+                self.context[pv_name] = processed_value
+                print(f"Initial value of {full_pv_name}: {processed_value}")
                 
                 # Set up monitor
                 camonitor(full_pv_name, callback=self.on_change)
@@ -60,8 +58,9 @@ class TCSMonitor:
                 if pv_name not in self.context:
                     value = caget(full_pv_name, timeout=1)
                     if value is not None:
-                        self.context[pv_name] = str(value)  # Convert value to string
-                        print(f"Reconnected and got initial value of {full_pv_name}: {value}")
+                        processed_value = self._process_value(value)
+                        self.context[pv_name] = processed_value
+                        print(f"Reconnected and got initial value of {full_pv_name}: {processed_value}")
                         camonitor(full_pv_name, callback=self.on_change)
 
     def get_context(self) -> libgnirsioc.TCSContext:

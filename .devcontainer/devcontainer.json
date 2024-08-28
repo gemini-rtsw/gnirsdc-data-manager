@@ -15,6 +15,8 @@
             "extensions": [
                 "ms-python.python",
                 "ms-python.debugpy",
+                "mhutchie.git-graph",
+                "gitlab.gitlab-workflow",
                 "mhutchie.git-graph"
             ]
         }
