@@ -8,7 +8,8 @@
         "-v", "${env:HOME}/.ssh:/root/.ssh:ro",
         "-v", "${env:HOME}/irdc_data/readout_data:/readout_data:rw",
         "-v", "/etc/localtime:/etc/localtime:ro",
-        "-v", "/etc/timezone:/etc/timezone:ro"
+        "-v", "/etc/timezone:/etc/timezone:ro",
+        "-v", "${env:HOME}/.gitconfig:/root/.gitconfig:ro"
     ],
     "customizations": {
         "vscode": {
