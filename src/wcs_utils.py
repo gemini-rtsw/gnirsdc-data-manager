@@ -10,9 +10,6 @@ from logging_config import IRDC_DEBUG
 from gnirsutil import DEBUG_MODE
 
 
-# or
-# DEBUG_MODE = False  # Set this to True when debugging is needed
-
 # Global dictionary to hold all WCS data in memory
 wcs_data = {}
 wcs_params_cache = {}

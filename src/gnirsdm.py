@@ -371,6 +371,17 @@ class GnirsDataManagerIOC(PVGroup):
             await instance.write("DISCONNECTED")
         
 
+#-----------------------------------------------------------------------------
+    wcs_file = pvproperty(
+        value="None",
+        dtype=ChannelType.STRING,
+        doc="Name of the WCS file"
+    )
+
+    @wcs_file.putter
+    async def wcs_file(self, instance, value):
+        # This method will be called whenever the WCS file is updated
+        await self.logMessage(f"WCS file updated: {value}")
 
 #-----------------------------------------------------------------------------
     currentLabel = pvproperty(

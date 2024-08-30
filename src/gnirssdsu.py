@@ -28,6 +28,7 @@ from libgnirsioc import setGlobalDebug
 
 from fits_header_definitions import generate_new_filename
 
+from wcs_utils import choose_file  
 
 from lakeshore import Lakeshore325
 
@@ -309,7 +310,7 @@ class ObserveCAD(GnirsCAD):
             await self.logMessage(f'sending start readout to SDSU')
 
         # Get the current TCS context
-        tcs_context = self.parent.tcs_monitor.get_context()
+        tcs_context = await self.parent.get_wcs_context()
 
         # Log the TCS context
         await self.logMessage(f'TCS Context: {tcs_context}')
@@ -459,6 +460,16 @@ class GnirsCADCARController(PVGroup):
         self.observeC.cars.records = [self.applyC]
 
 
+    async def get_wcs_context(self):
+        tcs_context = self.tcs_monitor.get_context()
+        port = int(tcs_context.port)
+        camera = tcs_context.camera
+        ao = tcs_context.ao.lower() == 'true'
+        
+        wcs_file = choose_file(port, camera, ao)
+        await self.parent.wcs_file.write(wcs_file)
+
+        return tcs_context
 
 
     #------ DC configuration values --------
