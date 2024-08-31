@@ -8,6 +8,7 @@ import subprocess
 import queue
 import sys
 import threading
+import time
 
 from concurrent import futures
 from functools import partial
@@ -38,7 +39,7 @@ from gnirsgiapi import GiapiInterface, check_gmp_and_exit, check_gmp
 from gnirsutil import config, config_mode, DEBUG_MODE
 
 from logging import getLogger
-from logging_config import set_epics_log_pvs
+from logging_config import set_log_message_func, set_custom_handler_level, IRDC_DEBUG, log_levels
 
 WORKING_DIR = os.getcwd()
 os.environ['EPICS_CA_ADDR_LIST'] = config[config_mode].get('EPICS_CA_ADDR_LIST')
@@ -310,37 +311,43 @@ class GnirsDataManagerIOC(PVGroup):
             await async_lib.library.sleep(0.5)
 
 #-----------------------------------------------------------------------------
-    tcs_connection = pvproperty(value=0, dtype = ChannelType.STRING) 
+    tcs_connection = pvproperty(value=0, dtype=ChannelType.STRING)
 
     @tcs_connection.startup
     async def tcs_connection(self, instance, async_lib):
-        while True:
-            connected = checkCAConnection("tcs:ak:astCtx", 1.0)
+        loop = asyncio.get_event_loop()
 
-            await instance.write("CONNECTED" if connected else "DISCONNECTED")
-            await async_lib.library.sleep(1)  # check every second        
+        def check_tcs_connection(loop):
+            while True:
+                connected = checkCAConnection("tcs:ak:astCtx", 1.0)
+                asyncio.run_coroutine_threadsafe(
+                    self.update_tcs_connection(instance, connected), 
+                    loop
+                )
+                time.sleep(1)  # check every second
 
-            if not connected:
-                await self.set_health("BAD")
-                await self.logMessage("TCS disconnected")
-            else:
-                await self.set_health("GOOD")
-                await self.logMessage("TCS connected")
+        threading.Thread(target=check_tcs_connection, args=(loop,), daemon=True).start()
 
+    async def update_tcs_connection(self, instance, connected):
+        await instance.write("CONNECTED" if connected else "DISCONNECTED")
+        if not connected:
+            await self.set_health("BAD")
+            await self.logMessage("TCS disconnected")
+        else:
+            await self.set_health("GOOD")
 
 #-----------------------------------------------------------------------------
-    log_message = pvproperty( value = "", dtype=ChannelType.STRING, doc="Record the last log message" )
-    log_datetime = pvproperty( value = "", dtype=ChannelType.STRING, doc="Record the last log date" )
+    log_message = pvproperty(value="", dtype=ChannelType.STRING, doc="Record the last log message")
+    log_datetime = pvproperty(value="", dtype=ChannelType.STRING, doc="Record the last log date")
 
     @log_message.startup
     async def log_message(self, instance, async_lib):
-        set_epics_log_pvs(self.log_message, self.log_datetime)
+        set_log_message_func(self.logMessage, loop=asyncio.get_event_loop())
 
     async def logMessage(self, message):
         if self.log_message.value != message:
-            await self.log_datetime.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")  # Create a timestamp
+            await self.log_datetime.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             await self.log_message.write(message)
-            print(message)
 
 #-----------------------------------------------------------------------------
     archive_fits = pvproperty(value=1, dtype = ChannelType.INT) 
@@ -429,7 +436,28 @@ class GnirsDataManagerIOC(PVGroup):
     include_eng = pvproperty(value=0, dtype = ChannelType.INT, doc="Include engineering images in fits")
 
 #-----------------------------------------------------------------------------
-        
+    log_level = pvproperty(
+        value=0,
+        dtype=ChannelType.ENUM,
+        enum_strings=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+        doc="Set the log level"
+    )
+
+    @log_level.putter
+    async def log_level(self, instance, value):
+        level_map = {
+            0: log_levels.DEBUG,
+            1: log_levels.INFO,
+            2: log_levels.WARNING,
+            3: log_levels.ERROR,
+            4: log_levels.CRITICAL
+        }
+        new_level = level_map.get(value, log_levels.INFO)
+        set_custom_handler_level(new_level)
+        await self.logMessage(f"Log level changed to {instance.enum_strings[value]}")
+        return value
+
+#-----------------------------------------------------------------------------
     restart_ioc = pvproperty(value=0)
 
     @restart_ioc.putter
@@ -630,7 +658,12 @@ def custom_ioc_arg_parser(*, desc, default_prefix, argv=None, macros=None,
 
 
 
+# Global variable to store the main event loop
+main_event_loop = None
+
 async def main():
+    global main_event_loop
+    main_event_loop = asyncio.get_event_loop()
     
     # Call the function to get repo info for the specified directories
     get_repo_info_for_directories()

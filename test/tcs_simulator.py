@@ -12,6 +12,7 @@ class TCSContext(PVGroup):
     port = pvproperty(value=3, dtype=int)
     camera = pvproperty(value='short', dtype=str)
     ao = pvproperty(value=False, dtype=bool)
+    ak_astCtx = pvproperty(value='', dtype=str, name='ak:astCtx')  # Ensure correct PV name
 
     @time_tai.startup
     async def time_tai(self, instance, async_lib):

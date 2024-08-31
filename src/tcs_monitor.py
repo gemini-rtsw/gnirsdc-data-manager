@@ -31,11 +31,20 @@ class TCSMonitor:
         self.context[pv_short_name] = processed_value
 
     def initialize(self):
+        # Start a thread for connection and monitoring
+        self.monitor_thread = threading.Thread(target=self._threaded_connect_and_monitor, daemon=True)
+        self.monitor_thread.start()
+        
+        # Return immediately to allow the main thread to continue
+        self.logger.irdc_debug("TCS Monitor thread started.")
+
+    def _threaded_connect_and_monitor(self):
         self.connect_and_monitor()
         
-        # Start a thread to keep the monitors alive and attempt reconnection
-        self.monitor_thread = threading.Thread(target=self._keep_alive_and_reconnect, daemon=True)
-        self.monitor_thread.start()
+        # Keep alive and reconnect loop
+        while True:
+            time.sleep(self.reconnect_interval)
+            self._keep_alive_and_reconnect()
 
     def connect_and_monitor(self):
         for pv_name in self.tcs_pvs:
@@ -56,19 +65,17 @@ class TCSMonitor:
         self.logger.irdc_debug("TCS Monitor initialized.")
 
     def _keep_alive_and_reconnect(self):
-        while True:
-            time.sleep(self.reconnect_interval)
-            for pv_name in self.tcs_pvs:
-                full_pv_name = f'tcs:{pv_name}'
-                if pv_name not in self.context:
-                    value = caget(full_pv_name, timeout=1)
-                    if value is not None:
-                        processed_value = self._process_value(value)
-                        self.context[pv_name] = processed_value
-                        self.logger.irdc_debug(f"Reconnected and got initial value of {full_pv_name}: {processed_value}")
-                        camonitor(full_pv_name, callback=self.on_change)
-                    else:
-                        self.logger.warning(f"Failed to reconnect to {full_pv_name}. Will try again later.")
+        for pv_name in self.tcs_pvs:
+            full_pv_name = f'tcs:{pv_name}'
+            if pv_name not in self.context:
+                value = caget(full_pv_name, timeout=1)
+                if value is not None:
+                    processed_value = self._process_value(value)
+                    self.context[pv_name] = processed_value
+                    self.logger.irdc_debug(f"Reconnected and got initial value of {full_pv_name}: {processed_value}")
+                    camonitor(full_pv_name, callback=self.on_change)
+                else:
+                    self.logger.warning(f"Failed to reconnect to {full_pv_name}. Will try again later.")
 
     def get_context(self) -> libgnirsioc.TCSContext:
         context = libgnirsioc.TCSContext()

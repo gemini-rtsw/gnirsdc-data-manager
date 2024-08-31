@@ -6,7 +6,7 @@ from logging.handlers import TimedRotatingFileHandler, QueueHandler, QueueListen
 from datetime import datetime, time, timedelta
 import queue
 import threading
-
+import asyncio
 
 # Standard logging levels
 # MESSAGE = 60  
@@ -57,13 +57,6 @@ logging.Logger.irdc_debug = irdc_debug
 logging.Logger.irdc_max_debug = irdc_max_debug
 logging.Logger.print = log_print
 
-log_message_pv = None
-log_datetime_pv = None
-
-def set_epics_log_pvs(log_message, log_datetime):
-    global log_message_pv, log_datetime_pv
-    log_message_pv = log_message
-    log_datetime_pv = log_datetime
 
 class TeeStream:
     def __init__(self, original_stream, logger):
@@ -79,51 +72,54 @@ class TeeStream:
     def flush(self):
         self.original_stream.flush()
 
-class ThreadSafeCustomHandler(logging.Handler):
-    def __init__(self, log_message_pv, log_datetime_pv):
+class CustomHandler(logging.Handler):
+    def __init__(self, loop=None):
         super().__init__()
-        self.log_message_pv = log_message_pv
-        self.log_datetime_pv = log_datetime_pv
-        self.queue = queue.Queue()
-        self.thread = threading.Thread(target=self._process_queue, daemon=True)
-        self.thread.start()
+        self.log_message_func = None
+        self.loop = loop  # Store the event loop
+
+    def set_log_message_func(self, func, loop=None):
+        self.log_message_func = func
+        if loop:
+            self.loop = loop
 
     def emit(self, record):
-        if record.levelno >= IRDC_DEBUG and self.log_message_pv is not None:
-            self.queue.put(record)
+        if self.log_message_func:
+            message = self.format(record)
+            if self.loop and self.loop.is_running():
+                # Schedule the coroutine on the provided event loop
+                asyncio.run_coroutine_threadsafe(self.log_message_func(message), self.loop)
+            else:
+                # Run the coroutine in a new event loop if no event loop is running
+                asyncio.run(self.log_message_func(message))
 
-    def _process_queue(self):
-        while True:
-            try:
-                record = self.queue.get()
-                self.log_message_pv.write(record.message)
-                self.log_datetime_pv.write(record.asctime)
-            except Exception:
-                import traceback
-                print('Error in log handler:', file=sys.stderr)
-                traceback.print_exc(file=sys.stderr)
+# Global variable to store the custom handler
+custom_handler = None
 
-def setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file=None, log_rotate_time=8):
+def set_custom_handler_level(level):
+    global custom_handler
+    if custom_handler:
+        custom_handler.setLevel(level)
+    else:
+        print("Warning: Custom handler not set up yet. Call setup_logging first.")
+
+def setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file=None, log_rotate_time=8, loop=None):
+    global custom_handler
     root = logging.getLogger()
     root.handlers = []  # Clear existing handlers to avoid duplicate logs
 
     fmt_string = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
     formatter = Formatter(fmt_string)
 
-    log_queue = queue.Queue()
-    queue_handler = QueueHandler(log_queue)
-    root.addHandler(queue_handler)
-
-    handlers = []
-
     stream_handler = StreamHandler()
     stream_handler.setFormatter(formatter)
     stream_handler.setLevel(console_level)
-    handlers.append(stream_handler)
+    root.addHandler(stream_handler)
 
-    custom_handler = ThreadSafeCustomHandler(log_message_pv, log_datetime_pv)
+    custom_handler = CustomHandler(loop=loop)  # Pass the event loop to the handler
+    custom_handler.setFormatter(formatter)
     custom_handler.setLevel(console_level)
-    handlers.append(custom_handler)
+    root.addHandler(custom_handler)
 
     if log_file:
         log_dir = os.path.dirname(log_file)
@@ -133,10 +129,7 @@ def setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file=None
         file_handler = TimedRotatingFileHandler(log_file, when="midnight", interval=1, backupCount=7, atTime=time(log_rotate_time, 0))
         file_handler.setFormatter(formatter)
         file_handler.suffix = "%Y-%m-%d"
-        handlers.append(file_handler)
-
-    listener = QueueListener(log_queue, *handlers)
-    listener.start()
+        root.addHandler(file_handler)
 
     root.setLevel(min(console_level, file_level))
 
@@ -144,11 +137,17 @@ def setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file=None
 
     stdout_logger = logging.getLogger('stdout')
     stdout_logger.setLevel(logging.INFO)
-    stdout_logger.addHandler(queue_handler)
 
     sys.stdout = TeeStream(sys.stdout, stdout_logger)
 
-    return listener
+    return None
+
+def set_log_message_func(func, loop=None):
+    global custom_handler
+    if custom_handler:
+        custom_handler.set_log_message_func(func, loop)
+    else:
+        print("Warning: Logging not set up yet. Call setup_logging first.")
 
 if __name__ == "__main__":
     listener = setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file="example.log")
