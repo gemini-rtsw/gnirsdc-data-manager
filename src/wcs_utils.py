@@ -101,31 +101,40 @@ def choose_file(port, camera, ao):
 def process_wcs_data(port, camera, ao, tcs_context):
     global wcs_params_cache
 
-    file_name = choose_file(port, camera, ao)
-    if file_name in wcs_data:
-        if file_name not in wcs_params_cache:
-            pixel_coords = wcs_data[file_name]['pixel_coords']
-            tcs_coords = wcs_data[file_name]['tcs_coords']
-            wcs = calculate_wcs_params(pixel_coords, tcs_coords, tcs_context)
-            wcs_params_cache[file_name] = wcs
+    try:
+        file_name = choose_file(port, camera, ao)
+        if file_name in wcs_data:
+            if file_name not in wcs_params_cache:
+                pixel_coords = wcs_data[file_name].get('pixel_coords')
+                tcs_coords = wcs_data[file_name].get('tcs_coords')
+                
+                if pixel_coords is None or tcs_coords is None or not tcs_context:
+                    raise ValueError("Missing required parameters for WCS calculation")
+                
+                wcs = calculate_wcs_params(pixel_coords, tcs_coords, tcs_context)
+                wcs_params_cache[file_name] = wcs
+            else:
+                wcs = wcs_params_cache[file_name]
+
+            if DEBUG_MODE:
+                # Print the WCS data
+                logger.log(IRDC_DEBUG, f"Processing file: {file_name}")
+                print_wcs_data(wcs)
+
+                # Print the world coordinates
+                pixel_coords = wcs_data[file_name].get('pixel_coords')
+                if pixel_coords is not None:
+                    world_coords = wcs.all_pix2world(pixel_coords, 1)
+                    logger.log(IRDC_DEBUG, "World coordinates (RA, DEC):")
+                    logger.log(IRDC_DEBUG, str(world_coords))
+
+            return wcs  # Return the WCS object
         else:
-            wcs = wcs_params_cache[file_name]
-
-        if DEBUG_MODE:
-            # Print the WCS data
-            logger.log(IRDC_DEBUG, f"Processing file: {file_name}")
-            print_wcs_data(wcs)
-
-            # Print the world coordinates
-            pixel_coords = wcs_data[file_name]['pixel_coords']
-            world_coords = wcs.all_pix2world(pixel_coords, 1)
-            logger.log(IRDC_DEBUG, "World coordinates (RA, DEC):")
-            logger.log(IRDC_DEBUG, str(world_coords))
-
-        return wcs  # Return the WCS object
-
-    else:
-        raise ValueError(f"File {file_name} not found in memory. Please reload the files.")
+            raise ValueError(f"File {file_name} not found in memory. Please reload the files.")
+    except Exception as e:
+        logger.error(f"Error processing WCS data: {str(e)}")
+        # Return a default WCS object with correct types
+        return WCS(naxis=2)
 
 # Function to reload all files
 def reload_all_files():

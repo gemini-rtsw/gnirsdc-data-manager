@@ -312,12 +312,14 @@ class ObserveCAD(GnirsCAD):
         # Get the current TCS context
         tcs_context = await self.parent.get_wcs_context()
 
-        # Log the TCS context
-        await self.logMessage(f'TCS Context: {tcs_context}')
+        if tcs_context is None:
+            await self.logMessage("Failed to get TCS context. Continuing without it.")
+        else:
+            # Log the TCS context
+            await self.logMessage(f'TCS Context: {tcs_context}')
 
-        # Send TCS context separately
-        self.controller.setTCSContext(tcs_context)
-
+            # Send TCS context separately
+            self.controller.setTCSContext(tcs_context)
         # readout SDSU
         self.controller.startExposure(
             self.p.detectorTemp1.value, 
@@ -461,15 +463,25 @@ class GnirsCADCARController(PVGroup):
 
 
     async def get_wcs_context(self):
-        tcs_context = self.tcs_monitor.get_context()
-        port = int(tcs_context.port)
-        camera = tcs_context.camera
-        ao = tcs_context.ao.lower() == 'true'
-        
-        wcs_file = choose_file(port, camera, ao)
-        await self.parent.wcs_file.write(wcs_file)
+        try:
+            tcs_context = self.tcs_monitor.get_context()
+            if not tcs_context:
+                raise ValueError("Failed to get TCS context")
 
-        return tcs_context
+            port = int(tcs_context.port)
+            camera = tcs_context.camera
+            ao = tcs_context.ao.lower() == 'true'
+            
+            wcs_file = choose_file(port, camera, ao)
+            if not wcs_file:
+                raise ValueError("Failed to choose WCS file")
+
+            await self.parent.wcs_file.write(wcs_file)
+
+            return tcs_context
+        except Exception as e:
+            await self.parent.logMessage(f"Error in get_wcs_context: {str(e)}")
+            return None
 
 
     #------ DC configuration values --------

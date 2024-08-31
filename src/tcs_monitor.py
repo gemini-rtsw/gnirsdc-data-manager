@@ -1,9 +1,13 @@
+import logging
 from epics import caget, camonitor
 import threading
 from typing import Dict, Any
 import time
 import libgnirsioc
 import numpy as np
+
+# Import custom log levels
+from logging_config import IRDC_DEBUG, IRDC_MAX_DEBUG
 
 class TCSMonitor:
     def __init__(self):
@@ -14,6 +18,7 @@ class TCSMonitor:
         self.context: Dict[str, Any] = {}
         self.monitor_thread = None
         self.reconnect_interval = 10  # seconds
+        self.logger = logging.getLogger(__name__)
 
     def _process_value(self, value: Any) -> str:
         if isinstance(value, (list, np.ndarray)):
@@ -41,14 +46,14 @@ class TCSMonitor:
             if value is not None:
                 processed_value = self._process_value(value)
                 self.context[pv_name] = processed_value
-                print(f"Initial value of {full_pv_name}: {processed_value}")
+                self.logger.irdc_debug(f"Initial value of {full_pv_name}: {processed_value}")
                 
                 # Set up monitor
                 camonitor(full_pv_name, callback=self.on_change)
             else:
-                print(f"Could not read initial value of {full_pv_name}. Will try to reconnect later.")
+                self.logger.warning(f"Could not read initial value of {full_pv_name}. Will try to reconnect later.")
 
-        print("TCS Monitor initialized.")
+        self.logger.irdc_debug("TCS Monitor initialized.")
 
     def _keep_alive_and_reconnect(self):
         while True:
@@ -60,8 +65,10 @@ class TCSMonitor:
                     if value is not None:
                         processed_value = self._process_value(value)
                         self.context[pv_name] = processed_value
-                        print(f"Reconnected and got initial value of {full_pv_name}: {processed_value}")
+                        self.logger.irdc_debug(f"Reconnected and got initial value of {full_pv_name}: {processed_value}")
                         camonitor(full_pv_name, callback=self.on_change)
+                    else:
+                        self.logger.warning(f"Failed to reconnect to {full_pv_name}. Will try again later.")
 
     def get_context(self) -> libgnirsioc.TCSContext:
         context = libgnirsioc.TCSContext()
