@@ -22,6 +22,9 @@ RUN dnf update -y && \
     dnf install -y git python3-pip && \
     dnf clean all
 
+# Make Python 3.9 the default for python3
+RUN alternatives --set python3 /usr/bin/python3.9
+
 # Install Flask
 RUN pip3 install flask
 
