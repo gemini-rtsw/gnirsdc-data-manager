@@ -25,7 +25,7 @@ def save():
         for key, value in request.form.items():
             if key.startswith(f"{section}_"):
                 _, actual_key = key.split('_', 1)
-                config[section][actual_key] = value
+                config[section][actual_key.upper()] = value  # Use uppercase key here
     with open(config_path, 'w') as configfile:
         config.write(configfile)
     return redirect(url_for('index'))
