@@ -12,6 +12,11 @@ class AlignedCasePreservingConfigParser(configparser.ConfigParser):
             d = " = "
         else:
             d = "="
+        if self._defaults:
+            fp.write("[DEFAULT]\n")
+            for (key, value) in self._defaults.items():
+                fp.write(f"{key:<20}{d}{value}\n")
+            fp.write("\n")
         for section in self._sections:
             fp.write(f"[{section}]\n")
             for (key, value) in self._sections[section].items():
@@ -37,12 +42,17 @@ def index():
 @app.route('/save', methods=['POST'])
 def save():
     for section in ['DEFAULT', 'DEBUG']:
-        if section not in config:
+        if section == 'DEFAULT':
+            config.defaults().clear()
+        elif section not in config:
             config[section] = {}
         for key, value in request.form.items():
             if key.startswith(f"{section}_"):
                 _, actual_key = key.split('_', 1)
-                config[section][actual_key] = value
+                if section == 'DEFAULT':
+                    config.defaults()[actual_key] = value
+                else:
+                    config[section][actual_key] = value
     with open(config_path, 'w') as configfile:
         config.write(configfile)
     return redirect(url_for('index'))
