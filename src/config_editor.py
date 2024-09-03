@@ -3,8 +3,9 @@ import configparser
 from flask import Flask, render_template, request, redirect, url_for
 
 class AlignedCasePreservingConfigParser(configparser.ConfigParser):
-    def optionxform(self, optionstr):
-        return optionstr
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.optionxform = str  # This preserves the case
 
     def write(self, fp, space_around_delimiters=True):
         if space_around_delimiters:
