@@ -35,8 +35,8 @@
 </head>
 <body>
     <div class="tab">
-        <button class="tablinks {% if active_tab == 'config' %}active{% endif %}" onclick="location.href='{{ url_for('index') }}'">Config Editor</button>
         <button class="tablinks {% if active_tab == 'monitoring' %}active{% endif %}" onclick="location.href='{{ url_for('monitoring') }}'">Monitoring</button>
+        <button class="tablinks {% if active_tab == 'config' %}active{% endif %}" onclick="location.href='{{ url_for('config') }}'">Config Editor</button>
     </div>
 
     {% block content %}{% endblock %}
