@@ -22,6 +22,9 @@ RUN dnf update -y && \
     dnf install -y git python3-pip && \
     dnf clean all
 
+# Install Flask
+RUN pip3 install flask
+
 # Perform GitLab login using the token
 RUN git config --global credential.helper store && \
     echo "https://oauth2:${DEPLOY_TOKEN}@gitlab.com" > ~/.git-credentials
