@@ -34,7 +34,7 @@ def index():
     return redirect(url_for('monitoring'))
 
 @app.route('/config')
-def config():
+def config_page():  # Renamed from 'config' to 'config_page'
     config.read(config_path)
     # Create a dictionary to hold both DEFAULT and DEBUG sections
     sections_dict = {
