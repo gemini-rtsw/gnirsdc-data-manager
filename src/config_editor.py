@@ -10,13 +10,22 @@ config.read(config_path)
 @app.route('/')
 def index():
     config.read(config_path)
-    return render_template('config_editor.html', config=config)
+    # Create a dictionary to hold both DEFAULT and DEBUG sections
+    sections_dict = {
+        'DEFAULT': dict(config.defaults()),
+        'DEBUG': dict(config['DEBUG'])
+    }
+    return render_template('config_editor.html', sections=sections_dict)
 
 @app.route('/save', methods=['POST'])
 def save():
-    for section in config.sections():
-        for key in config[section]:
-            config[section][key] = request.form.get(f"{section}_{key}", config[section][key])
+    for section in ['DEFAULT', 'DEBUG']:
+        if section not in config:
+            config[section] = {}
+        for key, value in request.form.items():
+            if key.startswith(f"{section}_"):
+                _, actual_key = key.split('_', 1)
+                config[section][actual_key] = value
     with open(config_path, 'w') as configfile:
         config.write(configfile)
     return redirect(url_for('index'))
