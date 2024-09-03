@@ -1,29 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Config Editor</title>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 8px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        input[type="text"] {
-            width: 100%;
-            box-sizing: border-box;
-        }
-    </style>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Config Editor{% endblock %}
+{% block content %}
+<div id="config-editor" class="tabcontent">
     <h1>Config Editor</h1>
     <form action="{{ url_for('save') }}" method="post">
         {% for section, items in sections.items() %}
@@ -44,5 +22,6 @@
         <br>
         <input type="submit" value="Save">
     </form>
-</body>
-</html>
+    <p><a href="{{ url_for('monitoring') }}">Monitoring</a></p>
+</div>
+{% endblock %}

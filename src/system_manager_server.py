@@ -37,11 +37,11 @@ def index():
         'DEFAULT': dict(config.defaults()),
         'DEBUG': dict(config['DEBUG'])
     }
-    return render_template('config_editor.html', sections=sections_dict)
+    return render_template('config_editor.html', active_tab='config', sections=sections_dict)
 
 @app.route('/monitoring')
 def monitoring():
-    return render_template('monitoring.html', message="Monitoring page is under construction")
+    return render_template('monitoring.html', active_tab='monitoring')
 
 @app.route('/save', methods=['POST'])
 def save():
