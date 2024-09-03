@@ -4,17 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Config Editor</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
 </head>
 <body>
     <h1>Config Editor</h1>
     <form action="{{ url_for('save') }}" method="post">
         {% for section, items in sections.items() %}
             <h2>{{ section }}</h2>
-            {% for key, value in items.items() %}
-                <label for="{{ section }}_{{ key }}">{{ key }}:</label>
-                <input type="text" id="{{ section }}_{{ key }}" name="{{ section }}_{{ key }}" value="{{ value }}"><br>
-            {% endfor %}
+            <table>
+                <tr>
+                    <th>Key</th>
+                    <th>Value</th>
+                </tr>
+                {% for key, value in items.items() %}
+                <tr>
+                    <td><label for="{{ section }}_{{ key }}">{{ key }}</label></td>
+                    <td><input type="text" id="{{ section }}_{{ key }}" name="{{ section }}_{{ key }}" value="{{ value }}"></td>
+                </tr>
+                {% endfor %}
+            </table>
         {% endfor %}
+        <br>
         <input type="submit" value="Save">
     </form>
 </body>
