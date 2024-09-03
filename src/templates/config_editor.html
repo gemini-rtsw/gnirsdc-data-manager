@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Config Editor</title>
+</head>
+<body>
+    <h1>Config Editor</h1>
+    <form action="{{ url_for('save') }}" method="post">
+        {% for section, items in sections.items() %}
+            <h2>{{ section }}</h2>
+            {% for key, value in items.items() %}
+                <label for="{{ section }}_{{ key }}">{{ key }}:</label>
+                <input type="text" id="{{ section }}_{{ key }}" name="{{ section }}_{{ key }}" value="{{ value }}"><br>
+            {% endfor %}
+        {% endfor %}
+        <input type="submit" value="Save">
+    </form>
+</body>
+</html>

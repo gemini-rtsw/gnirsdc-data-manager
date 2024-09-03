@@ -10,10 +10,10 @@ config.read(config_path)
 @app.route('/')
 def index():
     config.read(config_path)
-    # Create a dictionary to hold both DEFAULT and DEBUG sections
+    # Create a dictionary to hold both DEFAULT and DEBUG sections with uppercase keys
     sections_dict = {
-        'DEFAULT': dict(config.defaults()),
-        'DEBUG': dict(config['DEBUG'])
+        'DEFAULT': {k.upper(): v for k, v in config.defaults().items()},
+        'DEBUG': {k.upper(): v for k, v in config['DEBUG'].items()}
     }
     return render_template('config_editor.html', sections=sections_dict)
 
