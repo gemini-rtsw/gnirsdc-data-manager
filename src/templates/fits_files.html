@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>FITS Files</h1>
+<style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+</style>
+<table>
+    <tr>
+        <th>File Name</th>
+        <th>Size</th>
+        <th>Last Modified</th>
+        <th>Full Path</th>
+    </tr>
+    {% for file in fits_files %}
+    <tr>
+        <td><a href="{{ url_for('view_fits', filename=file.display_path) }}">{{ file.display_path }}</a></td>
+        <td>{{ '{:.2f}'.format(file.size / 1024 / 1024) }} MB</td>
+        <td>{{ file.mtime.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td><small>{{ file.full_path }}</small></td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
