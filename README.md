@@ -174,3 +174,45 @@ Use
 
 
 for debug in vscode you must "tar -xvf giapi-gluecc_rocky8.tar.gz"
+
+
+
+# System Manager
+
+The System Manager is a web-based interface for monitoring and configuring the Detector Controller Software. It provides an easy-to-use interface for viewing system status and editing configuration files.
+
+## Usage
+
+To start the System Manager:
+
+```
+bash
+python3 src/system_manager_server.py
+
+```
+Then, open a web browser and navigate to `http://localhost:80` (or the appropriate IP address if accessing remotely).
+
+## Features
+
+1. **Monitoring**: View the current status of the system (accessible via the "Monitoring" tab).
+2. **Config Editor**: Edit the configuration file directly through the web interface (accessible via the "Config Editor" tab).
+
+## Code Structure
+
+The System Manager consists of the following main components:
+
+1. `system_manager_server.py`: The main Flask application that handles routing and server-side logic.
+2. `templates/base.html`: The base template for all pages, including the navigation tabs.
+3. `templates/monitoring.html`: The template for the monitoring page.
+4. `templates/config_editor.html`: The template for the configuration editor page.
+
+### Key Features of the Code
+
+- Uses Flask for the web framework
+- Implements a custom `AlignedCasePreservingConfigParser` to maintain the format of the config file
+- Provides a user-friendly interface for editing the configuration file
+- Implements tabbed navigation for easy switching between monitoring and configuration
+
+## Note
+
+Ensure that you have the necessary permissions to read and write the configuration file (`conf/gnirsdc/config.ini`) when using the Config Editor feature.
