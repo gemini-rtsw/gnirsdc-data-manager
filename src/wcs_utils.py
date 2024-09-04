@@ -9,6 +9,8 @@ from logging_config import IRDC_DEBUG
 
 from gnirsutil import DEBUG_MODE
 
+import re
+from astropy.coordinates import Angle
 
 # Global dictionary to hold all WCS data in memory
 wcs_data = {}
@@ -44,12 +46,19 @@ def load_all_files():
         }
 
 def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
-    # Extract the TCS context information
-    track_ra = tcs_context['track_ra']
-    track_dec = tcs_context['track_dec']
-    track_frame = tcs_context['track_frame'].lower()  # Convert to lowercase
-    track_equinox = tcs_context['track_equinox']
-    time_tai = tcs_context['time_tai']
+    # Extract and convert the TCS context information
+    track_ra = Angle(tcs_context['track_ra'], unit=u.hourangle).deg
+    track_dec = Angle(tcs_context['track_dec'], unit=u.deg).deg
+    track_frame = str(tcs_context['track_frame']).lower()  # Convert to lowercase
+    
+    # Convert epoch format (e.g., "J2000.00000000000000" to 2000.0)
+    epoch_match = re.match(r'J?(\d+(\.\d+)?)', tcs_context['track_equinox'])
+    if epoch_match:
+        track_equinox = float(epoch_match.group(1))
+    else:
+        raise ValueError(f"Invalid epoch format: {tcs_context['track_equinox']}")
+    
+    time_tai = float(tcs_context['time_tai'])
 
     # Create a SkyCoord object for the tracking position
     tracking_position = SkyCoord(ra=track_ra * u.deg, dec=track_dec * u.deg, frame=track_frame, equinox=Time(track_equinox, format='jyear'))
@@ -71,7 +80,7 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
 
     # Set the equinox and radesys attributes of the WCS object
     wcs.wcs.equinox = track_equinox
-    wcs.wcs.radesys = track_frame
+    wcs.wcs.radesys = track_frame.upper()  # Set radesys to uppercase
 
     return wcs
 
@@ -92,7 +101,7 @@ def print_wcs_data(wcs):
 
 # Function to choose the file based on port, camera, and ao
 def choose_file(port, camera, ao):
-    prefix = 'aognirs_' if ao else 'gnirs_'
+    prefix = 'aognirs_' if ao == 'IN' else 'gnirs_'
     camera_type = 'long' if camera == 'long' else 'short'
     file_name = f"{prefix}{port}_{camera_type}.wcs"
     return file_name

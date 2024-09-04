@@ -60,11 +60,14 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         tcs_ao = pdu['TCS_AO']
 
         tcs_context = {
-            'track_ra': float(tcs_ra),
-            'track_dec': float(tcs_dec),
+            'track_ra': tcs_ra,
+            'track_dec': tcs_dec,
             'track_frame': tcs_frame,
-            'track_equinox': float(tcs_equinox),
-            'time_tai': float(tcs_tai)
+            'track_equinox': tcs_equinox,
+            'time_tai': float(tcs_tai),
+            'port': int(tcs_port),
+            'camera': tcs_camera,
+            'ao': tcs_ao
         }
 
         fname = re.sub(r'[^\w]', '', f"{dateobs}{utstart}") + ".fits"

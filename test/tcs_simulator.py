@@ -4,15 +4,15 @@ import asyncio
 from astropy.time import Time
 
 class TCSContext(PVGroup):
-    track_ra = pvproperty(value=231.657670833333, dtype=float, precision=6)
-    track_dec = pvproperty(value=-20.8335166666667, dtype=float, precision=7)
-    track_frame = pvproperty(value='FK5', dtype=str)
-    track_equinox = pvproperty(value=2000.0, dtype=float, precision=1)
-    time_tai = pvproperty(value=0.0, dtype=float, precision=3)
-    port = pvproperty(value=3, dtype=int)
-    camera = pvproperty(value='short', dtype=str)
-    ao = pvproperty(value=False, dtype=bool)
-    ak_astCtx = pvproperty(value='', dtype=str, name='ak:astCtx')  # Ensure correct PV name
+    track_ra = pvproperty(value="20:01:14.999", dtype=str, name='tcs:sad:currentRA')
+    track_dec = pvproperty(value="+20:50:00.66", dtype=str, name='tcs:sad:currentDec')
+    track_frame = pvproperty(value='FK5', dtype=str, name='tcs:sad:sourceATrackFrame')
+    track_equinox = pvproperty(value='J2024.67534114438990', dtype=str, name='tcs:sad:sourceAEpoch')
+    time_tai = pvproperty(value=0.0, dtype=float, precision=3, name='tcs:sad:djmls')
+    camera = pvproperty(value='short', dtype=str, name='tcs:sad:instrPA')
+    port = pvproperty(value=3, dtype=int, name='ag:port:nirs')
+    ao = pvproperty(value='IN', dtype=str, name='ag:aoName')
+    ak_astCtx = pvproperty(value='', dtype=str, name='ak:astCtx')
 
     @time_tai.startup
     async def time_tai(self, instance, async_lib):
@@ -24,7 +24,7 @@ class TCSContext(PVGroup):
 
 if __name__ == '__main__':
     ioc_options, run_options = ioc_arg_parser(
-        default_prefix='tcs:',
+        default_prefix='',
         desc="TCS Context IOC")
     ioc = TCSContext(**ioc_options)
     run(ioc.pvdb, **run_options)

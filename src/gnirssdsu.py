@@ -467,12 +467,8 @@ class GnirsCADCARController(PVGroup):
             tcs_context = self.tcs_monitor.get_context()
             if not tcs_context:
                 raise ValueError("Failed to get TCS context")
-
-            port = int(tcs_context.port)
-            camera = tcs_context.camera
-            ao = tcs_context.ao.lower() == 'true'
             
-            wcs_file = choose_file(port, camera, ao)
+            wcs_file = choose_file(int(tcs_context.port), tcs_context.camera, tcs_context.ao)
             if not wcs_file:
                 raise ValueError("Failed to choose WCS file")
 
