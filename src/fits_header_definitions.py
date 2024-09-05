@@ -50,25 +50,31 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
 
 
         # TCS context information
-        tcs_ra = pdu['TCS_RA']
-        tcs_dec = pdu['TCS_DEC']
-        tcs_frame = pdu['TCS_FRAME']
-        tcs_equinox = pdu['TCS_EQUINOX']
-        tcs_tai = pdu['TCS_TAI']
-        tcs_port = pdu['TCS_PORT']
-        tcs_camera = pdu['TCS_CAMERA']
-        tcs_ao = pdu['TCS_AO']
+        tcs_ra = pdu.get('TCS_RA', '')
+        tcs_dec = pdu.get('TCS_DEC', '')
+        tcs_frame = pdu.get('TCS_FRAME', '')
+        tcs_equinox = pdu.get('TCS_EQUINOX', '')
+        tcs_tai = pdu.get('TCS_TAI', '')
+        tcs_port = pdu.get('TCS_PORT', '')
+        tcs_camera = pdu.get('TCS_CAMERA', '')
+        tcs_ao = pdu.get('TCS_AO', '')
 
-        tcs_context = {
-            'track_ra': tcs_ra,
-            'track_dec': tcs_dec,
-            'track_frame': tcs_frame,
-            'track_equinox': tcs_equinox,
-            'time_tai': float(tcs_tai),
-            'port': int(tcs_port),
-            'camera': tcs_camera,
-            'ao': tcs_ao
-        }
+        # Check if TCS is connected
+        tcs_connected = all([tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_tai, tcs_port, tcs_camera, tcs_ao])
+
+        if tcs_connected:
+            tcs_context = {
+                'track_ra': tcs_ra,
+                'track_dec': tcs_dec,
+                'track_frame': tcs_frame,
+                'track_equinox': tcs_equinox,
+                'time_tai': float(tcs_tai),
+                'port': int(tcs_port),
+                'camera': tcs_camera,
+                'ao': tcs_ao
+            }
+        else:
+            tcs_context = None
 
         fname = re.sub(r'[^\w]', '', f"{dateobs}{utstart}") + ".fits"
 
@@ -113,10 +119,10 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
     fits_header.insert(4, ('COMMENT', "FITS (Flexible Image Transport System) format is defined in 'Astronomy"))
     fits_header.insert(5, ('COMMENT', "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"))
 
-    wcs = process_wcs_data(tcs_port, tcs_camera, tcs_ao, tcs_context)
-
-    # Add WCS information to the primary header
-    fits_header.update(wcs.to_header())
+    # Add WCS information to the primary header only if TCS is connected
+    if tcs_connected:
+        wcs = process_wcs_data(tcs_port, tcs_camera, tcs_ao, tcs_context)
+        fits_header.update(wcs.to_header())
 
     # Add READMODE to the header
     read_modes = eval(config[config_mode].get('READ_MODES', '{}'))

@@ -3,6 +3,55 @@
 {% block content %}
 <div id="monitoring" class="tabcontent">
     <h1>System Monitoring</h1>
-    <!-- Rest of your monitoring content -->
+    <div>
+        <h2>Log Messages</h2>
+        <textarea id="logMessages" rows="20" cols="100" readonly></textarea>
+    </div>
+    <div id="connectionStatus"></div>
 </div>
+
+<script>
+    const logMessagesTextarea = document.getElementById('logMessages');
+    const connectionStatus = document.getElementById('connectionStatus');
+
+    function updateLogMessages(messages) {
+        let logText = '';
+        let lastStatus = 'unknown';
+        messages.forEach(function(entry) {
+            logText += `${entry.timestamp} - ${entry.value}\n`;
+            lastStatus = entry.status;
+        });
+        logMessagesTextarea.value = logText;
+        logMessagesTextarea.scrollTop = logMessagesTextarea.scrollHeight;
+        
+        if (lastStatus === "connected") {
+            connectionStatus.textContent = "Connected";
+            connectionStatus.style.color = 'green';
+        } else if (lastStatus === "disconnected") {
+            connectionStatus.textContent = "Disconnected";
+            connectionStatus.style.color = 'red';
+        } else {
+            connectionStatus.textContent = "Error";
+            connectionStatus.style.color = 'orange';
+        }
+    }
+
+    // Initial load of log messages
+    fetch('/get_log_messages')
+        .then(response => response.json())
+        .then(data => updateLogMessages(data))
+        .catch(error => console.error('Error fetching initial log messages:', error));
+
+    // Set up SSE for real-time updates
+    const eventSource = new EventSource('/sse');
+    eventSource.onmessage = function(event) {
+        const messages = JSON.parse(event.data);
+        updateLogMessages(messages);
+    };
+    eventSource.onerror = function(error) {
+        console.error('SSE Error:', error);
+        connectionStatus.textContent = "Connection Error";
+        connectionStatus.style.color = 'red';
+    };
+</script>
 {% endblock %}

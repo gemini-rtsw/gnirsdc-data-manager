@@ -1,7 +1,19 @@
 import os
 import configparser
-from flask import Flask, render_template, request, redirect, url_for, send_file
+from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify, Response
 import datetime
+from caproto.threading.client import Context
+from caproto import SubscriptionType
+import asyncio
+import threading
+import time
+import logging
+import argparse
+import json
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 class AlignedCasePreservingConfigParser(configparser.ConfigParser):
     def __init__(self, *args, **kwargs):
@@ -30,6 +42,45 @@ config_path = os.path.join(os.path.dirname(__file__), '../conf/gnirsdc/config.in
 config = AlignedCasePreservingConfigParser()
 config.read(config_path)
 
+# Create a caproto context
+ctx = Context()
+
+# Global variables
+log_messages = []
+MAX_LOG_MESSAGES = 100
+pv_value_changed = threading.Event()
+
+def pv_handler(sub, response):
+    global log_messages
+    value = response.data[0].decode('utf-8') if isinstance(response.data[0], bytes) else response.data[0]
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = {"timestamp": timestamp, "status": "connected", "value": value}
+    log_messages.append(log_entry)
+    log_messages = log_messages[-MAX_LOG_MESSAGES:]
+    logger.debug(f"Added log message: {log_entry}")
+    pv_value_changed.set()  # Signal that the value has changed
+
+def subscribe_to_pv():
+    global config_mode
+    pv_name = f"{config[config_mode].get('DEFAULT_PREFIX', 'nirs')}:log_message"
+    logger.info(f"Subscribing to PV: {pv_name}")
+    
+    while True:
+        try:
+            pv, = ctx.get_pvs(pv_name)
+            sub = pv.subscribe(data_type='time')
+            sub.add_callback(pv_handler)
+            logger.info(f"Successfully subscribed to PV: {pv_name}")
+            return sub
+        except Exception as e:
+            logger.error(f"Error subscribing to PV {pv_name}: {str(e)}")
+            time.sleep(5)  # Wait before retrying
+
+def run_subscription():
+    subscribe_to_pv()
+    while True:
+        time.sleep(1)  # Keep the thread alive
+
 @app.route('/')
 def index():
     return redirect(url_for('monitoring'))
@@ -48,15 +99,19 @@ def config_page():  # Renamed from 'config' to 'config_page'
 def monitoring():
     return render_template('monitoring.html', active_tab='monitoring')
 
+@app.route('/get_log_messages')
+def get_log_messages():
+    return jsonify(log_messages)
+
 @app.route('/logs')
 def logs():
-    log_dir = '/readout_data/logs'
+    log_dir = config[config_mode].get('LOG_DIR', '/readout_data/logs')
     log_files = os.listdir(log_dir)
     return render_template('logs.html', active_tab='logs', log_files=log_files)
 
 @app.route('/logs/<filename>')
 def view_log(filename):
-    log_dir = '/readout_data/logs'
+    log_dir = config[config_mode].get('LOG_DIR', '/readout_data/logs')
     log_path = os.path.join(log_dir, filename)
     if os.path.isfile(log_path):
         return send_file(log_path, mimetype='text/plain')
@@ -83,8 +138,8 @@ def save():
 
 @app.route('/fits')
 def fits_files():
-    staging_dir = '/staging/perm'
-    readout_dir = '/readout_data/fits'
+    staging_dir = config[config_mode].get('STAGING_DIR', '/staging/perm')
+    readout_dir = config[config_mode].get('READOUT_DIR', '/readout_data/fits')
     
     all_files = []
     
@@ -101,7 +156,7 @@ def fits_files():
     # Create a list of dictionaries containing file information
     files_info = []
     for f in all_files:
-        full_path = os.path.join('/staging/perm' if f.startswith('staging') else '/readout_data/fits', os.path.basename(f))
+        full_path = os.path.join(staging_dir if f.startswith('staging') else readout_dir, os.path.basename(f))
         stat = os.stat(full_path)
         files_info.append({
             'display_path': f,
@@ -117,10 +172,13 @@ def fits_files():
 
 @app.route('/fits/<path:filename>')
 def view_fits(filename):
+    staging_dir = config[config_mode].get('STAGING_DIR', '/staging/perm')
+    readout_dir = config[config_mode].get('READOUT_DIR', '/readout_data/fits')
+
     if filename.startswith('staging/'):
-        file_path = os.path.join('/staging/perm', os.path.basename(filename))
+        file_path = os.path.join(staging_dir, os.path.basename(filename))
     elif filename.startswith('readout/'):
-        file_path = os.path.join('/readout_data/fits', os.path.basename(filename))
+        file_path = os.path.join(readout_dir, os.path.basename(filename))
     else:
         return "File not found", 404
 
@@ -129,5 +187,34 @@ def view_fits(filename):
     else:
         return "FITS file not found", 404
 
+@app.route('/sse')
+def sse():
+    def event_stream():
+        while True:
+            if pv_value_changed.is_set():
+                pv_value_changed.clear()
+                yield f"data: {json.dumps(log_messages)}\n\n"
+            time.sleep(0.1)  # Small delay to prevent busy waiting
+
+    return Response(event_stream(), content_type='text/event-stream')
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80)
+    parser = argparse.ArgumentParser(description="Run the system manager server")
+    parser.add_argument("--debug", action="store_true", help="Run in debug mode")
+    args = parser.parse_args()
+
+    if args.debug:
+        config_mode = 'DEBUG'
+        debug_mode = config['DEBUG'].getboolean('DEBUG', fallback=False)
+        logger.info(f"Debug flag detected. Using DEBUG from config: {debug_mode}")
+    else:
+        config_mode = 'DEFAULT'
+        debug_mode = False
+        logger.info("Running in production mode")
+
+    logger.info("Starting PV subscription thread")
+    subscription_thread = threading.Thread(target=run_subscription, daemon=True)
+    subscription_thread.start()
+
+    logger.info("Starting Flask application")
+    app.run(host='0.0.0.0', port=80, debug=debug_mode, threaded=True)
