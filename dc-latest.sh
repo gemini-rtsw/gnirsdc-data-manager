@@ -11,6 +11,7 @@
 GNIRSDC_GM_IMAGE="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-dm-screens/gnirsdc-dm-run"
 GMP_IMAGE="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server"
 GNIRSDC_IMAGE="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run"
+GNIRSDC_DEV_IMAGE="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev"
 
 # Function to update the tag
 update_tag() {
@@ -50,4 +51,8 @@ update_tag "${GNIRSDC_GM_IMAGE}" "latest"
 update_tag "${GMP_IMAGE}" "latest"
 update_tag "${GNIRSDC_IMAGE}" "latest"
 
-echo "Tags have been updated to 'latest' as 'current'."
+# Pull the latest GNIRSDC-DEV image without setting it as 'current'
+echo "Pulling ${GNIRSDC_DEV_IMAGE}:latest..."
+docker pull "${GNIRSDC_DEV_IMAGE}:latest"
+
+echo "Tags have been updated to 'latest' as 'current', and GNIRSDC-DEV has been pulled."

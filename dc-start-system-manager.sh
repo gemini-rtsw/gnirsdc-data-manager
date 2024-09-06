@@ -33,7 +33,7 @@ start_container() {
 
 # Display help information
 show_help() {
-    echo "Usage: $0 [--help]"
+    echo "Usage: $0 [--help] [--debug]"
     echo
     echo "This script starts the System Manager Server using the gnirsdc Docker image."
     echo
@@ -41,17 +41,29 @@ show_help() {
     echo
     echo "Options:"
     echo "  --help     Display this help message and exit."
+    echo "  --debug    Start the System Manager Server in debug mode."
 }
 
+# Parse command line arguments
+debug_flag=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --help)
+            show_help
+            exit 0
+            ;;
+        --debug)
+            debug_flag="--debug"
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
 # Start system manager server container
-start_container "system_manager_server" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:current" "python3 /path/to/src/system_manager_server.py"
+start_container "system_manager_server" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev:latest" "python3 /path/to/src/system_manager_server.py $debug_flag"
 system_manager_status=$?
-
-# If the container failed to start, run dc-production.sh and try again
-if [ $system_manager_status -ne 0 ]; then
-    echo "The system manager server container failed to start. Running dc-production.sh..."
-    dc-production.sh
-
-    # Try starting the container again
-    start_container "system_manager_server" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:current" "python3 /path/to/src/system_manager_server.py"
-fi
