@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>FITS Header: {{ filename }}</h1>
+<pre>
+{% for key, value in header.items() %}
+{{ key }}: {{ value }}
+{% endfor %}
+</pre>
+<a href="{{ url_for('fits_files') }}">Back to FITS Files</a>
+{% endblock %}

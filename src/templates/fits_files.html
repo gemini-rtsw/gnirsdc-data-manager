@@ -21,6 +21,7 @@
         <th>Size</th>
         <th>Last Modified</th>
         <th>Full Path</th>
+        <th>Header</th>
     </tr>
     {% for file in fits_files %}
     <tr>
@@ -28,6 +29,7 @@
         <td>{{ '{:.2f}'.format(file.size / 1024 / 1024) }} MB</td>
         <td>{{ file.mtime.strftime('%Y-%m-%d %H:%M:%S') }}</td>
         <td><small>{{ file.full_path }}</small></td>
+        <td><a href="{{ url_for('view_fits_header', filename=file.display_path) }}">View Header</a></td>
     </tr>
     {% endfor %}
 </table>

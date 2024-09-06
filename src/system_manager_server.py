@@ -12,6 +12,7 @@ import argparse
 import json
 import caproto
 from epics import caput, caget
+from astropy.io import fits
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -200,6 +201,25 @@ def view_fits(filename):
 
     if os.path.isfile(file_path):
         return send_file(file_path, mimetype='application/fits')
+    else:
+        return "FITS file not found", 404
+
+@app.route('/fits_header/<path:filename>')
+def view_fits_header(filename):
+    staging_dir = config[config_mode].get('STAGING_DIR', '/staging/perm')
+    readout_dir = config[config_mode].get('READOUT_DIR', '/readout_data/fits')
+
+    if filename.startswith('staging/'):
+        file_path = os.path.join(staging_dir, os.path.basename(filename))
+    elif filename.startswith('readout/'):
+        file_path = os.path.join(readout_dir, os.path.basename(filename))
+    else:
+        return "File not found", 404
+
+    if os.path.isfile(file_path):
+        with fits.open(file_path) as hdul:
+            header = hdul[0].header
+        return render_template('fits_header.html', filename=filename, header=header)
     else:
         return "FITS file not found", 404
 
