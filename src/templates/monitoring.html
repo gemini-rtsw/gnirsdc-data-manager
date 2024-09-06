@@ -3,6 +3,32 @@
 {% block content %}
 <div id="monitoring" class="tabcontent">
     <h1>System Monitoring</h1>
+    
+    <div class="heartbeat-container">
+        <span class="heartbeat-label">GNIRS DC:</span>
+        <div id="heartbeatIndicator" class="heartbeat-indicator"></div>
+    </div>
+    
+    <button id="startIntegrationBtn" class="btn btn-primary">Start Integration</button>
+    
+    <h2>Integration Parameters</h2>
+    <form id="integrationParamsForm">
+        <div class="form-grid">
+            <label for="fowlerNum">Fowler Number:</label>
+            <input type="number" id="fowlerNum" name="fowler_num" value="{{ fowler_num }}" class="form-control">
+            
+            <label for="digitalAvgs">Digital Averages:</label>
+            <input type="number" id="digitalAvgs" name="digital_avgs" value="{{ digital_avgs }}" class="form-control">
+            
+            <label for="integTime">Exposure Time (s):</label>
+            <input type="number" id="integTime" name="integ_time" value="{{ integ_time }}" step="0.1" class="form-control">
+            
+            <label for="fileName">File Name:</label>
+            <input type="text" id="fileName" name="file_name" value="{{ file_name }}" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Set Parameters</button>
+    </form>
+    
     <div>
         <h2>Log Messages</h2>
         <textarea id="logMessages" rows="20" cols="100" readonly></textarea>
@@ -10,15 +36,72 @@
     <div id="connectionStatus"></div>
 </div>
 
+<style>
+    .form-grid {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1rem;
+        max-width: 500px;
+    }
+    .form-grid label {
+        text-align: right;
+        padding-right: 0.5rem;
+        font-weight: bold;
+    }
+    .form-control {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    #startIntegrationBtn {
+        margin-bottom: 1rem;
+    }
+    .heartbeat-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .heartbeat-label {
+        font-weight: bold;
+        margin-right: 0.5rem;
+    }
+    .heartbeat-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+    }
+    .heartbeat-on {
+        background-color: green;
+        border-color: green;
+    }
+    .heartbeat-off {
+        background-color: white;
+    }
+</style>
+
 <script>
     const logMessagesTextarea = document.getElementById('logMessages');
     const connectionStatus = document.getElementById('connectionStatus');
+    const heartbeatIndicator = document.getElementById('heartbeatIndicator');
+    const fowlerNumInput = document.getElementById('fowlerNum');
+    const digitalAvgsInput = document.getElementById('digitalAvgs');
+    const integTimeInput = document.getElementById('integTime');
+    const fileNameInput = document.getElementById('fileName');
+
+    let previousPVs = {};
+    let userEditing = false;
 
     function updateLogMessages(messages) {
         let logText = '';
         let lastStatus = 'unknown';
         messages.forEach(function(entry) {
-            logText += `${entry.timestamp} - ${entry.value}\n`;
+            logText += `${entry.value}\n`;  // Remove ${entry.timestamp} -
             lastStatus = entry.status;
         });
         logMessagesTextarea.value = logText;
@@ -34,6 +117,49 @@
             connectionStatus.textContent = "Error";
             connectionStatus.style.color = 'orange';
         }
+    }
+
+    function updateAllPVs() {
+        fetch('/get_all_pvs')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const pvs = data.pvs;
+                    
+                    // Update heartbeat indicator
+                    if (pvs.heartbeat === 1) {
+                        heartbeatIndicator.classList.add('heartbeat-on');
+                        heartbeatIndicator.classList.remove('heartbeat-off');
+                    } else {
+                        heartbeatIndicator.classList.add('heartbeat-off');
+                        heartbeatIndicator.classList.remove('heartbeat-on');
+                    }
+
+                    // Update form inputs only if values have changed and user is not editing
+                    if (!userEditing) {
+                        if (pvs.fowler_num !== previousPVs.fowler_num) {
+                            fowlerNumInput.value = pvs.fowler_num;
+                        }
+                        if (pvs.digital_avgs !== previousPVs.digital_avgs) {
+                            digitalAvgsInput.value = pvs.digital_avgs;
+                        }
+                        if (pvs.integ_time !== previousPVs.integ_time) {
+                            integTimeInput.value = pvs.integ_time;
+                        }
+                        if (pvs.file_name !== previousPVs.file_name) {
+                            fileNameInput.value = pvs.file_name;
+                        }
+                    }
+
+                    // Update previous PV values
+                    previousPVs = {...pvs};
+                } else {
+                    console.error('Error fetching PVs:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching PVs:', error);
+            });
     }
 
     // Initial load of log messages
@@ -53,5 +179,49 @@
         connectionStatus.textContent = "Connection Error";
         connectionStatus.style.color = 'red';
     };
+
+    // Add event listener for the Start Integration button
+    document.getElementById('startIntegrationBtn').addEventListener('click', function() {
+        fetch('/start_integration', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    console.error('Error:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    });
+
+    // Updated event listener for the integration parameters form
+    document.getElementById('integrationParamsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch('/set_integration_params', {
+            method: 'POST',
+            body: new FormData(this),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status !== 'success') {
+                console.error('Error:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    });
+
+    // Update all PVs every 100ms
+    setInterval(updateAllPVs, 100);
+
+    // Add event listeners to track when user is editing
+    [fowlerNumInput, digitalAvgsInput, integTimeInput, fileNameInput].forEach(input => {
+        input.addEventListener('focus', () => userEditing = true);
+        input.addEventListener('blur', () => {
+            userEditing = false;
+            updateAllPVs(); // Update immediately when user finishes editing
+        });
+    });
 </script>
 {% endblock %}

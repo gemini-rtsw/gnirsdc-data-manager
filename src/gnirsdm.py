@@ -169,27 +169,28 @@ def parent_process_commands(pipe, ioc):
 
 
 def standalone_process_task(file_path, dp, pipe):
-
     fname = file_path.parts[-1].rpartition('.')[0]
     label = None
+
+    # Decode header
     try:
         rpath, header = manager.decode_header(dp.datamov.new, fname)
         label = header['PDU']['LABEL']
-#        asyncio.run(ioc.currentLabel.write(label))
-
-        print(f'GDS writing fits')
-
-        pipe.send((Command.OBSERVE_START_WRITE, label))
-
-        dp.process_file(fname, os.getenv('DC_COMMIT', 'dc_commit_missing'), os.getenv('LIB_COMMIT', 'lib_commit_missing'))
-
-        pipe.send((Command.OBSERVE_END_WRITE, label))
-
     except Exception as exc:
-        if label is None:
-            print(f"Error reading raw header file: {fname}")
-        else:
-            print(f"Error processing header: {exc}")
+        print(f"Error reading raw header file: {fname}")
+        print(f"Exception: {exc}")
+        return
+
+    print(f'GDS writing fits')
+    pipe.send((Command.OBSERVE_START_WRITE, label))
+
+    # Process file
+    try:
+        dp.process_file(fname, os.getenv('DC_COMMIT', 'dc_commit_missing'), os.getenv('LIB_COMMIT', 'lib_commit_missing'))
+    except Exception as exc:
+        print(f"Error processing file {fname}: {exc}")
+        
+    pipe.send((Command.OBSERVE_END_WRITE, label))
 
 #    finally:
 #        try:

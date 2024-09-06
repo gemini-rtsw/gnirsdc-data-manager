@@ -647,7 +647,7 @@ class GnirsCADCARController(PVGroup):
 
     @observeA.putter
     async def observeA(self, instance, value):
-        print(f"Value changed to: {value}")
+        await self.parent.logMessage(f"Data Label: {value}")
 
         ## obsSetupA has a forward link to observeCAD to mark it so it will process
         # seqexec never sets observe CAD DIR to MARK so it is done manually here

@@ -3,13 +3,15 @@ import configparser
 from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify, Response
 import datetime
 from caproto.threading.client import Context
-from caproto import SubscriptionType
+from caproto import SubscriptionType, ChannelType
 import asyncio
 import threading
 import time
 import logging
 import argparse
 import json
+import caproto
+from epics import caput, caget
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -52,13 +54,17 @@ pv_value_changed = threading.Event()
 
 def pv_handler(sub, response):
     global log_messages
-    value = response.data[0].decode('utf-8') if isinstance(response.data[0], bytes) else response.data[0]
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = {"timestamp": timestamp, "status": "connected", "value": value}
+    value = response.data[0]
+    if isinstance(value, bytes):
+        value = value.decode('utf-8')
+    
+    logger.debug(f"Raw PV value received: {value}")
+    
+    log_entry = {"status": "connected", "value": value}
     log_messages.append(log_entry)
     log_messages = log_messages[-MAX_LOG_MESSAGES:]
-    logger.debug(f"Added log message: {log_entry}")
-    pv_value_changed.set()  # Signal that the value has changed
+    logger.debug(f"Added log entry: {log_entry}")
+    pv_value_changed.set()
 
 def subscribe_to_pv():
     global config_mode
@@ -97,11 +103,21 @@ def config_page():  # Renamed from 'config' to 'config_page'
 
 @app.route('/monitoring')
 def monitoring():
-    return render_template('monitoring.html', active_tab='monitoring')
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    fowler_num = caget(f'{top_name}:dc:lnrNum')
+    digital_avgs = caget(f'{top_name}:dc:digitalAvgs')
+    integ_time = caget(f'{top_name}:dc:integTime.VAL')
+    file_name = caget(f'{top_name}:dc:observe.A')
+    return render_template('monitoring.html', active_tab='monitoring', 
+                           fowler_num=fowler_num, digital_avgs=digital_avgs, 
+                           integ_time=integ_time, file_name=file_name)
 
 @app.route('/get_log_messages')
 def get_log_messages():
-    return jsonify(log_messages)
+    return jsonify([{
+        "status": entry["status"],
+        "value": entry["value"]
+    } for entry in log_messages])
 
 @app.route('/logs')
 def logs():
@@ -193,10 +209,67 @@ def sse():
         while True:
             if pv_value_changed.is_set():
                 pv_value_changed.clear()
+                logger.debug(f"Sending SSE update: {json.dumps(log_messages)}")
                 yield f"data: {json.dumps(log_messages)}\n\n"
-            time.sleep(0.1)  # Small delay to prevent busy waiting
+            time.sleep(0.1)
 
     return Response(event_stream(), content_type='text/event-stream')
+
+@app.route('/start_integration', methods=['POST'])
+def start_integration():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        caput(f'{top_name}:dc:observe.DIR', "MARK", wait=True)
+        caput(f'{top_name}:dc:apply.DIR', "START")
+        return jsonify({"status": "success", "message": "Integration started successfully"})
+    except Exception as e:
+        logger.error(f"Error starting integration: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/set_integration_params', methods=['POST'])
+def set_integration_params():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        fowler_num = request.form.get('fowler_num')
+        digital_avgs = request.form.get('digital_avgs')
+        integ_time = request.form.get('integ_time')
+        file_name = request.form.get('file_name')
+
+        caput(f'{top_name}:dc:lnrNum', fowler_num, wait=True)
+        caput(f'{top_name}:dc:digitalAvgs', digital_avgs, wait=True)
+        caput(f'{top_name}:dc:integTime.VAL', integ_time, wait=True)
+        caput(f'{top_name}:dc:observe.A', file_name, wait=True)
+
+        return jsonify({"status": "success", "message": "Integration parameters set successfully"})
+    except Exception as e:
+        logger.error(f"Error setting integration parameters: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/get_heartbeat')
+def get_heartbeat():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        heartbeat_value = caget(f'{top_name}:heartbeat')
+        return jsonify({"status": "success", "heartbeat": heartbeat_value})
+    except Exception as e:
+        logger.error(f"Error getting heartbeat value: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/get_all_pvs')
+def get_all_pvs():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        pvs = {
+            'heartbeat': caget(f'{top_name}:heartbeat'),
+            'fowler_num': caget(f'{top_name}:dc:lnrNum'),
+            'digital_avgs': caget(f'{top_name}:dc:digitalAvgs'),
+            'integ_time': caget(f'{top_name}:dc:integTime.VAL'),
+            'file_name': caget(f'{top_name}:dc:observe.A')
+        }
+        return jsonify({"status": "success", "pvs": pvs})
+    except Exception as e:
+        logger.error(f"Error getting PV values: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")

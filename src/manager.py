@@ -414,53 +414,80 @@ class DataProcessor:
     
 
 #    def process_file(self, fname, data_label = None, dc_commit = None, lib_commit = None):
-    def process_file(self, fname, dc_commit = None, lib_commit = None):
-        # First, move the files to processing
+    def process_file(self, fname, dc_commit=None, lib_commit=None):
         dm = self.datamov
 
-        dm.move_group(dm.new, dm.processing, fname)
+        # Move files to processing
+        try:
+            dm.move_group(dm.new, dm.processing, fname)
+        except Exception as e:
+            self.logger.error(f"Error moving files to processing: {e}")
+            raise ProcessingError(f"Failed to move files for {fname}")
 
         self.logger.debug(f"Processing {fname}")
 
+        # Decode header
         try:
             rpath, header = decode_header(dm.processing, fname)
+        except Exception as e:
+            self.logger.error(f"Error decoding header for {fname}: {e}")
+            dm.move_group(dm.processing, dm.error, fname)
+            raise ProcessingError(f"Failed to decode header for {fname}")
 
-        # Create an output file and start populating it
+        # Create HDU list
+        try:
+            fitsname, hdulist = create_hdulist(header, rpath, dc_commit, lib_commit)
+        except Exception as e:
+            self.logger.error(f"Error creating HDU list for {fname}: {e}")
+            dm.move_group(dm.processing, dm.error, fname)
+            raise ProcessingError(f"Failed to create HDU list for {fname}")
 
-            fitsname, hdulist = create_hdulist(header, rpath, dc_commit, lib_commit) 
-
-            fits_path = dm.processing.full_path(fitsname)
+        # Write FITS file
+        fits_path = dm.processing.full_path(fitsname)
+        try:
             if os.access(fits_path, os.F_OK):
-                print(f"Error writing to {fits_path}: {e}")
                 fits_path = generate_new_filepath(fits_path)
-                print(f"Changed name to: {fits_path}")
-                #raise ProcessingError(f"{fitsname} exists already")
+                self.logger.debug(f"Changed name to: {fits_path}")
             
             self.logger.debug(f" -> writing to {fits_path}")
-
             hdulist.writeto(fits_path, overwrite=True)
-            
+        except Exception as e:
+            self.logger.error(f"Error writing FITS file {fits_path}: {e}")
+            dm.move_group(dm.processing, dm.error, fname)
+            raise ProcessingError(f"Failed to write FITS file for {fname}")
 
+        # Move processed file to output
+        try:
+            output_dir = dm.output.full_path('')
+            self.logger.debug(f"Attempting to move processed file to output directory: {output_dir}")
+            
+            if not os.path.exists(output_dir):
+                self.logger.error(f"Output directory does not exist: {output_dir}")
+                os.makedirs(output_dir, exist_ok=True)
+                self.logger.info(f"Created output directory: {output_dir}")
+
+            source_file = dm.processing.full_path(fitsname)
+            self.logger.debug(f"Source file: {source_file}")
+            
+            if not os.path.exists(source_file):
+                self.logger.error(f"Source file does not exist: {source_file}")
+                raise FileNotFoundError(f"Source file not found: {source_file}")
 
             dm.move(dm.processing, dm.output, fitsname, error_allowed=False)
+            self.logger.info(f"Successfully moved processed file to output: {fitsname}")
+        except Exception as e:
+            self.logger.error(f"Error moving processed file to output: {e}")
+            self.logger.error(f"Current working directory: {os.getcwd()}")
+            self.logger.error(f"Files in processing directory: {os.listdir(dm.processing.full_path(''))}")
+            raise ProcessingError(f"Failed to move processed file for {fname}")
 
-
-        except (NotImplementedError, ProcessingError, OSError, RawDataNotFoundError) as e:
-            # Log the error message with line number
-            tb = traceback.format_exc().splitlines()[-1]
-            error_message = f"{str(e)} (line {tb.split(', ')[1]})"            
-            self.logger.irdc_debug(str(e))
-
-            # Print the error message
-            print(f"Error: {str(e)}")
-
-            dm.move_group(dm.processing, dm.error, fname)
-            raise ProcessingError(str(e))
+        # Handle raw files
+        if self.keep:
+            dm.move_group(dm.processing, dm.proc_raw, fname)
         else:
-            if self.keep:
-                dm.move_group(dm.processing, dm.proc_raw, fname)
-            else:
-                dm.delete_group(dm.processing, fname)
+            dm.delete_group(dm.processing, fname)
+
+        self.logger.debug(f"Successfully processed {fname}")
 
 def unscramble(data):
     return data
