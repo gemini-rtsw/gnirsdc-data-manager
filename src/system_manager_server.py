@@ -282,6 +282,17 @@ def initialize_sdsu():
         logger.error(f"Error initializing SDSU: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/get_file_log')
+def get_file_log():
+    log_dir = config[config_mode].get('LOG_DIR', '/readout_data/logs')
+    log_file = os.path.join(log_dir, 'irdc.log')
+    try:
+        with open(log_file, 'r') as f:
+            return f.read()
+    except Exception as e:
+        logger.error(f"Error reading log file: {str(e)}")
+        return "Error reading log file", 500
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")
     parser.add_argument("--debug", action="store_true", help="Run in debug mode")

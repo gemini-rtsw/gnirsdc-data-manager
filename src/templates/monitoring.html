@@ -31,8 +31,23 @@
     </form>
     
     <div>
-        <h2>Log Messages</h2>
-        <textarea id="logMessages" rows="20" cols="100" readonly></textarea>
+        <h2>Logs</h2>
+        <ul class="nav nav-tabs" id="logTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="pv-log-tab" data-bs-toggle="tab" data-bs-target="#pv-log" type="button" role="tab" aria-controls="pv-log" aria-selected="true">PV Log</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="file-log-tab" data-bs-toggle="tab" data-bs-target="#file-log" type="button" role="tab" aria-controls="file-log" aria-selected="false">File Log</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="logTabsContent">
+            <div class="tab-pane fade show active" id="pv-log" role="tabpanel" aria-labelledby="pv-log-tab">
+                <textarea id="logMessages" rows="20" cols="100" readonly></textarea>
+            </div>
+            <div class="tab-pane fade" id="file-log" role="tabpanel" aria-labelledby="file-log-tab">
+                <textarea id="fileLogMessages" rows="20" cols="100" readonly></textarea>
+            </div>
+        </div>
     </div>
     <div id="connectionStatus"></div>
 </div>
@@ -84,6 +99,40 @@
     .heartbeat-off {
         background-color: white;
     }
+    .nav-tabs {
+        display: flex;
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .nav-item {
+        margin-bottom: -1px;
+    }
+    .nav-tabs .nav-link {
+        display: block;
+        padding: 0.5rem 1rem;
+        border: 1px solid transparent;
+        border-top-left-radius: 0.25rem;
+        border-top-right-radius: 0.25rem;
+        text-decoration: none;
+        color: #495057;
+    }
+    .nav-tabs .nav-link:hover, .nav-tabs .nav-link:focus {
+        border-color: #e9ecef #e9ecef #dee2e6;
+        isolation: isolate;
+    }
+    .nav-tabs .nav-link.active {
+        color: #495057;
+        background-color: #fff;
+        border-color: #dee2e6 #dee2e6 #fff;
+    }
+    .tab-content > .tab-pane {
+        display: none;
+    }
+    .tab-content > .active {
+        display: block;
+    }
 </style>
 
 <script>
@@ -94,6 +143,7 @@
     const digitalAvgsInput = document.getElementById('digitalAvgs');
     const integTimeInput = document.getElementById('integTime');
     const fileNameInput = document.getElementById('fileName');
+    const fileLogMessagesTextarea = document.getElementById('fileLogMessages');
 
     let previousPVs = {};
     let userEditing = false;
@@ -118,6 +168,16 @@
             connectionStatus.textContent = "Error";
             connectionStatus.style.color = 'orange';
         }
+    }
+
+    function updateFileLog() {
+        fetch('/get_file_log')
+            .then(response => response.text())
+            .then(data => {
+                fileLogMessagesTextarea.value = data;
+                fileLogMessagesTextarea.scrollTop = fileLogMessagesTextarea.scrollHeight;
+            })
+            .catch(error => console.error('Error fetching file log:', error));
     }
 
     function updateAllPVs() {
@@ -168,6 +228,12 @@
         .then(response => response.json())
         .then(data => updateLogMessages(data))
         .catch(error => console.error('Error fetching initial log messages:', error));
+
+    // Initial load of file log
+    updateFileLog();
+
+    // Update file log every 5 seconds
+    setInterval(updateFileLog, 500);
 
     // Set up SSE for real-time updates
     const eventSource = new EventSource('/sse');
@@ -236,6 +302,17 @@
         input.addEventListener('blur', () => {
             userEditing = false;
             updateAllPVs(); // Update immediately when user finishes editing
+        });
+    });
+
+    // Add tab functionality
+    document.querySelectorAll('.nav-link').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.nav-link').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show', 'active'));
+            tab.classList.add('active');
+            document.querySelector(tab.getAttribute('data-bs-target')).classList.add('show', 'active');
         });
     });
 </script>
