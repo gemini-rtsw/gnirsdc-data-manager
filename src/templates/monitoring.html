@@ -9,6 +9,11 @@
         <div id="heartbeatIndicator" class="heartbeat-indicator"></div>
     </div>
     
+    <div class="top-name-container">
+        <span class="top-name-label">Epics Top:</span>
+        <span id="topNameValue"></span>
+    </div>
+    
     <button id="initializeSDSUBtn" class="btn btn-secondary">Initialize SDSU</button>
     <button id="startIntegrationBtn" class="btn btn-primary">Start Integration</button>
     
@@ -133,6 +138,13 @@
     .tab-content > .active {
         display: block;
     }
+    .top-name-container {
+        margin-bottom: 1rem;
+    }
+    .top-name-label {
+        font-weight: bold;
+        margin-right: 0.5rem;
+    }
 </style>
 
 <script>
@@ -144,6 +156,7 @@
     const integTimeInput = document.getElementById('integTime');
     const fileNameInput = document.getElementById('fileName');
     const fileLogMessagesTextarea = document.getElementById('fileLogMessages');
+    const topNameValue = document.getElementById('topNameValue');
 
     let previousPVs = {};
     let userEditing = false;
@@ -187,6 +200,9 @@
                 if (data.status === 'success') {
                     const pvs = data.pvs;
                     
+                    // Update top name
+                    topNameValue.textContent = pvs.top_name || 'N/A';
+
                     // Update heartbeat indicator
                     if (pvs.heartbeat === 1) {
                         heartbeatIndicator.classList.add('heartbeat-on');

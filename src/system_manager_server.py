@@ -280,6 +280,7 @@ def get_all_pvs():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
     try:
         pvs = {
+            'top_name': top_name,
             'heartbeat': caget(f'{top_name}:heartbeat'),
             'fowler_num': caget(f'{top_name}:dc:lnrNum'),
             'digital_avgs': caget(f'{top_name}:dc:digitalAvgs'),
@@ -290,7 +291,6 @@ def get_all_pvs():
     except Exception as e:
         logger.error(f"Error getting PV values: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
-
 @app.route('/initialize_sdsu', methods=['POST'])
 def initialize_sdsu():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
