@@ -9,6 +9,7 @@
         <div id="heartbeatIndicator" class="heartbeat-indicator"></div>
     </div>
     
+    <button id="initializeSDSUBtn" class="btn btn-secondary">Initialize SDSU</button>
     <button id="startIntegrationBtn" class="btn btn-primary">Start Integration</button>
     
     <h2>Integration Parameters</h2>
@@ -210,6 +211,20 @@
         .catch(error => {
             console.error('Error:', error);
         });
+    });
+
+    // Add event listener for the Initialize SDSU button
+    document.getElementById('initializeSDSUBtn').addEventListener('click', function() {
+        fetch('/initialize_sdsu', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    console.error('Error:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
     });
 
     // Update all PVs every 100ms

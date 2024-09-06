@@ -271,6 +271,17 @@ def get_all_pvs():
         logger.error(f"Error getting PV values: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/initialize_sdsu', methods=['POST'])
+def initialize_sdsu():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        caput(f'{top_name}:dc:initSDSU.DIR', "MARK", wait=True)
+        caput(f'{top_name}:dc:apply.DIR', "START")
+        return jsonify({"status": "success", "message": "SDSU initialized successfully"})
+    except Exception as e:
+        logger.error(f"Error initializing SDSU: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")
     parser.add_argument("--debug", action="store_true", help="Run in debug mode")
