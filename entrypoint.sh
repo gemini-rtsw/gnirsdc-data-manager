@@ -15,9 +15,6 @@ if [ $# -ne 0 ]; then
     ARGS="$@"
 fi
 
-# Start the system monitor in the background
-python3.9 system_manager_server.py &
-
 # Start DC software with the arguments
 python3.9 gnirsdm.py $ARGS
 
