@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from caproto.server import pvproperty, PVGroup, ioc_arg_parser, run
+from caproto import ChannelType
 import asyncio
 from astropy.time import Time
 
@@ -12,7 +13,7 @@ class TCSContext(PVGroup):
     camera = pvproperty(value='short', dtype=str, name='tcs:sad:instrPA')
     port = pvproperty(value=3, dtype=int, name='ag:port:nirs')
     ao = pvproperty(value='IN', dtype=str, name='ag:aoName')
-    tcs_heartbeat = pvproperty(value='', dtype=int, name='tcs:heartbeat')
+    tcs_heartbeat = pvproperty(value=0, dtype=int, name='tcs:heartbeat')
 
 
 

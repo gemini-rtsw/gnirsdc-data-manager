@@ -1,6 +1,6 @@
 import os
 import configparser
-from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify, Response
+from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify, Response, send_from_directory
 import datetime
 from caproto.threading.client import Context
 from caproto import SubscriptionType, ChannelType
@@ -40,7 +40,7 @@ class AlignedCasePreservingConfigParser(configparser.ConfigParser):
                     fp.write(f"{key:<20}{d}{value}\n")
             fp.write("\n")
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 config_path = os.path.join(os.path.dirname(__file__), '../conf/gnirsdc/config.ini')
 config = AlignedCasePreservingConfigParser()
 config.read(config_path)
@@ -282,13 +282,15 @@ def get_all_pvs():
         pvs = {
             'top_name': top_name,
             'heartbeat': caget(f'{top_name}:heartbeat'),
+            'tcs_connection': caget(f'{top_name}:tcs_connection'), 
             'fowler_num': caget(f'{top_name}:dc:lnrNum'),
             'digital_avgs': caget(f'{top_name}:dc:digitalAvgs'),
             'integ_time': caget(f'{top_name}:dc:integTime.VAL'),
             'file_name': caget(f'{top_name}:dc:observe.A'),
             'temperature': caget(f'{top_name}:dc:temperature'),
             'interlock_override': caget(f'{top_name}:dc:disable_interlock'),
-            'apply_c_value': caget(f'{top_name}:dc:applyC.VAL') 
+            'apply_c_value': caget(f'{top_name}:dc:applyC.VAL'),
+            'gmp_status': caget(f'{top_name}:gmp_status')
         }
         return jsonify({"status": "success", "pvs": pvs})
     except Exception as e:
@@ -343,6 +345,10 @@ def clear_errors():
     except Exception as e:
         logger.error(f"Error clearing errors: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory(app.static_folder, filename)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")

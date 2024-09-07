@@ -4,9 +4,19 @@
 <div id="monitoring" class="tabcontent">
     <h1>System Monitoring</h1>
     
-    <div class="heartbeat-container">
-        <span class="heartbeat-label">GNIRS DC Health:</span>
-        <div id="heartbeatIndicator" class="heartbeat-indicator"></div>
+    <div class="status-container">
+        <span class="status-label">GNIRS DC Health:</span>
+        <div id="heartbeatIndicator" class="status-indicator"></div>
+    </div>
+    
+    <div class="status-container">
+        <span class="status-label">TCS Connection:</span>
+        <div id="tcsConnectionIndicator" class="status-indicator"></div>
+    </div>
+    
+    <div class="status-container">
+        <span class="status-label">GDS Connected:</span>
+        <div id="gdsStatusIndicator" class="status-indicator"></div>
     </div>
     
     <div class="status-container">
@@ -212,12 +222,39 @@
         margin-bottom: 10px;
         font-weight: bold;
     }
+    
+    .status-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .status-label {
+        margin-right: 10px;
+        min-width: 150px;
+    }
+    
+    .status-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    
+    .status-on {
+        background-color: green;
+    }
+    
+    .status-off {
+        background-color: red;
+    }
 </style>
 
 <script>
     const logMessagesTextarea = document.getElementById('logMessages');
     const connectionStatus = document.getElementById('connectionStatus');
     const heartbeatIndicator = document.getElementById('heartbeatIndicator');
+    const tcsConnectionIndicator = document.getElementById('tcsConnectionIndicator');
     const fowlerNumInput = document.getElementById('fowlerNum');
     const digitalAvgsInput = document.getElementById('digitalAvgs');
     const integTimeInput = document.getElementById('integTime');
@@ -226,6 +263,7 @@
     const topNameValue = document.getElementById('topNameValue');
     const temperatureValue = document.getElementById('temperatureValue');
     const interlockIndicator = document.getElementById('interlockIndicator');
+    const gdsStatusIndicator = document.getElementById('gdsStatusIndicator');
 
     let previousPVs = {};
     let userEditing = false;
@@ -281,6 +319,12 @@
                         heartbeatIndicator.classList.remove('heartbeat-on');
                     }
 
+                    // Update TCS Connection indicator
+                    updateStatusIndicator('tcsConnectionIndicator', pvs.tcs_connection === 'CONNECTED');
+
+                    // Update GDS status indicator
+                    updateStatusIndicator('gdsStatusIndicator', pvs.gmp_status === 'CONNECTED');
+
                     // Update temperature
                     temperatureValue.textContent = pvs.temperature ? `${pvs.temperature.toFixed(2)} K` : 'N/A';
 
@@ -303,8 +347,8 @@
                     if (typeof applyCValue === 'number') {
                         switch (applyCValue) {
                             case 0: applyCValue = 'IDLE'; break;
-                            case 1: applyCValue = 'BUSY'; break;
-                            case 2: applyCValue = 'PAUSED'; break;
+                            case 1: applyCValue = 'PAUSED'; break; 
+                            case 2: applyCValue = 'BUSY'; break;    
                             case 3: applyCValue = 'ERR'; break;
                             default: applyCValue = `UNKNOWN (${applyCValue})`;
                         }
@@ -350,6 +394,17 @@
             .catch(error => {
                 console.error('Error fetching PVs:', error);
             });
+    }
+
+    function updateStatusIndicator(elementId, isConnected) {
+        const indicator = document.getElementById(elementId);
+        if (isConnected) {
+            indicator.classList.add('status-on');
+            indicator.classList.remove('status-off');
+        } else {
+            indicator.classList.add('status-off');
+            indicator.classList.remove('status-on');
+        }
     }
 
     // Initial load of log messages

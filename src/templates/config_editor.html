@@ -3,6 +3,22 @@
 {% block content %}
 <div id="config-editor" class="tabcontent">
     <h1>Config Editor</h1>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #e0e0e0;
+            color: #333;
+            font-weight: bold;
+        }
+    </style>
     <form action="{{ url_for('save') }}" method="post">
         {% for section, items in sections.items() %}
             <h2>{{ section }}</h2>
