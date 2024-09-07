@@ -10,7 +10,7 @@
     </div>
     
     <div class="status-container">
-        <span class="status-label">GNIRS DC Status:</span>
+        <span class="status-label">GNIRS DC State:</span>
         <span id="applyCValueIndicator"></span>
     </div>
     
@@ -53,6 +53,7 @@
     
     <div>
         <h2>Logs</h2>
+        <div id="connectionStatus" class="connection-status"></div>
         <ul class="nav nav-tabs" id="logTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="pv-log-tab" data-bs-toggle="tab" data-bs-target="#pv-log" type="button" role="tab" aria-controls="pv-log" aria-selected="true">PV Log</button>
@@ -70,7 +71,6 @@
             </div>
         </div>
     </div>
-    <div id="connectionStatus"></div>
 </div>
 
 <style>
@@ -187,17 +187,30 @@
         border-color: red;
     }
     
-    #logMessages, #fileLogMessages {
-        width: 900px;  /* Set default width to 900px */
-        max-width: 100%;  /* Ensure it doesn't exceed the container width */
-        resize: horizontal;  /* Allow horizontal resizing */
-        overflow: auto;  /* Add scrollbars when content exceeds the textarea size */
+    .tab-content {
+        width: 100%;
+        height: 300px; /* Default height, adjust as needed */
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
     }
     
-    /* Adjust the container to accommodate the wider textareas */
-    .tab-content {
-        overflow-x: auto;  /* Add horizontal scrolling if needed */
-        max-width: 100%;   /* Ensure it doesn't overflow the parent container */
+    .tab-pane {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    #logMessages, #fileLogMessages {
+        width: 100%;
+        flex: 1;
+        resize: vertical; /* Allow vertical resizing */
+        overflow: auto;
+    }
+    
+    .connection-status {
+        margin-bottom: 10px;
+        font-weight: bold;
     }
 </style>
 
