@@ -285,7 +285,9 @@ def get_all_pvs():
             'fowler_num': caget(f'{top_name}:dc:lnrNum'),
             'digital_avgs': caget(f'{top_name}:dc:digitalAvgs'),
             'integ_time': caget(f'{top_name}:dc:integTime.VAL'),
-            'file_name': caget(f'{top_name}:dc:observe.A')
+            'file_name': caget(f'{top_name}:dc:observe.A'),
+            'temperature': caget(f'{top_name}:dc:temperature'),
+            'interlock_override': caget(f'{top_name}:dc:disable_interlock')
         }
         return jsonify({"status": "success", "pvs": pvs})
     except Exception as e:
@@ -312,6 +314,24 @@ def get_file_log():
     except Exception as e:
         logger.error(f"Error reading log file: {str(e)}")
         return "Error reading log file", 500
+
+@app.route('/engineering')
+def engineering():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    interlock_status = caget(f'{top_name}:dc:disable_interlock')
+    return render_template('engineering.html', interlock_status=interlock_status)
+
+@app.route('/toggle_interlock', methods=['POST'])
+def toggle_interlock():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        current_status = caget(f'{top_name}:dc:disable_interlock')
+        new_status = not current_status
+        caput(f'{top_name}:dc:disable_interlock', int(new_status), wait=True)
+        return jsonify({"status": "success", "new_interlock_status": new_status})
+    except Exception as e:
+        logger.error(f"Error toggling interlock: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")

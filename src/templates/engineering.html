@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Engineering Controls</h1>
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Temperature Interlock</h5>
+        <p>Current status: <span id="interlock-status">{{ "Disabled" if interlock_status else "Enabled" }}</span></p>
+        <button id="toggle-interlock" class="btn btn-warning">Toggle Interlock Override</button>
+    </div>
+</div>
+
+<script>
+document.getElementById('toggle-interlock').addEventListener('click', function() {
+    fetch('/toggle_interlock', {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.getElementById('interlock-status').textContent = data.new_interlock_status ? 'Disabled' : 'Enabled';
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while toggling the interlock.');
+        });
+});
+</script>
+{% endblock %}

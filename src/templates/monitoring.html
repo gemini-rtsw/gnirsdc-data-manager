@@ -14,6 +14,16 @@
         <span id="topNameValue"></span>
     </div>
     
+    <div class="temperature-container">
+        <span class="temperature-label">Temperature:</span>
+        <span id="temperatureValue"></span>
+    </div>
+    
+    <div class="interlock-container">
+        <span class="interlock-label">Temperature Interlock:</span>
+        <div id="interlockIndicator" class="interlock-indicator"></div>
+    </div>
+    
     <button id="initializeSDSUBtn" class="btn btn-secondary">Initialize SDSU</button>
     <button id="startIntegrationBtn" class="btn btn-primary">Start Integration</button>
     
@@ -145,6 +155,44 @@
         font-weight: bold;
         margin-right: 0.5rem;
     }
+    .temperature-container,
+    .interlock-container {
+        margin-bottom: 1rem;
+    }
+    .temperature-label,
+    .interlock-label {
+        font-weight: bold;
+        margin-right: 0.5rem;
+    }
+    .interlock-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+    }
+    .interlock-on {
+        background-color: green;
+        border-color: green;
+    }
+    .interlock-off {
+        background-color: red;
+        border-color: red;
+    }
+    
+    #logMessages, #fileLogMessages {
+        width: 900px;  /* Set default width to 900px */
+        max-width: 100%;  /* Ensure it doesn't exceed the container width */
+        resize: horizontal;  /* Allow horizontal resizing */
+        overflow: auto;  /* Add scrollbars when content exceeds the textarea size */
+    }
+    
+    /* Adjust the container to accommodate the wider textareas */
+    .tab-content {
+        overflow-x: auto;  /* Add horizontal scrolling if needed */
+        max-width: 100%;   /* Ensure it doesn't overflow the parent container */
+    }
 </style>
 
 <script>
@@ -157,6 +205,8 @@
     const fileNameInput = document.getElementById('fileName');
     const fileLogMessagesTextarea = document.getElementById('fileLogMessages');
     const topNameValue = document.getElementById('topNameValue');
+    const temperatureValue = document.getElementById('temperatureValue');
+    const interlockIndicator = document.getElementById('interlockIndicator');
 
     let previousPVs = {};
     let userEditing = false;
@@ -210,6 +260,20 @@
                     } else {
                         heartbeatIndicator.classList.add('heartbeat-off');
                         heartbeatIndicator.classList.remove('heartbeat-on');
+                    }
+
+                    // Update temperature
+                    temperatureValue.textContent = pvs.temperature ? `${pvs.temperature.toFixed(2)} K` : 'N/A';
+
+                    // Update interlock override indicator
+                    if (pvs.interlock_override === 0) {
+                        interlockIndicator.classList.add('interlock-on');
+                        interlockIndicator.classList.remove('interlock-off');
+                        interlockIndicator.title = 'Temperature Interlock: ON';
+                    } else {
+                        interlockIndicator.classList.add('interlock-off');
+                        interlockIndicator.classList.remove('interlock-on');
+                        interlockIndicator.title = 'Temperature Interlock: OFF';
                     }
 
                     // Update form inputs only if values have changed and user is not editing
