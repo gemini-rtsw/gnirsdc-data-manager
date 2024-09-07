@@ -287,7 +287,8 @@ def get_all_pvs():
             'integ_time': caget(f'{top_name}:dc:integTime.VAL'),
             'file_name': caget(f'{top_name}:dc:observe.A'),
             'temperature': caget(f'{top_name}:dc:temperature'),
-            'interlock_override': caget(f'{top_name}:dc:disable_interlock')
+            'interlock_override': caget(f'{top_name}:dc:disable_interlock'),
+            'apply_c_value': caget(f'{top_name}:dc:applyC.VAL') 
         }
         return jsonify({"status": "success", "pvs": pvs})
     except Exception as e:
@@ -331,6 +332,16 @@ def toggle_interlock():
         return jsonify({"status": "success", "new_interlock_status": new_status})
     except Exception as e:
         logger.error(f"Error toggling interlock: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/clear_errors', methods=['POST'])
+def clear_errors():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        caput(f'{top_name}:dc:apply.DIR', "PRESET", wait=True)
+        return jsonify({"status": "success", "message": "Errors cleared successfully"})
+    except Exception as e:
+        logger.error(f"Error clearing errors: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":

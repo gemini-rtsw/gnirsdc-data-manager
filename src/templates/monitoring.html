@@ -5,8 +5,13 @@
     <h1>System Monitoring</h1>
     
     <div class="heartbeat-container">
-        <span class="heartbeat-label">GNIRS DC:</span>
+        <span class="heartbeat-label">GNIRS DC Health:</span>
         <div id="heartbeatIndicator" class="heartbeat-indicator"></div>
+    </div>
+    
+    <div class="status-container">
+        <span class="status-label">GNIRS DC Status:</span>
+        <span id="applyCValueIndicator"></span>
     </div>
     
     <div class="top-name-container">
@@ -26,6 +31,7 @@
     
     <button id="initializeSDSUBtn" class="btn btn-secondary">Initialize SDSU</button>
     <button id="startIntegrationBtn" class="btn btn-primary">Start Integration</button>
+    <button id="clearErrorsBtn" class="btn btn-warning">Clear Errors</button>
     
     <h2>Integration Parameters</h2>
     <form id="integrationParamsForm">
@@ -148,21 +154,21 @@
     .tab-content > .active {
         display: block;
     }
-    .top-name-container {
-        margin-bottom: 1rem;
-    }
-    .top-name-label {
-        font-weight: bold;
-        margin-right: 0.5rem;
-    }
+    .status-container,
+    .top-name-container,
     .temperature-container,
     .interlock-container {
         margin-bottom: 1rem;
     }
+    .status-label,
+    .top-name-label,
     .temperature-label,
     .interlock-label {
         font-weight: bold;
         margin-right: 0.5rem;
+    }
+    #applyCValueIndicator {
+        font-weight: normal;
     }
     .interlock-indicator {
         width: 20px;
@@ -276,6 +282,36 @@
                         interlockIndicator.title = 'Temperature Interlock: OFF';
                     }
 
+                    // Update Apply C Value indicator
+                    let applyCValue = pvs.apply_c_value;
+                    const applyCValueIndicator = document.getElementById('applyCValueIndicator');
+                    
+                    // Convert number to string if necessary
+                    if (typeof applyCValue === 'number') {
+                        switch (applyCValue) {
+                            case 0: applyCValue = 'IDLE'; break;
+                            case 1: applyCValue = 'BUSY'; break;
+                            case 2: applyCValue = 'PAUSED'; break;
+                            case 3: applyCValue = 'ERR'; break;
+                            default: applyCValue = `UNKNOWN (${applyCValue})`;
+                        }
+                    }
+
+                    applyCValueIndicator.textContent = applyCValue;
+
+                    switch (applyCValue) {
+                        case 'IDLE':
+                            applyCValueIndicator.style.color = 'green';
+                            break;
+                        case 'BUSY':
+                        case 'PAUSED':
+                            applyCValueIndicator.style.color = 'orange';
+                            break;
+                        case 'ERR':
+                        default:
+                            applyCValueIndicator.style.color = 'red';
+                    }
+
                     // Update form inputs only if values have changed and user is not editing
                     if (!userEditing) {
                         if (pvs.fowler_num !== previousPVs.fowler_num) {
@@ -330,6 +366,20 @@
     // Add event listener for the Start Integration button
     document.getElementById('startIntegrationBtn').addEventListener('click', function() {
         fetch('/start_integration', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    console.error('Error:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    });
+
+    // Add event listener for the Clear Errors button
+    document.getElementById('clearErrorsBtn').addEventListener('click', function() {
+        fetch('/clear_errors', {method: 'POST'})
             .then(response => response.json())
             .then(data => {
                 if (data.status !== 'success') {
