@@ -74,4 +74,6 @@ if __name__ == '__main__':
         default_prefix='',
         desc="TCS Context IOC")
     ioc = TCSContext(**ioc_options)
-    run(ioc.pvdb, **run_options)
+    run(ioc.pvdb, **run_options,
+        tcp_port=5064,  # Standard EPICS TCP port
+        udp_port=5065)  # Standard EPICS UDP port

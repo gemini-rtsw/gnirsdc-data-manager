@@ -671,7 +671,7 @@ async def main():
 
     ioc_options, run_options = custom_ioc_arg_parser(
             default_prefix=DEFAULT_PREFIX,
-            desc=''
+            desc='Gemini NIRS Data Manager IOC'
             )
     
 
@@ -695,7 +695,11 @@ async def main():
     prt = partial(startup, ioc, proc, **run_options)
     prt.__name__ = 'startup'
     try:
-        server_context = await create_ioc_task(ioc.pvdb, startup_hook=prt, **run_options)
+        server_context = await create_ioc_task(ioc.pvdb, 
+                                               startup_hook=prt, 
+                                               tcp_port=5064,  # Standard EPICS TCP port
+                                               udp_port=5065,  # Standard EPICS UDP port
+                                               **run_options)
     finally:
         proc.shutdown()
         thrd.join()
