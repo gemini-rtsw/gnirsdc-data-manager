@@ -281,10 +281,13 @@ def get_all_pvs():
     try:
         detector_bias_str = caget(f'{top_name}:dc:arSetup.H', as_string=True)
         try:
-            detector_bias_mv = float(detector_bias_str) * 1000  # Convert V to mV
+            detector_bias_v = float(detector_bias_str)
+            detector_bias_mv = detector_bias_v * 1000  # Convert V to mV
             detector_bias_display = f"{detector_bias_mv:.2f} mV"
+            bias_mode = "DEEP" if detector_bias_str == "0.6" else "SHALLOW"
         except ValueError:
             detector_bias_display = "N/A"
+            bias_mode = "UNKNOWN"
 
         pvs = {
             'top_name': top_name,
@@ -298,12 +301,14 @@ def get_all_pvs():
             'interlock_override': caget(f'{top_name}:dc:disable_interlock'),
             'apply_c_value': caget(f'{top_name}:dc:applyC.VAL'),
             'gmp_status': caget(f'{top_name}:gmp_status'),
-            'detector_bias': detector_bias_display
+            'detector_bias': detector_bias_display,
+            'bias_mode': bias_mode
         }
         return jsonify({"status": "success", "pvs": pvs})
     except Exception as e:
         logger.error(f"Error getting PV values: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/initialize_sdsu', methods=['POST'])
 def initialize_sdsu():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
@@ -332,6 +337,7 @@ def engineering():
     interlock_status = caget(f'{top_name}:dc:disable_interlock')
     return render_template('engineering.html', interlock_status=interlock_status)
 
+
 @app.route('/toggle_interlock', methods=['POST'])
 def toggle_interlock():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
@@ -357,6 +363,21 @@ def clear_errors():
 @app.route('/static/<path:filename>')
 def serve_static(filename):
     return send_from_directory(app.static_folder, filename)
+
+# Add this new route to handle the bias voltage toggle
+@app.route('/toggle_bias_voltage', methods=['POST'])
+def toggle_bias_voltage():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        new_value = request.json['new_value']
+        if new_value not in ['0.3', '0.6']:
+            raise ValueError("Invalid bias voltage value")
+        
+        caput(f'{top_name}:dc:arSetup.H', new_value, wait=True)
+        return jsonify({"status": "success", "new_bias_voltage": new_value})
+    except Exception as e:
+        logger.error(f"Error changing bias voltage: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")

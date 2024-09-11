@@ -62,6 +62,12 @@
             
             <label for="fileName">File Name:</label>
             <input type="text" id="fileName" name="file_name" value="{{ file_name }}" class="form-control">
+            
+            <label for="biasMode">Bias Mode:</label>
+            <select id="biasMode" name="bias_mode" class="form-control">
+                <option value="DEEP">DEEP</option>
+                <option value="SHALLOW">SHALLOW</option>
+            </select>
         </div>
         <button type="submit" class="btn btn-primary">Set Parameters</button>
     </form>
@@ -274,6 +280,7 @@
     const interlockIndicator = document.getElementById('interlockIndicator');
     const gdsStatusIndicator = document.getElementById('gdsStatusIndicator');
     const detectorBiasValue = document.getElementById('detectorBiasValue');
+    const biasMode = document.getElementById('biasMode');
 
     let previousPVs = {};
     let userEditing = false;
@@ -379,8 +386,9 @@
                             applyCValueIndicator.style.color = 'red';
                     }
 
-                    // Update detector bias voltage
+                    // Update detector bias voltage and mode
                     detectorBiasValue.textContent = pvs.detector_bias || 'N/A';
+                    biasMode.value = pvs.bias_mode || 'UNKNOWN';
 
                     // Update form inputs only if values have changed and user is not editing
                     if (!userEditing) {
@@ -524,6 +532,31 @@
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show', 'active'));
             tab.classList.add('active');
             document.querySelector(tab.getAttribute('data-bs-target')).classList.add('show', 'active');
+        });
+    });
+
+    biasMode.addEventListener('change', function() {
+        const newMode = this.value;
+        const newValue = newMode === 'DEEP' ? '0.6' : '0.3';
+        
+        fetch('/toggle_bias_voltage', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ new_value: newValue }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('Bias voltage changed successfully');
+                updateAllPVs();  // Update the display after changing
+            } else {
+                console.error('Error changing bias voltage:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error changing bias voltage:', error);
         });
     });
 </script>
