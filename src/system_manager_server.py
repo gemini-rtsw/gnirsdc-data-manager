@@ -279,6 +279,13 @@ def get_heartbeat():
 def get_all_pvs():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
     try:
+        detector_bias_str = caget(f'{top_name}:dc:arSetup.H', as_string=True)
+        try:
+            detector_bias_mv = float(detector_bias_str) * 1000  # Convert V to mV
+            detector_bias_display = f"{detector_bias_mv:.2f} mV"
+        except ValueError:
+            detector_bias_display = "N/A"
+
         pvs = {
             'top_name': top_name,
             'heartbeat': caget(f'{top_name}:heartbeat'),
@@ -290,7 +297,8 @@ def get_all_pvs():
             'temperature': caget(f'{top_name}:dc:temperature'),
             'interlock_override': caget(f'{top_name}:dc:disable_interlock'),
             'apply_c_value': caget(f'{top_name}:dc:applyC.VAL'),
-            'gmp_status': caget(f'{top_name}:gmp_status')
+            'gmp_status': caget(f'{top_name}:gmp_status'),
+            'detector_bias': detector_bias_display
         }
         return jsonify({"status": "success", "pvs": pvs})
     except Exception as e:

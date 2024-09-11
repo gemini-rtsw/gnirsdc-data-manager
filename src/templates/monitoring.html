@@ -39,6 +39,11 @@
         <div id="interlockIndicator" class="interlock-indicator"></div>
     </div>
     
+    <div class="status-container">
+        <span class="status-label">Detector Bias Voltage:</span>
+        <span id="detectorBiasValue"></span>
+    </div>
+    
     <button id="initializeSDSUBtn" class="btn btn-secondary">Initialize SDSU</button>
     <button id="startIntegrationBtn" class="btn btn-primary">Start Integration</button>
     <button id="clearErrorsBtn" class="btn btn-warning">Clear Errors</button>
@@ -248,6 +253,10 @@
     .status-off {
         background-color: red;
     }
+    
+    #detectorBiasValue {
+        font-weight: normal;
+    }
 </style>
 
 <script>
@@ -264,6 +273,7 @@
     const temperatureValue = document.getElementById('temperatureValue');
     const interlockIndicator = document.getElementById('interlockIndicator');
     const gdsStatusIndicator = document.getElementById('gdsStatusIndicator');
+    const detectorBiasValue = document.getElementById('detectorBiasValue');
 
     let previousPVs = {};
     let userEditing = false;
@@ -368,6 +378,9 @@
                         default:
                             applyCValueIndicator.style.color = 'red';
                     }
+
+                    // Update detector bias voltage
+                    detectorBiasValue.textContent = pvs.detector_bias || 'N/A';
 
                     // Update form inputs only if values have changed and user is not editing
                     if (!userEditing) {
