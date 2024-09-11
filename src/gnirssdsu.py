@@ -81,15 +81,12 @@ class BiasCAD(GnirsCAD):
             return False
         else:
             print("BiasCAD start")
-            
-            biasVal = self.parent.arSetupH.value
-
-            if (biasVal == 0.3): # Seqexec uses 300mv or 0.3 for SHALLOW we set to 400mv which is called biasLow or -3.6V
+            if self.parent.arSetupH.value == "0.3":  # Seqexec uses 300mv or 0.3 for SHALLOW we set to 400mv which is called biasLow or -3.6V
                 self.controller.biasLow()
                 await self.logMessage("Bias set to shallow: 400mv, -3.6")
                 await self.MESS.write("Bias set to shallow: 400mv, -3.6")
                 return True
-            elif (biasVal == 0.6): # Seqexec uses 600mv or 0.6 for DEEP we set to 600mv which is called biasMed or -3.4V
+            elif self.parent.arSetupH.value == "0.6":  # Seqexec uses 600mv or 0.6 for DEEP we set to 600mv which is called biasMed or -3.4V
                 self.controller.biasMed()
                 await self.logMessage("Bias set to deep: 600mv, -3.4")
                 await self.MESS.write("Bias set to deep: 600mv, -3.4")
@@ -389,14 +386,14 @@ class ObserveCAD(GnirsCAD):
             await self.p.coaddProgress.write(100 * coadds_completed / self.p.coaddsVAL.value)
     
     async def setBias(self):
-            biasVal = self.parent.arSetupH.value
+            biasVal = float(self.parent.arSetupH.value)
 
-            if (biasVal == 0.3): # Seqexec uses 300mv or 0.3 for SHALLOW we set to 400mv which is called biasLow or -3.6V
+            if self.parent.arSetupH.value == "0.3":  # Seqexec uses 300mv or 0.3 for SHALLOW we set to 400mv which is called biasLow or -3.6V
                 self.controller.biasLow()
                 await self.logMessage("Bias set to shallow: 400mv, -3.6")
                 await self.MESS.write("Bias set to shallow: 400mv, -3.6")
                 return True
-            elif (biasVal == 0.6): # Seqexec uses 600mv or 0.6 for DEEP we set to 600mv which is called biasMed or -3.4V
+            elif self.parent.arSetupH.value == "0.6":  # Seqexec uses 600mv or 0.6 for DEEP we set to 600mv which is called biasMed or -3.4V
                 self.controller.biasMed()
                 await self.logMessage("Bias set to deep: 600mv, -3.4")
                 await self.MESS.write("Bias set to deep: 600mv, -3.4")
@@ -612,7 +609,7 @@ class GnirsCADCARController(PVGroup):
     sdsuState       = pvproperty(value='NOT INITIALIZED', dtype=caproto.ChannelType.STRING, name="dc:sdsuState", doc = "SDSU Controller State") 
 
     # arSetupH is the process variable (PV) that Seqexec uses to adjust and control the bias levels for the detector.
-    arSetupH       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:arSetup.H", doc="")
+    arSetupH       = pvproperty(value=0.6, dtype=caproto.ChannelType.STRING, name="dc:arSetup.H", doc="")
     @arSetupH.putter
     async def arSetupH(self, instance, value):
         try:
@@ -624,7 +621,7 @@ class GnirsCADCARController(PVGroup):
             # If the conversion fails, log an error
             await self.parent.logMessage(f"Invalid value for arSetupH: {value}")
 
-    achvdBias       = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:achvdBias.VAL", doc = "Achieved Detector Bias")
+    achvdBias       = pvproperty(value=0.6, dtype=caproto.ChannelType.DOUBLE, name="dc:achvdBias.VAL", doc = "Achieved Detector Bias")
 
 
     detBias         = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:detBias", doc = "Detector Bias") 
