@@ -82,17 +82,17 @@ class BiasCAD(GnirsCAD):
         else:
             print("BiasCAD start")
             
-            biasVal = self.parent.detBias.value
+            biasVal = self.parent.arSetupH.value
 
-            if (biasVal == -3.6):
+            if (biasVal == 0.3): # Seqexec uses 300mv or 0.3 for SHALLOW we set to 400mv which is called biasLow or -3.6V
                 self.controller.biasLow()
-                await self.logMessage("Bias set to shallow: -3.6")
-                await self.MESS.write("Set Bias successfull")
+                await self.logMessage("Bias set to shallow: 400mv, -3.6")
+                await self.MESS.write("Bias set to shallow: 400mv, -3.6")
                 return True
-            elif (biasVal == -3.2):
-                self.controller.biasHigh()
-                await self.logMessage("Bias set to deep: -3.2")
-                await self.MESS.write("Set Bias successfull")
+            elif (biasVal == 0.6): # Seqexec uses 600mv or 0.6 for DEEP we set to 600mv which is called biasMed or -3.4V
+                self.controller.biasMed()
+                await self.logMessage("Bias set to deep: 600mv, -3.4")
+                await self.MESS.write("Bias set to deep: 600mv, -3.4")
                 return True
 
             else:
@@ -254,7 +254,8 @@ class ObserveCAD(GnirsCAD):
                         if not self.p.observeA.value.endswith('.fits'):
                             await self.p.observeA.write(f"{self.p.observeA.value}.fits")
 
-                    #begin readout
+                    # begin readout
+                    await self.setBias()
                     self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
 
                     await self.p.rdout.write(1)
@@ -386,7 +387,24 @@ class ObserveCAD(GnirsCAD):
 
             coadds_completed += 1
             await self.p.coaddProgress.write(100 * coadds_completed / self.p.coaddsVAL.value)
+    
+    async def setBias(self):
+            biasVal = self.parent.arSetupH.value
 
+            if (biasVal == 0.3): # Seqexec uses 300mv or 0.3 for SHALLOW we set to 400mv which is called biasLow or -3.6V
+                self.controller.biasLow()
+                await self.logMessage("Bias set to shallow: 400mv, -3.6")
+                await self.MESS.write("Bias set to shallow: 400mv, -3.6")
+                return True
+            elif (biasVal == 0.6): # Seqexec uses 600mv or 0.6 for DEEP we set to 600mv which is called biasMed or -3.4V
+                self.controller.biasMed()
+                await self.logMessage("Bias set to deep: 600mv, -3.4")
+                await self.MESS.write("Bias set to deep: 600mv, -3.4")
+                return True
+            else:
+                await self.logMessage("Invalid bias voltage value. Leaving bias at: " + str(biasVal))
+                await self.MESS.write("Set Bias failed")
+                return False
 
 
 
@@ -593,8 +611,20 @@ class GnirsCADCARController(PVGroup):
 
     sdsuState       = pvproperty(value='NOT INITIALIZED', dtype=caproto.ChannelType.STRING, name="dc:sdsuState", doc = "SDSU Controller State") 
 
+    # arSetupH is the process variable (PV) that Seqexec uses to adjust and control the bias levels for the detector.
+    arSetupH       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:arSetup.H", doc="")
+    @arSetupH.putter
+    async def arSetupH(self, instance, value):
+        try:
+            # Convert the string value to float
+            float_value = float(value)
+            # Update achvdBias with the new value
+            await self.achvdBias.write(float_value)
+        except ValueError:
+            # If the conversion fails, log an error
+            await self.parent.logMessage(f"Invalid value for arSetupH: {value}")
 
-    achvdBias       = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:achvdBias.VAL", doc = "Achieved Detector Bias") 
+    achvdBias       = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:achvdBias.VAL", doc = "Achieved Detector Bias")
 
 
     detBias         = pvproperty(value=1, dtype=caproto.ChannelType.DOUBLE, name="dc:detBias", doc = "Detector Bias") 
@@ -616,7 +646,6 @@ class GnirsCADCARController(PVGroup):
     setWcsA        = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.A", doc = "")
 
 
-    arSetupH       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:arSetup.H", doc = "")
     detIDVAL       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:detID.VAL", doc = "")
     detTypeVAL     = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:detType.VAL", doc = "")
     obsepoch       = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:obsepoch", doc = "")
