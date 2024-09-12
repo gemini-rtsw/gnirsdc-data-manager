@@ -302,7 +302,8 @@ def get_all_pvs():
             'apply_c_value': caget(f'{top_name}:dc:applyC.VAL'),
             'gmp_status': caget(f'{top_name}:gmp_status'),
             'detector_bias': detector_bias_display,
-            'bias_mode': bias_mode
+            'bias_mode': bias_mode,
+            'sdsu_state': caget(f'{top_name}:dc:sdsuState', as_string=True),
         }
         return jsonify({"status": "success", "pvs": pvs})
     except Exception as e:
