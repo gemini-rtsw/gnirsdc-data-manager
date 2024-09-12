@@ -1,5 +1,5 @@
 import logging
-from epics import caget, camonitor
+from epics import PV
 import threading
 from typing import Dict, Any
 import time
@@ -22,8 +22,8 @@ class TCSMonitor:
             'ag:aoName'                 # 'ao' 
         ]
         self.context: Dict[str, Any] = {}
+        self.pv_objects: Dict[str, PV] = {}
         self.monitor_thread = None
-        self.reconnect_interval = 10  # seconds
         self.logger = logging.getLogger(__name__)
 
     def _process_value(self, value: Any) -> str:
@@ -36,50 +36,24 @@ class TCSMonitor:
         self.context[pv_short_name] = self._process_value(value)
 
     def initialize(self):
-        # Start a thread for connection and monitoring
-        self.monitor_thread = threading.Thread(target=self._threaded_connect_and_monitor, daemon=True)
+        self.monitor_thread = threading.Thread(target=self._monitor_pvs, daemon=True)
         self.monitor_thread.start()
-        
-        # Return immediately to allow the main thread to continue
         self.logger.irdc_debug("TCS Monitor thread started.")
 
-    def _threaded_connect_and_monitor(self):
-        self.connect_and_monitor()
-        
-        # Keep alive and reconnect loop
+    def _monitor_pvs(self):
+        for full_pv_name in self.tcs_pvs:
+            pv = PV(full_pv_name, callback=self.on_change, auto_monitor=True)
+            self.pv_objects[full_pv_name] = pv
+
         while True:
-            time.sleep(self.reconnect_interval)
-            self._keep_alive_and_reconnect()
-
-    def connect_and_monitor(self):
-        for full_pv_name in self.tcs_pvs:
-            # Get initial value
-            value = caget(full_pv_name, timeout=1)
-            if value is not None:
-                processed_value = self._process_value(value)
-                pv_short_name = full_pv_name.split(':')[-1]
-                self.context[pv_short_name] = processed_value
-                self.logger.irdc_debug(f"Initial value of {full_pv_name}: {processed_value}")
-                
-                # Set up monitor
-                camonitor(full_pv_name, callback=self.on_change)
-            else:
-                self.logger.warning(f"Could not read initial value of {full_pv_name}. Will try to reconnect later.")
-
-        self.logger.irdc_debug("TCS Monitor initialized.")
-
-    def _keep_alive_and_reconnect(self):
-        for full_pv_name in self.tcs_pvs:
-            pv_short_name = full_pv_name.split(':')[-1]
-            if pv_short_name not in self.context:
-                value = caget(full_pv_name, timeout=1)
-                if value is not None:
-                    processed_value = self._process_value(value)
-                    self.context[pv_short_name] = processed_value
-                    self.logger.irdc_debug(f"Reconnected and got initial value of {full_pv_name}: {processed_value}")
-                    camonitor(full_pv_name, callback=self.on_change)
-                else:
-                    self.logger.warning(f"Failed to reconnect to {full_pv_name}. Will try again later.")
+            for full_pv_name, pv in self.pv_objects.items():
+                if not pv.connected:
+                    self.logger.warning(f"PV {full_pv_name} is not connected. Attempting to reconnect.")
+                    pv.connect(timeout=0.1)  # Non-blocking connect attempt
+                elif pv.value is not None:
+                    pv_short_name = full_pv_name.split(':')[-1]
+                    self.context[pv_short_name] = self._process_value(pv.value)
+            time.sleep(1)  # Check connections every second
 
     def get_context(self) -> libgnirsioc.TCSContext:
         # Create a new TCSContext object as defined in libgnirsioc header
