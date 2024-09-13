@@ -526,16 +526,24 @@
     setInterval(updateFileLog, 500);
 
     // Set up SSE for real-time updates
-    const eventSource = new EventSource('/sse');
-    eventSource.onmessage = function(event) {
-        const messages = JSON.parse(event.data);
-        updateLogMessages(messages);
-    };
-    eventSource.onerror = function(error) {
-        console.error('SSE Error:', error);
-        connectionStatus.textContent = "Connection Error";
-        connectionStatus.style.color = 'red';
-    };
+    function setupSSE() {
+        const eventSource = new EventSource('/sse');
+        eventSource.onmessage = function(event) {
+            const messages = JSON.parse(event.data);
+            updateLogMessages(messages);
+            updateAllPVs();  // Call this to update all status indicators
+        };
+        eventSource.onerror = function(error) {
+            console.error('SSE Error:', error);
+            connectionStatus.textContent = "Connection Error";
+            connectionStatus.style.color = 'red';
+            // Attempt to reconnect after a short delay
+            setTimeout(setupSSE, 5000);
+        };
+    }
+
+    // Call setupSSE initially
+    setupSSE();
 
     // Add event listener for the Start Integration button
     document.getElementById('startIntegrationBtn').addEventListener('click', function() {

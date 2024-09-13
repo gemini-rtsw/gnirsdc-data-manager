@@ -13,6 +13,7 @@ import json
 import caproto
 from epics import caput, caget
 from astropy.io import fits
+from queue import Queue
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -51,7 +52,8 @@ ctx = Context()
 # Global variables
 log_messages = []
 MAX_LOG_MESSAGES = 100
-pv_value_changed = threading.Event()
+clients = set()
+clients_lock = threading.Lock()
 
 def pv_handler(sub, response):
     global log_messages
@@ -65,7 +67,11 @@ def pv_handler(sub, response):
     log_messages.append(log_entry)
     log_messages = log_messages[-MAX_LOG_MESSAGES:]
     logger.debug(f"Added log entry: {log_entry}")
-    pv_value_changed.set()
+    
+    # Notify all clients
+    with clients_lock:
+        for client_queue in clients:
+            client_queue.put(json.dumps(log_messages))
 
 def subscribe_to_pv():
     global config_mode
@@ -226,12 +232,16 @@ def view_fits_header(filename):
 @app.route('/sse')
 def sse():
     def event_stream():
-        while True:
-            if pv_value_changed.is_set():
-                pv_value_changed.clear()
-                logger.debug(f"Sending SSE update: {json.dumps(log_messages)}")
-                yield f"data: {json.dumps(log_messages)}\n\n"
-            time.sleep(0.1)
+        client_queue = Queue()
+        with clients_lock:
+            clients.add(client_queue)
+        try:
+            while True:
+                message = client_queue.get()
+                yield f"data: {message}\n\n"
+        finally:
+            with clients_lock:
+                clients.remove(client_queue)
 
     return Response(event_stream(), content_type='text/event-stream')
 
