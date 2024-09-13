@@ -262,11 +262,11 @@ def start_integration():
 def set_integration_params():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
     try:
-        fowler_num = request.form.get('fowler_num')
-        digital_avgs = request.form.get('digital_avgs')
-        integ_time = request.form.get('integ_time')
-        file_name = request.form.get('file_name')
-        coadds = request.form.get('coadds')
+        fowler_num = max(1, int(request.form.get('fowler_num', 1)))
+        digital_avgs = max(1, int(request.form.get('digital_avgs', 1)))
+        integ_time = float(request.form.get('integ_time', 0))
+        file_name = request.form.get('file_name', '')
+        coadds = max(1, int(request.form.get('coadds', 1)))
 
         caput(f'{top_name}:dc:lnrNum', fowler_num, wait=True)
         caput(f'{top_name}:dc:digitalAvgs', digital_avgs, wait=True)
@@ -274,7 +274,13 @@ def set_integration_params():
         caput(f'{top_name}:dc:observe.A', file_name, wait=True)
         caput(f'{top_name}:dc:coadds.VAL', coadds, wait=True)
 
-        return jsonify({"status": "success", "message": "Integration parameters set successfully"})
+        return jsonify({
+            "status": "success",
+            "message": "Integration parameters set successfully",
+            "fowler_num": fowler_num,
+            "digital_avgs": digital_avgs,
+            "coadds": coadds
+        })
     except Exception as e:
         logger.error(f"Error setting integration parameters: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
