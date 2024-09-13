@@ -14,6 +14,7 @@ import caproto
 from epics import caput, caget
 from astropy.io import fits
 from queue import Queue
+import subprocess
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -115,9 +116,10 @@ def monitoring():
     digital_avgs = caget(f'{top_name}:dc:digitalAvgs')
     integ_time = caget(f'{top_name}:dc:integTime.VAL')
     file_name = caget(f'{top_name}:dc:observe.A')
+    coadds = caget(f'{top_name}:dc:coadds.VAL')
     return render_template('monitoring.html', active_tab='monitoring', 
                            fowler_num=fowler_num, digital_avgs=digital_avgs, 
-                           integ_time=integ_time, file_name=file_name)
+                           integ_time=integ_time, file_name=file_name, coadds=coadds)
 
 @app.route('/get_log_messages')
 def get_log_messages():
@@ -264,11 +266,13 @@ def set_integration_params():
         digital_avgs = request.form.get('digital_avgs')
         integ_time = request.form.get('integ_time')
         file_name = request.form.get('file_name')
+        coadds = request.form.get('coadds')
 
         caput(f'{top_name}:dc:lnrNum', fowler_num, wait=True)
         caput(f'{top_name}:dc:digitalAvgs', digital_avgs, wait=True)
         caput(f'{top_name}:dc:integTime.VAL', integ_time, wait=True)
         caput(f'{top_name}:dc:observe.A', file_name, wait=True)
+        caput(f'{top_name}:dc:coadds.VAL', coadds, wait=True)
 
         return jsonify({"status": "success", "message": "Integration parameters set successfully"})
     except Exception as e:
@@ -314,6 +318,7 @@ def get_all_pvs():
             'detector_bias': detector_bias_display,
             'bias_mode': bias_mode,
             'sdsu_state': caget(f'{top_name}:dc:sdsuState', as_string=True),
+            'coadds': caget(f'{top_name}:dc:coadds.VAL'),
         }
         return jsonify({"status": "success", "pvs": pvs})
     except Exception as e:
@@ -389,6 +394,69 @@ def toggle_bias_voltage():
     except Exception as e:
         logger.error(f"Error changing bias voltage: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/apply_tdl', methods=['POST'])
+def apply_tdl():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        caput(f'{top_name}:dc:TDL.DIR', "MARK", wait=True)
+        caput(f'{top_name}:dc:apply.DIR', "START")
+        return jsonify({"status": "success", "message": "TDL applied successfully"})
+    except Exception as e:
+        logger.error(f"Error applying TDL: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/start_controller', methods=['POST'])
+def start_controller():
+    script_path = '/usr/local/bin/dc-start.sh'
+    if os.path.exists(script_path):
+        try:
+            result = subprocess.run([script_path], capture_output=True, text=True, check=True)
+            return jsonify({
+                "status": "success",
+                "message": "Controller started successfully",
+                "output": result.stdout
+            })
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error starting controller: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "message": f"Error starting controller: {str(e)}",
+                "output": e.stdout,
+                "error": e.stderr
+            }), 500
+    else:
+        logger.warning(f"Start controller script not found at {script_path}")
+        return jsonify({
+            "status": "warning",
+            "message": "Start controller script not found. This may be expected in a debug environment."
+        }), 404
+
+@app.route('/stop_controller', methods=['POST'])
+def stop_controller():
+    script_path = '/usr/local/bin/dc-stop.sh'
+    if os.path.exists(script_path):
+        try:
+            result = subprocess.run([script_path], capture_output=True, text=True, check=True)
+            return jsonify({
+                "status": "success",
+                "message": "Controller stopped successfully",
+                "output": result.stdout
+            })
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error stopping controller: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "message": f"Error stopping controller: {str(e)}",
+                "output": e.stdout,
+                "error": e.stderr
+            }), 500
+    else:
+        logger.warning(f"Stop controller script not found at {script_path}")
+        return jsonify({
+            "status": "warning",
+            "message": "Stop controller script not found. This may be expected in a debug environment."
+        }), 404
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")

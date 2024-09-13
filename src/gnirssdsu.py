@@ -75,7 +75,7 @@ class InitCAD(GnirsCAD):
 
 class BiasCAD(GnirsCAD):
     async def start(self):
-        if (self.controller == None and DEBUG_MODE == False):
+        if self.controller is None:
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
             return False
@@ -101,7 +101,7 @@ class BiasCAD(GnirsCAD):
 
 class TDLCAD(GnirsCAD):
     async def start(self):
-        if (self.controller == None and DEBUG_MODE == False):
+        if self.controller is None:
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
             return False
@@ -196,7 +196,7 @@ class InitSDSUCAD(GnirsCAD):
 
 class DCConfigCAD(GnirsCAD):
     async def start(self):
-        if (self.controller == None and DEBUG_MODE == False):
+        if self.controller is None:
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
             return False
@@ -208,7 +208,7 @@ class DCConfigCAD(GnirsCAD):
 
 class AbortCAD(GnirsCAD):
     async def start(self):
-        if (self.controller == None):
+        if self.controller is None:
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
             return False
@@ -222,7 +222,7 @@ class AbortCAD(GnirsCAD):
 class ObserveCAD(GnirsCAD):
 
     async def start(self):
-        if (self.controller == None):
+        if self.controller is None:
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
 

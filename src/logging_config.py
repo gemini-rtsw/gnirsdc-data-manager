@@ -24,13 +24,16 @@ import asyncio
 IRDC_DEBUG = 25
 IRDC_MAX_DEBUG = 15
 PRINT = 60
+LOG_MESSAGE = 70  # New level for special log messages
 
 logging.addLevelName(IRDC_DEBUG, 'IRDC_DEBUG')
 logging.addLevelName(IRDC_MAX_DEBUG, 'IRDC_MAX_DEBUG')
 logging.addLevelName(PRINT, 'PRINT')
+logging.addLevelName(LOG_MESSAGE, 'LOG_MESSAGE')  # Add new level name
 
 # Mapping of log level names to numeric values
 log_levels = {
+    "LOG_MESSAGE": LOG_MESSAGE,  # Add new level to the mapping
     "PRINT": PRINT,
     "CRITICAL": logging.CRITICAL,
     "ERROR": logging.ERROR,
@@ -53,10 +56,13 @@ def irdc_max_debug(self, message, *args, **kws):
 def log_print(self, message, *args, **kws):
     self._log(PRINT, message, args, **kws)        
 
+def log_message(self, message, *args, **kws):
+    self._log(LOG_MESSAGE, message, args, **kws)
+
 logging.Logger.irdc_debug = irdc_debug
 logging.Logger.irdc_max_debug = irdc_max_debug
 logging.Logger.print = log_print
-
+logging.Logger.log_message = log_message  # Add new method to Logger
 
 class TeeStream:
     def __init__(self, original_stream, logger):
@@ -84,7 +90,7 @@ class CustomHandler(logging.Handler):
             self.loop = loop
 
     def emit(self, record):
-        if self.log_message_func:
+        if self.log_message_func and record.levelno == LOG_MESSAGE:
             message = self.format(record)
             if self.loop and self.loop.is_running():
                 # Schedule the coroutine on the provided event loop
@@ -160,5 +166,6 @@ if __name__ == "__main__":
         logger.irdc_max_debug('This is a project-specific max debug message')
         logger.debug('This is a standard debug message')
         print("This is a print statement that will be captured by the logger")
+        logger.log_message("This is a special log message that will be handled by log_message_func")
     finally:
         listener.stop()

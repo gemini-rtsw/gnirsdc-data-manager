@@ -188,7 +188,7 @@ def standalone_process_task(file_path, dp, pipe):
     try:
         dp.process_file(fname, os.getenv('DC_COMMIT', 'dc_commit_missing'), os.getenv('LIB_COMMIT', 'lib_commit_missing'))
     except Exception as exc:
-        print(f"Error processing file {fname}: {exc}")
+         print(f"Error processing file {fname}: {exc}")
         
     pipe.send((Command.OBSERVE_END_WRITE, label))
 
