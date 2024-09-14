@@ -98,26 +98,48 @@ The driver code and installation instruction are in this repository:
 https://gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirs-pci-driver
 ```
 
-## Docker Login
+# Docker Login
+
+**Note:** If `dc-latest.sh` doesn't work, you may need to log in to Docker.
 
 Docker login is required to pull the images that the DC and DM screens are deployed in.
 
-GitLab Docker login with Personal Access Token:
+### GitLab Docker Login with Personal Access Token Using `--password-stdin` Option
 
-1. Login to GitLab website.
-2. Go to **Settings**.
-3. Navigate to **Access Tokens**.
-4. Create a new token with `read_registry` and `read_repository` scopes.
-5. Copy the personal access token.
-6. Login to Docker with the following command, replacing `your-gitlab-username` and `your-personal-access-token` with your details:
-   ```bash
-   docker login registry.gitlab.com -u your-gitlab-username -p your-personal-access-token
+**Login to GitLab Website:**
 
-For example:
-```bash 
-docker login registry.gitlab.com -u johndoe -p glpat-xxxxxxxxxxxxxx
-```
+Navigate to your GitLab instance (e.g., https://gitlab.com) and log in with your credentials.
 
+**Create a Personal Access Token:**
+
+1. Click on your profile avatar and select **"Edit profile"**.
+2. Go to **"Access Tokens"**.
+3. Enter a name for the token (e.g., `Docker Registry Access`).
+4. Set an expiration date (optional but recommended).
+5. Select the scopes:
+   - `read_registry`
+   - `read_repository`
+6. Click on **"Create personal access token"**.
+7. **Important:** Copy the generated token. You won't be able to see it again.
+
+**Docker Login Using `--password-stdin`:**
+
+For enhanced security, use the `--password-stdin` option to avoid exposing your access token in the shell history.
+
+\`\`\`bash
+echo "your-personal-access-token" | docker login registry.gitlab.com -u your-gitlab-username --password-stdin
+\`\`\`
+
+- Replace \`your-gitlab-username\` with your actual GitLab username.
+- Replace \`your-personal-access-token\` with the token you copied earlier.
+
+**Example:**
+
+\`\`\`bash
+echo "glpat-xxxxxxxxxxxxxx" | docker login registry.gitlab.com -u johndoe --password-stdin
+\`\`\`
+
+**Note:** Ensure that your user on the IRDC server is a member of the \`docker\` group.
 
 
 
