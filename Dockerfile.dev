@@ -45,7 +45,8 @@ RUN python3.9 -m pip install --no-cache-dir \
     inotify-simple \
     scipy \
     pyserial \
-    paramiko
+    paramiko \
+    markdown2
 
 COPY ./pycadcar /pycadcar
 WORKDIR /pycadcar

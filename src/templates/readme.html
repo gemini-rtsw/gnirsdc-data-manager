@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}README{% endblock %}
+{% block content %}
+<style>
+    .readme-content {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 30px;
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .readme-content h1, .readme-content h2, .readme-content h3 {
+        color: #2c3e50;
+    }
+    .readme-content pre {
+        background-color: #f6f8fa;
+        border-radius: 3px;
+        padding: 16px;
+        overflow: auto;
+    }
+    .readme-content code {
+        background-color: rgba(27,31,35,.05);
+        border-radius: 3px;
+        padding: .2em .4em;
+    }
+    .readme-content a {
+        color: #3498db;
+        text-decoration: none;
+    }
+    .readme-content a:hover {
+        text-decoration: underline;
+    }
+    .readme-content .toc {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 3px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .readme-content .toc ul {
+        padding-left: 20px;
+    }
+</style>
+
+<div class="readme-content">
+    <h1>README</h1>
+    <div id="readme" class="tabcontent">
+        {{ content|safe }}
+    </div>
+</div>
+{% endblock %}

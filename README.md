@@ -1,12 +1,22 @@
 # Detector Controller Software
 
-This repository contains bash scripts for managing the Detector Controller Software and GMP containers.
+The DC softtware is a collection of python scripts and bash scripts for managing the Detector Controller Software and GMP containers.
 
 ## Detector Controller Usage
 
 ssh to one of the required IRDC servers (gn-irdc-lp1, gn-irdc-lp2, gn-irdc-lp3)
 
-Use the following commands to manage the Detector Controller Software and GMP containers, run:
+Start the System Manager
+
+```bash
+dc-start-system-manager.sh
+```   
+
+Open a web browser and navigate to `http://<server ip address>:80` 
+
+
+
+Alternatively use the following commands to manage the Detector Controller Software and GMP containers, run:
 
 ```bash
 dc-start.sh
@@ -42,13 +52,21 @@ irdc_dm_server.sh
 
 ## Data Retrieval
 
-At the moment data will be written to the server at here:
+Raw data is stored in the `/readout_data/fits` directory on the IRDC server.
 
 ```bash
 /readout_data/fits
 ```
 
-scp the data to a local system for viewing
+Once processed the data is moved to the `/staging/perm` directory on the IRDC server.
+
+```bash
+/staging/perm
+```
+
+Use the web interface to navigate to the data and download it to a local system for viewing.
+
+Alternatively you can scp the data to a local system for viewing.
 
 Example:
 
@@ -98,7 +116,7 @@ The driver code and installation instruction are in this repository:
 https://gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirs-pci-driver
 ```
 
-# Docker Login
+## Docker Login
 
 **Note:** If `dc-latest.sh` doesn't work, you may need to log in to Docker.
 

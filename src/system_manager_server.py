@@ -15,6 +15,7 @@ from epics import caput, caget
 from astropy.io import fits
 from queue import Queue
 import subprocess
+import markdown2
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -463,6 +464,13 @@ def stop_controller():
             "status": "warning",
             "message": "Stop controller script not found. This may be expected in a debug environment."
         }), 404
+
+@app.route('/readme')
+def readme():
+    with open('README.md', 'r') as f:
+        content = f.read()
+    html_content = markdown2.markdown(content)
+    return render_template('readme.html', active_tab='readme', content=html_content)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")
