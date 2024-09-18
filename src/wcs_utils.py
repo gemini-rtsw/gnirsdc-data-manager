@@ -58,7 +58,7 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     else:
         raise ValueError(f"Invalid epoch format: {tcs_context['track_equinox']}")
     
-    time_tai = float(tcs_context['time_tai'])
+    time = float(tcs_context['time'])
 
     # Create a SkyCoord object for the tracking position
     tracking_position = SkyCoord(ra=track_ra * u.deg, dec=track_dec * u.deg, frame=track_frame, equinox=Time(track_equinox, format='jyear'))

@@ -54,13 +54,13 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         tcs_dec = pdu.get('TCS_DEC', '')
         tcs_frame = pdu.get('TCS_FRAME', '')
         tcs_equinox = pdu.get('TCS_EQUINOX', '')
-        tcs_tai = pdu.get('TCS_TAI', '')
+        tcs_time = pdu.get('TCS_TIME', '')
         tcs_port = pdu.get('TCS_PORT', '')
         tcs_camera = pdu.get('TCS_CAMERA', '')
         tcs_ao = pdu.get('TCS_AO', '')
 
         # Check if TCS is connected
-        tcs_connected = all([tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_tai, tcs_port, tcs_camera, tcs_ao])
+        tcs_connected = all([tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_time, tcs_port, tcs_camera, tcs_ao])
 
         if tcs_connected:
             tcs_context = {
@@ -68,7 +68,7 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
                 'track_dec': tcs_dec,
                 'track_frame': tcs_frame,
                 'track_equinox': tcs_equinox,
-                'time_tai': float(tcs_tai),
+                'time': float(tcs_time),
                 'port': int(tcs_port),
                 'camera': tcs_camera,
                 'ao': tcs_ao

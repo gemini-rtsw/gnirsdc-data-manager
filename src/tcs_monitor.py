@@ -5,26 +5,38 @@ from typing import Dict, Any
 import time
 import libgnirsioc
 import numpy as np
+import socket
+import struct
 
-# Import custom log levels
+# Import custom log levels and DEBUG_MODE
 from logging_config import IRDC_DEBUG, IRDC_MAX_DEBUG
+from gnirsutil import DEBUG_MODE
 
 class TCSMonitor:
     def __init__(self):
+        # Determine the prefixes based on DEBUG_MODE
+        tcs_prefix = 'tc:' if DEBUG_MODE else 'tcs:'
+        ag_prefix = 'tag:' if DEBUG_MODE else 'ag:'
+
         self.tcs_pvs = [
-            'tcs:sad:currentRA',        # 'track_ra'
-            'tcs:sad:currentDec',       # 'track_dec'
-            'tcs:sad:sourceATrackFrame',# 'track_frame'
-            'tcs:sad:sourceAEpoch', # 'track_equinox'
-            'tcs:sad:djmls',            # 'time_tai'
-            'tcs:sad:instrPA',          # 'camera'
-            'ag:port:nirs',             # 'port'
-            'ag:aoName'                 # 'ao' 
+            f'{tcs_prefix}sad:currentRA',         # 'track_ra'
+            f'{tcs_prefix}sad:currentDec',        # 'track_dec'
+            f'{tcs_prefix}sad:sourceATrackFrame', # 'track_frame'
+            f'{tcs_prefix}sad:sourceAEpoch',      # 'track_equinox'
+            # Removed 'sad:djmls' as we will use NTP time
+            f'{tcs_prefix}sad:instrPA',           # 'camera'
+            f'{ag_prefix}port:nirs',              # 'port'
+            f'{ag_prefix}aoName'                  # 'ao' 
         ]
         self.context: Dict[str, Any] = {}
         self.pv_objects: Dict[str, PV] = {}
         self.monitor_thread = None
         self.logger = logging.getLogger(__name__)
+
+        # Log the PV names at IRDC_DEBUG level
+        self.logger.log(IRDC_DEBUG, "PVs to be monitored:")
+        for pv in self.tcs_pvs:
+            self.logger.log(IRDC_DEBUG, f"  {pv}")
 
     def _process_value(self, value: Any) -> str:
         if isinstance(value, (list, np.ndarray)):
@@ -55,6 +67,27 @@ class TCSMonitor:
                     self.context[pv_short_name] = self._process_value(pv.value)
             time.sleep(1)  # Check connections every second
 
+    def get_ntp_time(self) -> str:
+        NTP_SERVER = 'pool.ntp.org'
+        NTP_PORT = 123
+        NTP_DELTA = 2208988800  # NTP timestamp delta between 1900 and 1970
+
+        try:
+            client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            client.settimeout(5)
+            # NTP packet is 48 bytes
+            msg = b'\x1b' + 47 * b'\0'
+            client.sendto(msg, (NTP_SERVER, NTP_PORT))
+            data, _ = client.recvfrom(1024)
+            if data:
+                t = struct.unpack('!12I', data)[10]
+                t -= NTP_DELTA
+                ntp_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t))
+                return ntp_time
+        except Exception as e:
+            self.logger.error(f"Failed to get NTP time: {e}")
+            return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+
     def get_context(self) -> libgnirsioc.TCSContext:
         # Create a new TCSContext object as defined in libgnirsioc header
         context = libgnirsioc.TCSContext()
@@ -62,20 +95,22 @@ class TCSMonitor:
         # Mapping of PV names to TCSContext attributes
         # These attribute names are defined in the libgnirsioc header
         mapping = {
-            'currentRA': 'track_ra',        # Right Ascension
-            'currentDec': 'track_dec',      # Declination
+            'currentRA': 'track_ra',         # Right Ascension
+            'currentDec': 'track_dec',       # Declination
             'sourceATrackFrame': 'track_frame',  # Coordinate frame
             'sourceAEpoch': 'track_equinox',  # Equinox
-            'djmls': 'time_tai',            # Time in TAI
-            'nirs': 'port',                 # Instrument port
-            'instrPA': 'camera',            # Camera position angle
-            'aoName': 'ao'                  # Adaptive optics mode
+            'instrPA': 'camera',             # Camera position angle
+            'nirs': 'port',                   # Instrument port
+            'aoName': 'ao'                    # Adaptive optics mode
         }
 
         # Populate the TCSContext object with values from self.context
         for pv_name, context_name in mapping.items():
             if pv_name in self.context:
                 setattr(context, context_name, self.context[pv_name])
+
+        # Set the NTP time
+        context.time = self.get_ntp_time()
 
         return context
 
