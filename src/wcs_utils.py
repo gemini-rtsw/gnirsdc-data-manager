@@ -58,19 +58,31 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     else:
         raise ValueError(f"Invalid epoch format: {tcs_context['track_equinox']}")
     
-    time = float(tcs_context['time'])
+    time_mjd = float(tcs_context['time'])  # Renamed for clarity
 
-    # Create a SkyCoord object for the tracking position
-    tracking_position = SkyCoord(ra=track_ra * u.deg, dec=track_dec * u.deg, frame=track_frame, equinox=Time(track_equinox, format='jyear'))
+    # Create an obstime object from the MJD time
+    obstime = Time(time_mjd, format='mjd', scale='tai')  # Ensure the correct time scale
+    
+    # Create a SkyCoord object for the tracking position with obstime
+    tracking_position = SkyCoord(
+        ra=track_ra * u.deg,
+        dec=track_dec * u.deg,
+        frame=track_frame,
+        equinox=Time(track_equinox, format='jyear'),
+        obstime=obstime  # Incorporate observation time
+    )
 
     # Convert the instrument offsets from millimeters to arcseconds
     instrument_offsets_arcsec = instrument_offsets * 1.61144
 
     # Convert the instrument offsets to sky coordinates using the TCS context
-    sky_coords = tracking_position.spherical_offsets_by(instrument_offsets_arcsec[:, 0] * u.arcsec, instrument_offsets_arcsec[:, 1] * u.arcsec)
+    sky_coords = tracking_position.spherical_offsets_by(
+        instrument_offsets_arcsec[:, 0] * u.arcsec,
+        instrument_offsets_arcsec[:, 1] * u.arcsec
+    )
 
-    # Convert the sky coordinates to ICRS
-    sky_coords_icrs = sky_coords.transform_to(ICRS())
+    # Convert the sky coordinates to ICRS with obstime
+    sky_coords_icrs = sky_coords.transform_to(ICRS(obstime=obstime))  # Incorporate observation time
 
     # Separate pixel coordinates into x and y arrays
     x_pixel, y_pixel = pixel_coords[:, 0], pixel_coords[:, 1]
@@ -162,7 +174,7 @@ tcs_context = {
     'track_dec': -20.8335166666667,
     'track_frame': 'FK5',
     'track_equinox': 2000.0,
-    'time_tai': Time('2024-04-01T13:10:15.9').tai.mjd  # Convert to TAI MJD
+    'time': Time('2024-04-01T13:10:15.9').tai.mjd  # Ensure this key is 'time' as used in the code
 }
 
 port = 3
