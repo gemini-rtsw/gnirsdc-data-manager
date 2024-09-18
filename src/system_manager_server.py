@@ -482,6 +482,7 @@ def readme():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")
     parser.add_argument("--debug", action="store_true", help="Run in debug mode")
+    parser.add_argument("--port", type=int, default=8080, help="Port to run the server on")
     args = parser.parse_args()
 
     if args.debug:
@@ -497,5 +498,5 @@ if __name__ == "__main__":
     subscription_thread = threading.Thread(target=run_subscription, daemon=True)
     subscription_thread.start()
 
-    logger.info("Starting Flask application")
-    app.run(host='0.0.0.0', port=80, debug=debug_mode, threaded=True)
+    logger.info(f"Starting Flask application on port {args.port}")
+    app.run(host='0.0.0.0', port=args.port, debug=debug_mode, threaded=True)
