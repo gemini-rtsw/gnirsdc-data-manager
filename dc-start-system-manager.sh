@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Check if the script is being run by the telops user
+if [ "$(id -un)" != "telops" ]; then
+    echo "Error: This script must be run as the telops user."
+    exit 1
+fi
+
 echo "Starting System Manager Server"
 
 start_container() {
@@ -17,8 +23,8 @@ start_container() {
     fi
 
     # Get telops user information
-    TELOPS_UID=$(id -u telops)
-    TELOPS_GID=$(id -g telops)
+    TELOPS_UID=$(id -u)
+    TELOPS_GID=$(id -g)
 
     # Run the container
     echo "Running the '${container_name}' container..."
