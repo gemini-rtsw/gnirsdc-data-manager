@@ -5,6 +5,8 @@ echo "Starting Detector Controller Software"
 start_container() {
     container_name=$1
     image_name=$2
+    shift 2
+    additional_args="$@"
 
     # Check if the container exists and remove it forcefully
     if docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
@@ -17,7 +19,12 @@ start_container() {
 
     # Run the container
     echo "Running the '${container_name}' container..."
-    output=$(docker run -d --network=host --privileged --name ${container_name} -v /readout_data:/readout_data -v /staging/perm:/staging/perm -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro ${image_name})
+    output=$(docker run -d --network=host --privileged --name ${container_name} \
+        -v /readout_data:/readout_data \
+        -v /staging/perm:/staging/perm \
+        -v /etc/localtime:/etc/localtime:ro \
+        -v /etc/timezone:/etc/timezone:ro \
+        ${image_name} ${additional_args})
 
     # Check if the docker run command executed successfully
     if [ $? -eq 0 ]; then
@@ -30,10 +37,9 @@ start_container() {
     fi
 }
 
-
 # Display help information
 show_help() {
-    echo "Usage: $0 [--help]"
+    echo "Usage: $0 [--help] [additional arguments for gnirsdc container]"
     echo
     echo "This script starts Docker containers for the Detector Controller Software using the current image tag."
     echo
@@ -41,16 +47,21 @@ show_help() {
     echo
     echo "Options:"
     echo "  --help     Display this help message and exit."
+    echo "  Additional arguments will be passed to the gnirsdc container."
 }
 
-
+# Check for help flag
+if [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
 
 # Start gmp container
 start_container "gmp" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:current"
 gmp_status=$?
 
-# Start gnirsdc container
-start_container "gnirsdc" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:current"
+# Start gnirsdc container with additional arguments
+start_container "gnirsdc" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:current" "$@"
 gnirsdc_status=$?
 
 # If any of the containers failed to start, run dc-production.sh and try again
@@ -60,5 +71,5 @@ if [ $gmp_status -ne 0 ] || [ $gnirsdc_status -ne 0 ]; then
 
     # Try starting the containers again
     start_container "gmp" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:current"
-    start_container "gnirsdc" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:current"
+    start_container "gnirsdc" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:current" "$@"
 fi
