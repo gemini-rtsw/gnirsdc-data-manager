@@ -120,7 +120,7 @@ https://gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirs-pci-driver
 
 **Note:** If `dc-latest.sh` doesn't work, you may need to log in to Docker.
 
-Docker login is required to pull the images that the DC and DM screens are deployed in.
+Docker login is required to pull the images that the DC and DM screens are deployed in. The telops user has access to start/stop the containers but does not have access to gitlab registry. A user with access to the registry is needed to pull the images.
 
 ### GitLab Docker Login with Personal Access Token Using `--password-stdin` Option
 
