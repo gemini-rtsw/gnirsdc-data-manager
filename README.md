@@ -9,7 +9,7 @@ The DC softtware is a collection of python scripts and bash scripts for managing
 2. Start the System Manager:
 
    ```
-   dc-start-system-manager.sh
+   dc-system-manager.sh
    ```
 
    Note: This script must be run as the telops user. Ensure that the telops user has an SSH key set up before starting the System Manager.
@@ -237,7 +237,7 @@ ssh-keygen
 To start the System Manager, use the provided script:
 
 ```
-dc-start-system-manager.sh
+dc-system-manager.sh
 ```
 
 This script will:
@@ -251,7 +251,7 @@ Options:
 
 Example usage:
 ```
-dc-start-system-manager.sh --debug
+dc-system-manager.sh --debug
 ```
 
 After starting the System Manager, open a web browser and navigate to `http://localhost:8080` (or the appropriate IP address if accessing remotely).
