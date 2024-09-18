@@ -8,7 +8,7 @@ ssh to one of the required IRDC servers (gn-irdc-lp1, gn-irdc-lp2, gn-irdc-lp3)
 
 Start the System Manager
 
-```bash
+```
 dc-start-system-manager.sh
 ```   
 
@@ -18,15 +18,15 @@ Open a web browser and navigate to `http://<server ip address>:80`
 
 Alternatively use the following commands to manage the Detector Controller Software and GMP containers, run:
 
-```bash
+```
 dc-start.sh
 ```
 
-```bash
+```
 dc-stop.sh
 ```
 
-```bash
+```
 dc-status.sh
 ```
 
@@ -34,18 +34,18 @@ dc-status.sh
 
 From a workstation with access to the IRDC server (currently hbfcon03 and mkocon05)
 
-```bash
+```
 irdc_dm.sh
 ```
 
 From a remote system
 
-```bash
+```
 ssh -X <irdc server> "irdc_dm_server.sh"
 ```
 or 
 
-```bash
+```
 ssh -X <irdc server> 
 irdc_dm_server.sh
 ```
@@ -54,13 +54,13 @@ irdc_dm_server.sh
 
 Raw data is stored in the `/readout_data/fits` directory on the IRDC server.
 
-```bash
+```
 /readout_data/fits
 ```
 
 Once processed the data is moved to the `/staging/perm` directory on the IRDC server.
 
-```bash
+```
 /staging/perm
 ```
 
@@ -70,7 +70,7 @@ Alternatively you can scp the data to a local system for viewing.
 
 Example:
 
-```bash 
+``` 
 scp <user>@<server>:/readout_data/fits/* .
 ```
 
@@ -105,14 +105,14 @@ Your user on the IRDC server must be a memeber of the docker group
 
 The DC uses the SDSU PCIe driver. The driver is officially supported on linux kernel 2 and 3. We run it on kernel 4. We have not had kernel issues on kernel version 4.18.0-348.20.1.el8_5.x86_64 and older.
 
-```bash 
+``` 
 Kernel on gn-irdc-lp1 and gn-irdc-lp3
 4.18.0-348.20.1.el8_5.x86_64
 ```
 
 The driver code and installation instruction are in this repository:
 
-```bash 
+``` 
 https://gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirs-pci-driver
 ```
 
@@ -144,18 +144,18 @@ Navigate to your GitLab instance (e.g., https://gitlab.com) and log in with your
 
 For enhanced security, use the `--password-stdin` option to avoid exposing your access token in the shell history.
 
-\`\`\`bash
+```
 echo "your-personal-access-token" | docker login registry.gitlab.com -u your-gitlab-username --password-stdin
-\`\`\`
+```
 
 - Replace \`your-gitlab-username\` with your actual GitLab username.
 - Replace \`your-personal-access-token\` with the token you copied earlier.
 
 **Example:**
 
-\`\`\`bash
+```
 echo "glpat-xxxxxxxxxxxxxx" | docker login registry.gitlab.com -u johndoe --password-stdin
-\`\`\`
+```
 
 **Note:** Ensure that your user on the IRDC server is a member of the \`docker\` group.
 
@@ -223,13 +223,18 @@ The System Manager is a web-based interface for monitoring and configuring the D
 
 ## Usage
 
+The System Mangager must be started with the telops user. The telops user must setup an ssh key. 
+
+```
+ssh-keygen
+```
+
 To start the System Manager:
 
 ```
-bash
 python3 src/system_manager_server.py
-
 ```
+
 Then, open a web browser and navigate to `http://localhost:80` (or the appropriate IP address if accessing remotely).
 
 ## Features

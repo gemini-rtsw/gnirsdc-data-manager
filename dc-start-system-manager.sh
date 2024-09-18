@@ -43,6 +43,12 @@ start_container() {
         -u ${TELOPS_UID}:${TELOPS_GID} \
         ${image_name} ${command})
 
+    # Ensure correct SSH key permissions
+    docker exec ${container_name} chmod 600 /home/telops/.ssh/id_rsa
+
+    # Add localhost to known_hosts
+    docker exec ${container_name} ssh-keyscan -H localhost >> /home/telops/.ssh/known_hosts
+
     # Check if the docker run command executed successfully
     if [ $? -eq 0 ]; then
         echo "The '${container_name}' container has been started successfully."

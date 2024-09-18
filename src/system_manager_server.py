@@ -476,8 +476,9 @@ def stop_controller():
 def readme():
     with open('README.md', 'r') as f:
         content = f.read()
-    html_content = markdown2.markdown(content)
-    return render_template('readme.html', active_tab='readme', content=html_content)
+    html_content = markdown2.markdown(content, extras=["toc"])
+    toc = markdown2.markdown(content, extras=["toc"]).toc_html
+    return render_template('readme.html', active_tab='readme', content=html_content, toc=toc)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")
