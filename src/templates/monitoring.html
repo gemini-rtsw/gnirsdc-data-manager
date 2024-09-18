@@ -463,6 +463,13 @@
         flex: 1;
         min-width: 0;
     }
+
+    .status-on {
+        background-color: green;
+    }
+    .status-off {
+        background-color: red;
+    }
 </style>
 
 <script>
@@ -637,6 +644,8 @@
             indicator.classList.add('status-off');
             indicator.classList.remove('status-on');
         }
+        // Ensure the indicator is always visible
+        indicator.style.display = 'inline-block';
     }
 
     // Initial load of log messages
