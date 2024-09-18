@@ -22,7 +22,11 @@ Alternatively, you can use the following commands to manage the Detector Control
 
 - To start:
   ```
-  dc-start.sh
+  dc-start.sh [additional arguments]
+  ```
+  Example with additional arguments:
+  ```
+  dc-start.sh --top tgnirs
   ```
 
 - To stop:
@@ -83,12 +87,13 @@ scp <user>@<server>:/readout_data/fits/* .
 
 ## Scripts
 
-1. `dc-start.sh`
+1. `dc-start.sh [additional arguments]`
    - Starts the Detector Controller Software
    - Removes the existing `gmp` container if it exists
    - Runs a new `gmp` container using the specified Docker image
    - Removes the existing `gnirsdc` container if it exists
    - Runs a new `gnirsdc` container using the specified Docker image, with privileged access, host network, and a volume mount
+   - Accepts optional additional arguments that are passed to the `gnirsdc` container
 
 2. `dc-stop.sh`
    - Stops the Detector Controller Software
