@@ -320,7 +320,9 @@ class GnirsDataManagerIOC(PVGroup):
 
         def check_tcs_connection(loop):
             while True:
-                connected = checkCAConnection("tcs:heartbeat", 1.0)
+                # Use 'tc:' instead of 'tcs:' if in debug mode
+                pv_name = "tc:heartbeat" if DEBUG_MODE else "tcs:heartbeat"
+                connected = checkCAConnection(pv_name, 1.0)
                 asyncio.run_coroutine_threadsafe(
                     self.update_tcs_connection(instance, connected), 
                     loop
