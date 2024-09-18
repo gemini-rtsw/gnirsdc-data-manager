@@ -175,7 +175,46 @@ echo "glpat-xxxxxxxxxxxxxx" | docker login registry.gitlab.com -u johndoe --pass
 
 
 
-# How to build gnirsdc-lib
+# How to Build gnirsdc-lib
+
+The gnirsdc-lib is a C++ library with Python bindings (using Pybind11) designed to control the SDSU ARC (San Diego State University Astronomical Research Cameras) controller. It handles firmware loading and execution of firmware calls.
+
+To build the library:
+
+1. **Clone the Repository:**
+
+   ```
+   git clone git@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git
+   ```
+
+2. **Setup Development Environment:**
+   - Open the cloned directory in Visual Studio Code.
+   - Use the Command Palette (Ctrl+Shift+P) to start the development container.
+
+3. **Build Process:**
+   The project uses a GitLab CI/CD pipeline for automated building and deployment:
+   - It creates a Docker image for the build environment.
+   - Builds the library within this container.
+   - If changes are detected in `libgnirsioc.so`, it commits and pushes these changes.
+   - Triggers a deployment in the `gnirsdc-data-manager` project to use the updated library.
+
+4. **Manual Build (if needed):**
+   Inside the development container:
+
+   ```
+   make clean all
+   ```
+   
+   ```
+   pip3.9 install .
+   ```
+
+This process ensures that the library is built consistently and that dependent projects are updated accordingly.
+
+
+
+
+
 ## VSCode
 ## dev con
 ## pip3.9 install . 
