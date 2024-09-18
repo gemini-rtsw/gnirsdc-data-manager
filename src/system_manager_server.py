@@ -16,6 +16,7 @@ from astropy.io import fits
 from queue import Queue
 import subprocess
 import markdown2
+import paramiko
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -56,6 +57,32 @@ log_messages = []
 MAX_LOG_MESSAGES = 100
 clients = set()
 clients_lock = threading.Lock()
+
+# SSH configuration
+SSH_HOST = 'localhost'  # Since we're using --network=host, localhost refers to the host machine
+SSH_PORT = 22
+SSH_USERNAME = 'telops'
+SSH_KEY_FILE = os.path.expanduser('~/.ssh/id_rsa')
+
+def run_ssh_command(command):
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(SSH_HOST, port=SSH_PORT, username=SSH_USERNAME, key_filename=SSH_KEY_FILE)
+        
+        stdin, stdout, stderr = ssh.exec_command(command)
+        output = stdout.read().decode('utf-8')
+        error = stderr.read().decode('utf-8')
+        
+        ssh.close()
+        
+        if error:
+            raise Exception(f"SSH command error: {error}")
+        
+        return output
+    except Exception as e:
+        logger.error(f"Error executing SSH command: {str(e)}")
+        raise
 
 def pv_handler(sub, response):
     global log_messages
@@ -415,55 +442,35 @@ def apply_tdl():
 
 @app.route('/start_controller', methods=['POST'])
 def start_controller():
-    script_path = '/usr/local/bin/dc-start.sh'
-    if os.path.exists(script_path):
-        try:
-            result = subprocess.run([script_path], capture_output=True, text=True, check=True)
-            return jsonify({
-                "status": "success",
-                "message": "Controller started successfully",
-                "output": result.stdout
-            })
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Error starting controller: {str(e)}")
-            return jsonify({
-                "status": "error",
-                "message": f"Error starting controller: {str(e)}",
-                "output": e.stdout,
-                "error": e.stderr
-            }), 500
-    else:
-        logger.warning(f"Start controller script not found at {script_path}")
+    try:
+        output = run_ssh_command('/usr/local/bin/dc-start.sh')
         return jsonify({
-            "status": "warning",
-            "message": "Start controller script not found. This may be expected in a debug environment."
-        }), 404
+            "status": "success",
+            "message": "Controller started successfully",
+            "output": output
+        })
+    except Exception as e:
+        logger.error(f"Error starting controller: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error starting controller: {str(e)}",
+        }), 500
 
 @app.route('/stop_controller', methods=['POST'])
 def stop_controller():
-    script_path = '/usr/local/bin/dc-stop.sh'
-    if os.path.exists(script_path):
-        try:
-            result = subprocess.run([script_path], capture_output=True, text=True, check=True)
-            return jsonify({
-                "status": "success",
-                "message": "Controller stopped successfully",
-                "output": result.stdout
-            })
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Error stopping controller: {str(e)}")
-            return jsonify({
-                "status": "error",
-                "message": f"Error stopping controller: {str(e)}",
-                "output": e.stdout,
-                "error": e.stderr
-            }), 500
-    else:
-        logger.warning(f"Stop controller script not found at {script_path}")
+    try:
+        output = run_ssh_command('/usr/local/bin/dc-stop.sh')
         return jsonify({
-            "status": "warning",
-            "message": "Stop controller script not found. This may be expected in a debug environment."
-        }), 404
+            "status": "success",
+            "message": "Controller stopped successfully",
+            "output": output
+        })
+    except Exception as e:
+        logger.error(f"Error stopping controller: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error stopping controller: {str(e)}",
+        }), 500
 
 @app.route('/readme')
 def readme():
