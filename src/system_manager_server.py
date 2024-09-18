@@ -76,10 +76,7 @@ def run_ssh_command(command):
         
         ssh.close()
         
-        if error:
-            raise Exception(f"SSH command error: {error}")
-        
-        return output
+        return output, error
     except Exception as e:
         logger.error(f"Error executing SSH command: {str(e)}")
         raise
@@ -443,11 +440,12 @@ def apply_tdl():
 @app.route('/start_controller', methods=['POST'])
 def start_controller():
     try:
-        output = run_ssh_command('/usr/local/bin/dc-start.sh')
+        output, error = run_ssh_command('/usr/local/bin/dc-start.sh')
         return jsonify({
             "status": "success",
             "message": "Controller started successfully",
-            "output": output
+            "output": output,
+            "error": error
         })
     except Exception as e:
         logger.error(f"Error starting controller: {str(e)}")
@@ -459,11 +457,12 @@ def start_controller():
 @app.route('/stop_controller', methods=['POST'])
 def stop_controller():
     try:
-        output = run_ssh_command('/usr/local/bin/dc-stop.sh')
+        output, error = run_ssh_command('/usr/local/bin/dc-stop.sh')
         return jsonify({
             "status": "success",
             "message": "Controller stopped successfully",
-            "output": output
+            "output": output,
+            "error": error
         })
     except Exception as e:
         logger.error(f"Error stopping controller: {str(e)}")

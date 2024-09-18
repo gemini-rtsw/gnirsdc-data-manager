@@ -4,31 +4,36 @@ The DC softtware is a collection of python scripts and bash scripts for managing
 
 ## Detector Controller Usage
 
-ssh to one of the required IRDC servers (gn-irdc-lp1, gn-irdc-lp2, gn-irdc-lp3)
+1. SSH to one of the required IRDC servers (gn-irdc-lp1, gn-irdc-lp2, gn-irdc-lp3)
 
-Start the System Manager
+2. Start the System Manager:
 
-```
-dc-start-system-manager.sh
-```   
+   ```
+   dc-start-system-manager.sh
+   ```
 
-Open a web browser and navigate to `http://<server ip address>:80` 
+   Note: This script must be run as the telops user. Ensure that the telops user has an SSH key set up before starting the System Manager.
 
+3. Open a web browser and navigate to `http://<server ip address>:8080`
 
+4. Use the System Manager web interface to monitor and configure the Detector Controller Software.
 
-Alternatively use the following commands to manage the Detector Controller Software and GMP containers, run:
+Alternatively, you can use the following commands to manage the Detector Controller Software and GMP containers:
 
-```
-dc-start.sh
-```
+- To start:
+  ```
+  dc-start.sh
+  ```
 
-```
-dc-stop.sh
-```
+- To stop:
+  ```
+  dc-stop.sh
+  ```
 
-```
-dc-status.sh
-```
+- To check status:
+  ```
+  dc-status.sh
+  ```
 
 ## DM Screen Usage
 
@@ -219,45 +224,101 @@ for debug in vscode you must "tar -xvf giapi-gluecc_rocky8.tar.gz"
 
 # System Manager
 
-The System Manager is a web-based interface for monitoring and configuring the Detector Controller Software. It provides an easy-to-use interface for viewing system status and editing configuration files.
+The System Manager is a web-based interface for monitoring and configuring the Detector Controller Software. It provides an easy-to-use interface for viewing system status, editing configuration files, and performing various actions.
 
 ## Usage
 
-The System Mangager must be started with the telops user. The telops user must setup an ssh key. 
+The System Manager must be started with the telops user. The telops user must have an SSH key set up before starting the System Manager. If you haven't set up an SSH key yet, you can do so by running:
 
 ```
 ssh-keygen
 ```
 
-To start the System Manager:
+To start the System Manager, use the provided script:
 
 ```
-python3 src/system_manager_server.py
+dc-start-system-manager.sh
 ```
 
-Then, open a web browser and navigate to `http://localhost:80` (or the appropriate IP address if accessing remotely).
+This script will:
+1. Check if it's being run by the telops user
+2. Remove any existing System Manager container
+3. Start a new System Manager container with the necessary configurations
+
+Options:
+- `--help`: Display help information
+- `--debug`: Start the System Manager Server in debug mode
+
+Example usage:
+```
+dc-start-system-manager.sh --debug
+```
+
+After starting the System Manager, open a web browser and navigate to `http://localhost:8080` (or the appropriate IP address if accessing remotely).
 
 ## Features
 
-1. **Monitoring**: View the current status of the system (accessible via the "Monitoring" tab).
-2. **Config Editor**: Edit the configuration file directly through the web interface (accessible via the "Config Editor" tab).
+The System Manager offers several features accessible through different tabs:
 
-## Code Structure
+1. **Monitoring**: View the current status of the system, including:
+   - GNIRS DC Health
+   - GNIRS DC State
+   - Epics Top
+   - GDS Connection
+   - TCS Connection
+   - Temperature
+   - Controller Initialization
+   - Temperature Interlock
+   - Detector Bias Voltage
 
-The System Manager consists of the following main components:
+2. **Config Editor**: Edit the configuration file directly through the web interface.
 
-1. `system_manager_server.py`: The main Flask application that handles routing and server-side logic.
-2. `templates/base.html`: The base template for all pages, including the navigation tabs.
-3. `templates/monitoring.html`: The template for the monitoring page.
-4. `templates/config_editor.html`: The template for the configuration editor page.
+3. **Logs**: View and download log files.
 
-### Key Features of the Code
+4. **FITS Files**: Browse and download FITS files from both staging and readout directories.
 
-- Uses Flask for the web framework
-- Implements a custom `AlignedCasePreservingConfigParser` to maintain the format of the config file
-- Provides a user-friendly interface for editing the configuration file
-- Implements tabbed navigation for easy switching between monitoring and configuration
+5. **README**: View the README file with a table of contents for easy navigation.
+
+### Monitoring Tab
+
+The monitoring tab provides real-time updates on various system parameters and allows users to perform actions such as:
+- Initializing the controller
+- Clearing errors
+- Applying TDL
+- Starting and stopping the controller
+- Setting integration parameters
+- Starting integration
+
+### Config Editor Tab
+
+The Config Editor tab allows users to modify the configuration file (`config.ini`) directly through the web interface. Changes are saved and applied immediately.
+
+### Logs Tab
+
+The Logs tab provides access to log files stored in the configured log directory. Users can view and download these logs for troubleshooting and monitoring purposes.
+
+### FITS Files Tab
+
+The FITS Files tab allows users to browse, view headers, and download FITS files from both the staging and readout directories.
+
+### README Tab
+
+The README tab displays the contents of the README file with a table of contents for easy navigation.
+
+## Technical Details
+
+The System Manager is built using:
+- Flask: A lightweight WSGI web application framework
+- Caproto: A pure-Python channel access protocol library
+- Server-Sent Events (SSE): For real-time updates without polling
+- Paramiko: For executing SSH commands on the host machine
+
+Key features of the code include:
+- Custom `AlignedCasePreservingConfigParser` for maintaining the format of the config file
+- Real-time PV updates using Caproto subscriptions
+- Integration with EPICS for controlling and monitoring the detector
+- SSH command execution for starting and stopping the controller
 
 ## Note
 
-Ensure that you have the necessary permissions to read and write the configuration file (`conf/gnirsdc/config.ini`) when using the Config Editor feature.
+Ensure that you have the necessary permissions to read and write the configuration file (`conf/gnirsdc/config.ini`) and access the log and FITS file directories when using the System Manager.
