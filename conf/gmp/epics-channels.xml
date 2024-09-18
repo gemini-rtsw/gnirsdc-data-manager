@@ -13,7 +13,7 @@ The Igrins2 instrument.
  that can be monitored through the GIAPI.
 -->
 <channels>
-    <channel>ag:port:igrins2</channel>
+    <channel>ag:port:nirs</channel>
     <channel>tcs:sad:chopState</channel>
     <channel>tcs:sad:currentAirPressure</channel>
     <channel>tcs:sad:currentExternalTemp</channel>
