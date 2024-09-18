@@ -16,6 +16,10 @@ start_container() {
         echo "The '${container_name}' container does not exist."
     fi
 
+    # Get telops user information
+    TELOPS_UID=$(id -u telops)
+    TELOPS_GID=$(id -g telops)
+
     # Run the container
     echo "Running the '${container_name}' container..."
     output=$(docker run -d \
@@ -27,7 +31,10 @@ start_container() {
         -v /etc/localtime:/etc/localtime:ro \
         -v /etc/timezone:/etc/timezone:ro \
         -v /home/telops/.ssh:/home/telops/.ssh:ro \
-        -u $(id -u telops):$(id -g telops) \
+        -v /etc/passwd:/etc/passwd:ro \
+        -v /etc/group:/etc/group:ro \
+        -v /etc/shadow:/etc/shadow:ro \
+        -u ${TELOPS_UID}:${TELOPS_GID} \
         ${image_name} ${command})
 
     # Check if the docker run command executed successfully
