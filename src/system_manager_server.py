@@ -440,7 +440,12 @@ def apply_tdl():
 @app.route('/start_controller', methods=['POST'])
 def start_controller():
     try:
-        output, error = run_ssh_command('/usr/local/bin/dc-start.sh')
+        if config_mode == 'DEBUG':
+            command = '/usr/local/bin/dc-start.sh --top tgnirs'
+        else:
+            command = '/usr/local/bin/dc-start.sh'
+        
+        output, error = run_ssh_command(command)
         return jsonify({
             "status": "success",
             "message": "Controller started successfully",
