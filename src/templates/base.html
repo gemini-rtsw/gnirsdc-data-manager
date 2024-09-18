@@ -37,10 +37,10 @@
 <body>
     <div class="tab">
         <button class="tablinks {% if active_tab == 'monitoring' %}active{% endif %}" onclick="location.href='{{ url_for('monitoring') }}'">Monitoring</button>
+        <button class="tablinks {% if active_tab == 'fits' %}active{% endif %}" onclick="location.href='{{ url_for('fits_files') }}'">FITS Files</button>
         <button class="tablinks {% if active_tab == 'config' %}active{% endif %}" onclick="location.href='{{ url_for('config_page') }}'">Config Editor</button>
         <button class="tablinks {% if active_tab == 'logs' %}active{% endif %}" onclick="location.href='{{ url_for('logs') }}'">Logs</button>
-        <button class="tablinks {% if active_tab == 'fits' %}active{% endif %}" onclick="location.href='{{ url_for('fits_files') }}'">FITS Files</button>
-        <button class="tablinks {% if active_tab == 'readme' %}active{% endif %}" onclick="location.href='{{ url_for('readme') }}'">README</button>
+        <button class="tablinks {% if active_tab == 'readme' %}active{% endif %}" onclick="location.href='{{ url_for('readme') }}'">Help</button>
     </div>
 
     {% block content %}{% endblock %}

@@ -1,12 +1,16 @@
 # Detector Controller Software
 
-The DC softtware is a collection of python scripts and bash scripts for managing the Detector Controller Software and GMP containers.
+The DC software is a collection of Python scripts and Bash scripts for managing the Detector Controller Software and GMP containers. It is designed to work with an SDSU ARC (San Diego State University Astronomical Research Cameras) controller.
+
+The software is run in Docker containers, providing isolation and portability. It can be interfaced with through either an HTML-based [System Manager](#system-manager), a PyDM screen, or Bash control scripts.
+
+The GMP (Gemini Master Process) is used for GIAPI (Gemini Instrument Application Programming Interface) communication. It works in conjunction with the GDS (Gemini Data System) to process FITS files.
 
 ## Detector Controller Usage
 
 1. SSH to one of the required IRDC servers (gn-irdc-lp1, gn-irdc-lp2, gn-irdc-lp3)
 
-2. Start the System Manager:
+2. Start the [System Manager](#system-manager):
 
    ```
    dc-system-manager.sh
