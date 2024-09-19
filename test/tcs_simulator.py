@@ -5,14 +5,25 @@ import asyncio
 from astropy.time import Time
 
 class TCSContext(PVGroup):
-    track_ra = pvproperty(value="20:01:14.999", dtype=str, name='tc:sad:currentRA')
-    track_dec = pvproperty(value="+20:50:00.66", dtype=str, name='tc:sad:currentDec')
+    # Right Ascension (RA) in sexagesimal format matching header RA of 68.3586666666667 degrees
+    track_ra = pvproperty(value="04:33:26.08", dtype=str, name='tc:sad:currentRA')
+
+    # Declination (Dec) in sexagesimal format matching header Dec of 22.7570611111111 degrees
+    track_dec = pvproperty(value="+22:45:25.42", dtype=str, name='tc:sad:currentDec')
+
+    # Coordinate frame matching header 'TRKFRAME'
     track_frame = pvproperty(value='FK5', dtype=str, name='tc:sad:sourceATrackFrame')
-    track_equinox = pvproperty(value='J2024.67534114438990', dtype=str, name='tc:sad:sourceAEpoch')
-    time_tai = pvproperty(value=0.0, dtype=float, precision=3, name='tc:sad:djmls')
-    camera = pvproperty(value='short', dtype=str, name='tc:sad:instrPA')
+
+    # Equinox matching header 'TRKEQUIN' of 2000.0
+    track_equinox = pvproperty(value='J2000.0', dtype=str, name='tc:sad:sourceAEpoch')
+
+    # Observation time in Modified Julian Date (MJD) matching header 'MJD_OBS'
+    time_tai = pvproperty(value=60571.5623074667, dtype=float, precision=3, name='tc:sad:djmls')
+
+    camera = pvproperty(value='ShortBlue_G5540', dtype=str, name='tc:sad:instrPA')
     port = pvproperty(value=3, dtype=int, name='tag:port:nirs')
-    ao = pvproperty(value='IN', dtype=str, name='tag:aoName')
+    #ao = pvproperty(value='IN', dtype=str, name='tag:aoName')
+    ao = pvproperty(value='park-pos.', dtype=str, name='tag:aoName')
     tcs_heartbeat = pvproperty(value=0, dtype=int, name='tc:heartbeat')
 
     cc1       = pvproperty(value=1, dtype=ChannelType.LONG, name="tgnirs:cc:apply.DIR", doc = "")

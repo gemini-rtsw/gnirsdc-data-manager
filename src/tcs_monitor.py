@@ -68,6 +68,10 @@ class TCSMonitor:
             time.sleep(1)  # Check connections every second
 
     def get_ntp_time(self) -> str:
+        if DEBUG_MODE:
+            # Return hardcoded MJD for the debug literal time
+            return "60519.666666666666"  # MJD for the debug time
+
         NTP_SERVER = 'pool.ntp.org'
         NTP_PORT = 123
         NTP_DELTA = 2208988800  # NTP timestamp delta between 1900 and 1970
@@ -82,11 +86,21 @@ class TCSMonitor:
             if data:
                 t = struct.unpack('!12I', data)[10]
                 t -= NTP_DELTA
-                ntp_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(t))
-                return ntp_time
+                # Get UTC time in seconds since epoch
+                ntp_time = time.gmtime(t)
+                ntp_time_str = time.strftime('%Y-%m-%d %H:%M:%S', ntp_time)
+
+                # Convert to MJD using astropy
+                mjd = Time(ntp_time_str, format='iso', scale='utc').mjd
+
+                # Return MJD as a string
+                return str(mjd)
         except Exception as e:
             self.logger.error(f"Failed to get NTP time: {e}")
-            return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+            # Fallback to local time in UTC and convert to MJD
+            fallback_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
+            mjd = Time(fallback_time, format='iso', scale='utc').mjd
+            return str(mjd)
 
     def get_context(self) -> libgnirsioc.TCSContext:
         # Create a new TCSContext object as defined in libgnirsioc header

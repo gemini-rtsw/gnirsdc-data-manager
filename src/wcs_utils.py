@@ -5,12 +5,15 @@ from astropy import units as u
 from astropy.time import Time
 from astropy.wcs.utils import fit_wcs_from_points
 import logging
-from logging_config import IRDC_DEBUG
+from logging_config import IRDC_DEBUG, PRINT
 
 from gnirsutil import DEBUG_MODE
 
 import re
 from astropy.coordinates import Angle
+from datetime import datetime
+from astropy.time import Time
+
 
 # Global dictionary to hold all WCS data in memory
 wcs_data = {}
@@ -18,6 +21,7 @@ wcs_params_cache = {}
 
 # Get a logger for this module
 logger = logging.getLogger(__name__)
+
 
 # Function to read a WCS file and return the pixel coordinates and instrument offsets
 def read_wcs_file(file_path):
@@ -51,48 +55,74 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     track_dec = Angle(tcs_context['track_dec'], unit=u.deg).deg
     track_frame = str(tcs_context['track_frame']).lower()  # Convert to lowercase
     
-    # Convert epoch format (e.g., "J2000.00000000000000" to 2000.0)
+    # Log the extracted values using PRINT level
+    logger.log(PRINT, f"Extracted track_ra: {track_ra} degrees")
+    logger.log(PRINT, f"Extracted track_dec: {track_dec} degrees")
+    logger.log(PRINT, f"Extracted track_frame: {track_frame}")
+
+    # Convert epoch format (e.g., "J2000.0" to 2000.0)
     epoch_match = re.match(r'J?(\d+(\.\d+)?)', tcs_context['track_equinox'])
     if epoch_match:
         track_equinox = float(epoch_match.group(1))
     else:
         raise ValueError(f"Invalid epoch format: {tcs_context['track_equinox']}")
     
-    time_mjd = float(tcs_context['time'])  # Renamed for clarity
+    time_mjd = float(tcs_context['time'])
 
     # Create an obstime object from the MJD time
-    obstime = Time(time_mjd, format='mjd', scale='tai')  # Ensure the correct time scale
-    
-    # Create a SkyCoord object for the tracking position with obstime
+    obstime = Time(time_mjd, format='mjd', scale='tai')  # Ensure correct time scale
+
+    # Get proper motion from TCS context, default to 0 if not provided
+    pm_ra = tcs_context.get('pm_ra', 0.0) * u.arcsec / u.yr
+    pm_dec = tcs_context.get('pm_dec', 0.0) * u.arcsec / u.yr
+
+    # Get telescope offsets in arcseconds
+    ra_offset = tcs_context.get('ra_offset', 0.0) * u.arcsec
+    dec_offset = tcs_context.get('dec_offset', 0.0) * u.arcsec
+
+    # Create a SkyCoord object for the tracking position with obstime and proper motion
     tracking_position = SkyCoord(
         ra=track_ra * u.deg,
         dec=track_dec * u.deg,
+        pm_ra_cosdec=pm_ra,
+        pm_dec=pm_dec,
         frame=track_frame,
         equinox=Time(track_equinox, format='jyear'),
-        obstime=obstime  # Incorporate observation time
+        obstime=obstime
     )
 
-    # Convert the instrument offsets from millimeters to arcseconds
-    instrument_offsets_arcsec = instrument_offsets * 1.61144
+    # Apply telescope offsets to the tracking position
+    tracking_position = tracking_position.spherical_offsets_by(
+        ra_offset,
+        dec_offset
+    )
 
-    # Convert the instrument offsets to sky coordinates using the TCS context
+    # Use instrument offsets directly (they are in arcseconds)
+    sky_offsets_ra = instrument_offsets[:, 0] * u.arcsec
+    sky_offsets_dec = instrument_offsets[:, 1] * u.arcsec
+
+    # Apply instrument offsets to the tracking position
     sky_coords = tracking_position.spherical_offsets_by(
-        instrument_offsets_arcsec[:, 0] * u.arcsec,
-        instrument_offsets_arcsec[:, 1] * u.arcsec
+        sky_offsets_ra,
+        sky_offsets_dec
     )
 
-    # Convert the sky coordinates to ICRS with obstime
-    sky_coords_icrs = sky_coords.transform_to(ICRS(obstime=obstime))  # Incorporate observation time
+    # Convert the sky coordinates to ICRS frame
+    sky_coords_icrs = sky_coords.transform_to(ICRS())
 
-    # Separate pixel coordinates into x and y arrays
+    # Separate pixel coordinates
     x_pixel, y_pixel = pixel_coords[:, 0], pixel_coords[:, 1]
 
-    # Fit the WCS transformation using astropy.wcs.utils.fit_wcs_from_points
-    wcs = fit_wcs_from_points((x_pixel, y_pixel), sky_coords_icrs, proj_point='center')
+    # Fit WCS transformation
+    wcs = fit_wcs_from_points(
+        (x_pixel, y_pixel),
+        sky_coords_icrs,
+        proj_point='center'
+    )
 
-    # Set the equinox and radesys attributes of the WCS object
+    # Set equinox and radesys
     wcs.wcs.equinox = track_equinox
-    wcs.wcs.radesys = track_frame.upper()  # Set radesys to uppercase
+    wcs.wcs.radesys = track_frame.upper()
 
     return wcs
 
@@ -114,7 +144,7 @@ def print_wcs_data(wcs):
 # Function to choose the file based on port, camera, and ao
 def choose_file(port, camera, ao):
     prefix = 'aognirs_' if ao == 'IN' else 'gnirs_'
-    camera_type = 'long' if camera == 'long' else 'short'
+    camera_type = 'long' if 'long' in camera.lower() else 'short'
     file_name = f"{prefix}{port}_{camera_type}.wcs"
     return file_name
 
@@ -134,6 +164,7 @@ def process_wcs_data(port, camera, ao, tcs_context):
                 
                 wcs = calculate_wcs_params(pixel_coords, tcs_coords, tcs_context)
                 wcs_params_cache[file_name] = wcs
+           
             else:
                 wcs = wcs_params_cache[file_name]
 
@@ -170,16 +201,16 @@ load_all_files()
 # Example usage
 '''
 tcs_context = {
-    'track_ra': 231.657670833333,
-    'track_dec': -20.8335166666667,
+    'track_ra': 68.3586666666667,  # RA in degrees
+    'track_dec': 22.7570611111111, # DEC in degrees
     'track_frame': 'FK5',
-    'track_equinox': 2000.0,
-    'time': Time('2024-04-01T13:10:15.9').tai.mjd  # Ensure this key is 'time' as used in the code
+    'track_equinox': 'J2000.0',
+    'time': 60571.5623074667      # MJD of observation start
 }
 
 port = 3
 camera = 'short'
-ao = False
+ao = 'OUT'
 
-process_wcs_data(port, camera, ao, tcs_context)
+wcs = process_wcs_data(port, camera, ao, tcs_context)
 '''

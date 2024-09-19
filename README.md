@@ -370,3 +370,26 @@ Key features of the code include:
 ## Note
 
 Ensure that you have the necessary permissions to read and write the configuration file (`conf/gnirsdc/config.ini`) and access the log and FITS file directories when using the System Manager.
+
+```
+# Updating the Development Container
+
+When changes occur in the development environment, such as a new gnirsdc-lib build or modifications to the Dockerfile, you need to update your local development container. Follow these steps to ensure you're working with the latest environment:
+
+1. **Pull the latest Docker image:**
+   ```
+   docker pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev
+   ```
+   This command fetches the most recent version of the development container image.
+
+2. **Rebuild the development container in VSCode:**
+   - Open the Command Palette (Ctrl+Shift+P or Cmd+Shift+P on Mac)
+   - Type and select "Remote-Containers: Rebuild Container"
+
+This process ensures that your development environment is up-to-date with the latest changes, including any new dependencies or configurations.
+
+**Note:** If you encounter any issues after updating, try removing the old container completely and rebuilding from scratch:
+- Use the Command Palette in VSCode
+- Select "Remote-Containers: Rebuild and Reopen in Container"
+
+Remember to perform these steps whenever you're notified of significant changes to the development environment or if you experience unexpected behavior in your current setup.

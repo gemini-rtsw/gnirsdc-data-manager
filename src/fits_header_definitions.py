@@ -68,7 +68,7 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
                 'track_dec': tcs_dec,
                 'track_frame': tcs_frame,
                 'track_equinox': tcs_equinox,
-                'time': float(tcs_time),
+                'time': tcs_time,
                 'port': int(tcs_port),
                 'camera': tcs_camera,
                 'ao': tcs_ao

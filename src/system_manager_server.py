@@ -252,7 +252,25 @@ def view_fits_header(filename):
     if os.path.isfile(file_path):
         with fits.open(file_path) as hdul:
             header = hdul[0].header
-        return render_template('fits_header.html', filename=filename, header=header)
+        
+        # Convert header to a string representation, including comments
+        header_text = []
+        for card in header.cards:
+            key = card.keyword
+            value = card.value
+            comment = card.comment
+            if key == 'COMMENT':
+                header_text.append(f'COMMENT {value}')
+            elif key == 'HISTORY':
+                header_text.append(f'HISTORY {value}')
+            elif comment:
+                header_text.append(f'{key:<8} = {value:<20} / {comment}')
+            else:
+                header_text.append(f'{key:<8} = {value}')
+        
+        header_text = '\n'.join(header_text)
+        
+        return render_template('fits_header.html', filename=filename, header_text=header_text)
     else:
         return "FITS file not found", 404
 
