@@ -16,6 +16,12 @@ The GMP (Gemini Master Process) is used for GIAPI (Gemini Instrument Application
    dc-system-manager.sh
    ```
 
+   If the DC is running in debug mode the System Manager must be started with the `--debug` option:
+
+   ```
+   dc-system-manager.sh --debug
+   ```   
+
    Note: This script must be run as the telops user. Ensure that the telops user has an SSH key set up before starting the System Manager.
 
 3. Open a web browser and navigate to `http://<server ip address>:8080`
