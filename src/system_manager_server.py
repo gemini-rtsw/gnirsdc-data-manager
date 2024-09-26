@@ -1,4 +1,9 @@
 import os
+import sys
+
+# Set the working directory to the script's directory
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 import configparser
 from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify, Response, send_from_directory
 import datetime
@@ -45,7 +50,7 @@ class AlignedCasePreservingConfigParser(configparser.ConfigParser):
             fp.write("\n")
 
 app = Flask(__name__, static_folder='static')
-config_path = os.path.join(os.path.dirname(__file__), '../conf/gnirsdc/config.ini')
+config_path = '../conf/gnirsdc/config.ini'
 config = AlignedCasePreservingConfigParser()
 config.read(config_path)
 
@@ -496,7 +501,8 @@ def stop_controller():
 
 @app.route('/readme')
 def readme():
-    with open('../README.md', 'r') as f:
+    readme_path = '../README.md'
+    with open(readme_path, 'r') as f:
         content = f.read()
     html_content = markdown2.markdown(content, extras=["fenced-code-blocks", "tables", "toc"])
     toc = html_content.toc_html
