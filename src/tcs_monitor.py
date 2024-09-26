@@ -24,8 +24,8 @@ class TCSMonitor:
             f'{tcs_prefix}sad:currentDec',        # 'track_dec'
             f'{tcs_prefix}sad:sourceATrackFrame', # 'track_frame'
             f'{tcs_prefix}sad:sourceAEpoch',      # 'track_equinox'
-            f'{tcs_prefix}sad:instrPA',           # 'instrument position angle'
-            f'{cc_prefix}cc:cameraPosition',      # 'camera'
+            f'{tcs_prefix}instrPA',           # 'instrument position angle'
+            f'{cc_prefix}sad:cc:cameraPosition',      # 'camera'
             f'{ag_prefix}port:nirs',              # 'port'
             f'{ag_prefix}aoName'                  # 'ao' 
         ]

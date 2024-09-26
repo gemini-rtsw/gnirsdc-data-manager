@@ -58,12 +58,12 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         tcs_port = pdu.get('TCS_PORT', '')
         tcs_camera = pdu.get('TCS_CAMERA', '')
         tcs_ao = pdu.get('TCS_AO', '')
-        tcs_instr_pa = pdu.get('TCS_INSTR_PA', '')  
+        tcs_inst_pa = pdu.get('TCS_INST_PA', '')  
 
-        # Check if TCS is connected
-        tcs_connected = all([tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_time, tcs_port, tcs_camera, tcs_ao, tcs_instr_pa])
+        # Check if TCS context is missing
+        tcs_context_missing = any(value == '' for value in [tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_time, tcs_port, tcs_camera, tcs_ao, tcs_inst_pa])
 
-        if tcs_connected:
+        if not tcs_context_missing:
             tcs_context = {
                 'track_ra': tcs_ra,
                 'track_dec': tcs_dec,
@@ -73,10 +73,11 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
                 'port': int(tcs_port),
                 'camera': tcs_camera,
                 'ao': tcs_ao,
-                'instr_pa': tcs_instr_pa  
+                'inst_pa': tcs_inst_pa  
             }
         else:
             tcs_context = None
+            print("Warning: TCS context is missing or incomplete.")
 
         fname = re.sub(r'[^\w]', '', f"{dateobs}{utstart}") + ".fits"
 
@@ -121,10 +122,13 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
     fits_header.insert(4, ('COMMENT', "FITS (Flexible Image Transport System) format is defined in 'Astronomy"))
     fits_header.insert(5, ('COMMENT', "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"))
 
-    # Add WCS information to the primary header only if TCS is connected
-    if tcs_connected:
+    # Add WCS information to the primary header only if TCS context is not missing
+    if not tcs_context_missing:
         wcs = process_wcs_data(tcs_port, tcs_camera, tcs_ao, tcs_context)
+        
         fits_header.update(wcs.to_header())
+    else:
+        print("Warning: WCS information not added due to missing TCS context.")
 
     # Add READMODE to the header
     read_modes = eval(config[config_mode].get('READ_MODES', '{}'))

@@ -20,7 +20,11 @@ class TCSContext(PVGroup):
     # Observation time in Modified Julian Date (MJD) matching header 'MJD_OBS'
     time_tai = pvproperty(value=60571.5623074667, dtype=float, precision=3, name='tc:sad:djmls')
 
-    camera = pvproperty(value='ShortBlue_G5540', dtype=str, name='tc:sad:instrPA')
+    # Update camera PV
+    camera = pvproperty(value='ShortBlue_G5540', dtype=str, name='tgnirs:sad:cc:cameraPosition')
+    
+    # Add instrument position angle PV
+    instr_pa = pvproperty(value=90.0 - 59.0, dtype=float, name='tc:instrPA')
     port = pvproperty(value=3, dtype=int, name='tag:port:nirs')
     #ao = pvproperty(value='IN', dtype=str, name='tag:aoName')
     ao = pvproperty(value='park-pos.', dtype=str, name='tag:aoName')
@@ -55,7 +59,7 @@ class TCSContext(PVGroup):
     cc28       = pvproperty(value=1, dtype=ChannelType.LONG, name="tgnirs:cc:gratingPosCad.B", doc = "")
     cc29       = pvproperty(value=1, dtype=ChannelType.LONG, name="tgnirs:sad:cc:fw2Position", doc = "")
     cc30       = pvproperty(value=1, dtype=ChannelType.LONG, name="tgnirs:sad:cc:fw1Position", doc = "")
-    cc31       = pvproperty(value=1, dtype=ChannelType.LONG, name="tgnirs:sad:cc:cameraPosition", doc = "")
+#    cc31       = pvproperty(value=1, dtype=ChannelType.LONG, name="tgnirs:sad:cc:cameraPosition", doc = "")
     cc32       = pvproperty(value=1, dtype=ChannelType.LONG, name="tgnirs:sad:cc:deckerPosition", doc = "")
     cc33       = pvproperty(value=1, dtype=ChannelType.LONG, name="tgnirs:sad:cc:gratingWvlength.VAL", doc = "")
     cc34       = pvproperty(value=1, dtype=ChannelType.LONG, name="tgnirs:sad:cc:deckerEng", doc = "")

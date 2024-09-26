@@ -391,7 +391,7 @@ class GnirsDataManagerIOC(PVGroup):
     @wcs_file.putter
     async def wcs_file(self, instance, value):
         # This method will be called whenever the WCS file is updated
-        await self.logMessage(f"WCS file updated: {value}")
+        await self.logMessage(f"WCS file: {value}")
 
 #-----------------------------------------------------------------------------
     currentLabel = pvproperty(

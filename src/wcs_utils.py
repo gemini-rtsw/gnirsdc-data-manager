@@ -14,6 +14,11 @@ from astropy.coordinates import Angle
 from datetime import datetime
 from astropy.time import Time
 
+from gnirsutil import config, config_mode, DEBUG_MODE
+
+
+from astropy.coordinates import Angle
+import re
 
 # Global dictionary to hold all WCS data in memory
 wcs_data = {}
@@ -49,6 +54,10 @@ def load_all_files():
             'tcs_coords': tcs_coords
         }
 
+
+
+
+
 def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     # Extract and convert the TCS context information
     track_ra = Angle(tcs_context['track_ra'], unit=u.hourangle).deg
@@ -80,6 +89,9 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     ra_offset = tcs_context.get('ra_offset', 0.0) * u.arcsec
     dec_offset = tcs_context.get('dec_offset', 0.0) * u.arcsec
 
+    # Get the instrument position angle
+    inst_pa = Angle(tcs_context.get('inst_pa', 0.0), unit=u.deg).deg
+
     # Create a SkyCoord object for the tracking position with obstime and proper motion
     tracking_position = SkyCoord(
         ra=track_ra * u.deg,
@@ -91,20 +103,33 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
         obstime=obstime
     )
 
-    # Apply telescope offsets to the tracking position
-    tracking_position = tracking_position.spherical_offsets_by(
-        ra_offset,
-        dec_offset
-    )
+    # scale the instrument offsets from mm to arcseconds
+    mm_to_arcsec_scale = float(config['DEFAULT']['MM_TO_ARCSEC_SCALE'])
+    instrument_offsets = instrument_offsets * mm_to_arcsec_scale
+    
+    # Center the instrument offsets
+    center = np.mean(instrument_offsets, axis=0)
+    centered_offsets = instrument_offsets - center
 
-    # Use instrument offsets directly (they are in arcseconds)
-    sky_offsets_ra = instrument_offsets[:, 0] * u.arcsec
-    sky_offsets_dec = instrument_offsets[:, 1] * u.arcsec
+    # Rotate centered instrument offsets by inst_pa
+    rotation_angle = np.radians(inst_pa)
+    rotation_matrix = np.array([
+        [np.cos(rotation_angle), -np.sin(rotation_angle)],
+        [np.sin(rotation_angle), np.cos(rotation_angle)]
+    ])
+    rotated_offsets = centered_offsets @ rotation_matrix.T
 
-    # Apply instrument offsets to the tracking position
+    # Translate back
+    final_offsets = rotated_offsets + center
+
+    # Apply units to final offsets
+    delta_ra = final_offsets[:, 0] * u.arcsec
+    delta_dec = final_offsets[:, 1] * u.arcsec
+
+    # Apply final instrument offsets to the tracking position
     sky_coords = tracking_position.spherical_offsets_by(
-        sky_offsets_ra,
-        sky_offsets_dec
+        delta_ra,
+        delta_dec
     )
 
     # Convert the sky coordinates to ICRS frame
@@ -116,15 +141,24 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     # Fit WCS transformation
     wcs = fit_wcs_from_points(
         (x_pixel, y_pixel),
-        sky_coords_icrs,
-        proj_point='center'
+        sky_coords_icrs
     )
 
     # Set equinox and radesys
     wcs.wcs.equinox = track_equinox
     wcs.wcs.radesys = track_frame.upper()
 
+    # Log the CD matrix 
+    logger.log(IRDC_DEBUG, f"CD matrix after rotation:")
+    logger.log(IRDC_DEBUG, f"CD1_1 = {wcs.wcs.cd[0, 0]}")
+    logger.log(IRDC_DEBUG, f"CD1_2 = {wcs.wcs.cd[0, 1]}")
+    logger.log(IRDC_DEBUG, f"CD2_1 = {wcs.wcs.cd[1, 0]}")
+    logger.log(IRDC_DEBUG, f"CD2_2 = {wcs.wcs.cd[1, 1]}")
+
     return wcs
+
+
+
 
 # Function to print the WCS data
 def print_wcs_data(wcs):
@@ -150,24 +184,19 @@ def choose_file(port, camera, ao):
 
 # Function to process the file and print WCS data
 def process_wcs_data(port, camera, ao, tcs_context):
-    global wcs_params_cache
 
     try:
         file_name = choose_file(port, camera, ao)
         if file_name in wcs_data:
-            if file_name not in wcs_params_cache:
-                pixel_coords = wcs_data[file_name].get('pixel_coords')
-                tcs_coords = wcs_data[file_name].get('tcs_coords')
-                
-                if pixel_coords is None or tcs_coords is None or not tcs_context:
-                    raise ValueError("Missing required parameters for WCS calculation")
-                
-                wcs = calculate_wcs_params(pixel_coords, tcs_coords, tcs_context)
-                wcs_params_cache[file_name] = wcs
-           
-            else:
-                wcs = wcs_params_cache[file_name]
+            pixel_coords = wcs_data[file_name].get('pixel_coords')
+            tcs_coords = wcs_data[file_name].get('tcs_coords')
+            
+            if pixel_coords is None or tcs_coords is None or not tcs_context:
+                raise ValueError("Missing required parameters for WCS calculation")
+            
+            wcs = calculate_wcs_params(pixel_coords, tcs_coords, tcs_context)
 
+            
             if DEBUG_MODE:
                 # Print the WCS data
                 logger.log(IRDC_DEBUG, f"Processing file: {file_name}")
