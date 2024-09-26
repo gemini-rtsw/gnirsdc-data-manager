@@ -377,15 +377,17 @@ Key features of the code include:
 
 Ensure that you have the necessary permissions to read and write the configuration file (`conf/gnirsdc/config.ini`) and access the log and FITS file directories when using the System Manager.
 
-```
+
 # Updating the Development Container
 
 When changes occur in the development environment, such as a new gnirsdc-lib build or modifications to the Dockerfile, you need to update your local development container. Follow these steps to ensure you're working with the latest environment:
 
 1. **Pull the latest Docker image:**
-   ```
+
+```
    docker pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev
-   ```
+```
+
    This command fetches the most recent version of the development container image.
 
 2. **Rebuild the development container in VSCode:**
@@ -399,3 +401,68 @@ This process ensures that your development environment is up-to-date with the la
 - Select "Remote-Containers: Rebuild and Reopen in Container"
 
 Remember to perform these steps whenever you're notified of significant changes to the development environment or if you experience unexpected behavior in your current setup.
+
+# Changing TCS Process Variable (PV) in the TCS context
+
+## 1. Modify the `fits_header_definitions.py` file
+- **File path:** `src/fits_header_definitions.py`
+- **Task:** Add the new TCS PV and ensure it is included in the TCS context.
+
+- **Example change:**
+
+```python
+  # Define the new PV in the `define_hdu_list` function
+  tcs_instr_pa = pdu.get('TCS_INSTR_PA', '')
+  
+  # Update the tcs_connected check to include the new PV
+  tcs_connected = all([tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_time, tcs_port, tcs_camera, tcs_ao, tcs_instr_pa])
+  
+  # Add the new PV to the tcs_context dictionary
+  tcs_context = {
+      'instr_pa': tcs_instr_pa,
+      # Other existing context entries...
+  }
+```
+
+## 2. Modify the `tcs_monitor.py` file
+- **File path:** `src/tcs_monitor.py`
+- **Task:** Add the new PV to the `TCSMonitor` class to track the new TCS value.
+
+- **Example change:**
+
+```python   
+  # Add the new PV to the `self.tcs_pvs` list
+  self.tcs_pvs = [
+      # Other existing PVs...
+      f'{tcs_prefix}sad:instrPA',  # 'instrument position angle'
+      f'{cc_prefix}cc:cameraPosition',  # 'camera' (optional)
+  ]
+  
+  # Map the new PV to its corresponding TCSContext attribute
+  mapping = {
+      'instrPA': 'inst_pa',  # Changed from 'camera' to 'instrument_pa'
+      # Other mappings...
+  }
+```
+
+## 3. Update the Context Mapping
+- Ensure the new PV is mapped correctly to the TCS context within the `mapping` dictionary in `tcs_monitor.py`. This will make sure the context is updated with the value from the new PV.
+
+- **Example change in `mapping`:**
+
+```python
+  mapping = {
+      # Other mappings...
+      'instrPA': 'inst_pa',  # Ensure new PV is mapped correctly
+  }
+```
+
+## Recap
+1. **In `fits_header_definitions.py`:**
+   - Add the new PV (`TCS_INSTR_PA`).
+   - Update the `tcs_connected` check.
+   - Include the new PV in the `tcs_context`.
+
+2. **In `tcs_monitor.py`:**
+   - Add the new PV to the `self.tcs_pvs` list.
+   - Map the new PV to its corresponding attribute in the `mapping` dictionary.
