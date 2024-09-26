@@ -496,10 +496,10 @@ def stop_controller():
 
 @app.route('/readme')
 def readme():
-    with open('README.md', 'r') as f:
+    with open('../README.md', 'r') as f:
         content = f.read()
-    html_content = markdown2.markdown(content, extras=["toc"])
-    toc = markdown2.markdown(content, extras=["toc"]).toc_html
+    html_content = markdown2.markdown(content, extras=["fenced-code-blocks", "tables", "toc"])
+    toc = html_content.toc_html
     return render_template('readme.html', active_tab='readme', content=html_content, toc=toc)
 
 if __name__ == "__main__":
