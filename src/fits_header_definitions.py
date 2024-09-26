@@ -58,9 +58,10 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         tcs_port = pdu.get('TCS_PORT', '')
         tcs_camera = pdu.get('TCS_CAMERA', '')
         tcs_ao = pdu.get('TCS_AO', '')
+        tcs_instr_pa = pdu.get('TCS_INSTR_PA', '')  
 
         # Check if TCS is connected
-        tcs_connected = all([tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_time, tcs_port, tcs_camera, tcs_ao])
+        tcs_connected = all([tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_time, tcs_port, tcs_camera, tcs_ao, tcs_instr_pa])
 
         if tcs_connected:
             tcs_context = {
@@ -71,7 +72,8 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
                 'time': tcs_time,
                 'port': int(tcs_port),
                 'camera': tcs_camera,
-                'ao': tcs_ao
+                'ao': tcs_ao,
+                'instr_pa': tcs_instr_pa  
             }
         else:
             tcs_context = None

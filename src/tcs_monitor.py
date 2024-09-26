@@ -17,14 +17,15 @@ class TCSMonitor:
         # Determine the prefixes based on DEBUG_MODE
         tcs_prefix = 'tc:' if DEBUG_MODE else 'tcs:'
         ag_prefix = 'tag:' if DEBUG_MODE else 'ag:'
+        cc_prefix = 'tgnirs:' if DEBUG_MODE else 'nirs:'
 
         self.tcs_pvs = [
             f'{tcs_prefix}sad:currentRA',         # 'track_ra'
             f'{tcs_prefix}sad:currentDec',        # 'track_dec'
             f'{tcs_prefix}sad:sourceATrackFrame', # 'track_frame'
             f'{tcs_prefix}sad:sourceAEpoch',      # 'track_equinox'
-            # Removed 'sad:djmls' as we will use NTP time
-            f'{tcs_prefix}sad:instrPA',           # 'camera'
+            f'{tcs_prefix}sad:instrPA',           # 'instrument position angle'
+            f'{cc_prefix}cc:cameraPosition',      # 'camera'
             f'{ag_prefix}port:nirs',              # 'port'
             f'{ag_prefix}aoName'                  # 'ao' 
         ]
@@ -109,13 +110,14 @@ class TCSMonitor:
         # Mapping of PV names to TCSContext attributes
         # These attribute names are defined in the libgnirsioc header
         mapping = {
-            'currentRA': 'track_ra',         # Right Ascension
-            'currentDec': 'track_dec',       # Declination
-            'sourceATrackFrame': 'track_frame',  # Coordinate frame
-            'sourceAEpoch': 'track_equinox',  # Equinox
-            'instrPA': 'camera',             # Camera position angle
-            'nirs': 'port',                   # Instrument port
-            'aoName': 'ao'                    # Adaptive optics mode
+            'currentRA': 'track_ra',
+            'currentDec': 'track_dec',
+            'sourceATrackFrame': 'track_frame',
+            'sourceAEpoch': 'track_equinox',
+            'instrPA': 'inst_pa',  # Changed from 'camera' to 'instrument_pa'
+            'cameraPosition': 'camera',  # Added mapping for 'cameraPosition'
+            'nirs': 'port',
+            'aoName': 'ao'
         }
 
         # Populate the TCSContext object with values from self.context
