@@ -9,6 +9,7 @@ import socket
 import struct
 from astropy.time import Time
 import ntplib
+import subprocess
 
 # Import custom log levels and DEBUG_MODE
 from logging_config import IRDC_DEBUG, IRDC_MAX_DEBUG
@@ -75,27 +76,36 @@ class TCSMonitor:
             # Return hardcoded MJD for the debug literal time
             return "60519.666666666666"  # MJD for the debug time
 
-        NTP_SERVERS = ['pool.ntp.org', 'time.nist.gov', 'time.google.com']
+        ntp_server = "ntp.gemini.edu"  # Replace with the actual NTP server hostname or IP
+        try:
+            # Use the ntpdate command to query the local NTP server
+            output = subprocess.check_output(["ntpdate", "-q", ntp_server], universal_newlines=True)
+            
+            # Parse the output to get the server time
+            for line in output.split('\n'):
+                if "server" in line:
+                    parts = line.split()
+                    ntp_time = float(parts[-2])
+                    
+                    # Convert to MJD using astropy
+                    mjd = Time(ntp_time, format='unix', scale='utc').mjd
+                    
+                    # Return MJD as a string
+                    return str(mjd)
+            
+            raise ValueError("Could not parse ntpdate output")
+        
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Error querying NTP server: {e}")
+        except ValueError as e:
+            self.logger.error(f"Error parsing NTP time: {e}")
+        except Exception as e:
+            self.logger.error(f"Unexpected error getting NTP time: {e}")
 
-        for server in NTP_SERVERS:
-            try:
-                client = ntplib.NTPClient()
-                response = client.request(server, timeout=5)
-                ntp_time = time.localtime(response.tx_time)
-                ntp_time_str = time.strftime('%Y-%m-%d %H:%M:%S', ntp_time)
-
-                # Convert to MJD using astropy
-                mjd = Time(ntp_time_str, format='iso', scale='utc').mjd
-
-                # Return MJD as a string
-                return str(mjd)
-            except Exception as e:
-                self.logger.warning(f"Failed to get NTP time from {server}: {e}")
-
-        # If all NTP servers fail, fallback to local time
-        self.logger.error("All NTP servers failed. Falling back to local time.")
-        fallback_time = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
-        mjd = Time(fallback_time, format='iso', scale='utc').mjd
+        # If NTP request fails, fallback to system time
+        self.logger.warning("Falling back to system time.")
+        fallback_time = time.time()
+        mjd = Time(fallback_time, format='unix', scale='utc').mjd
         return str(mjd)
 
     def get_context(self) -> libgnirsioc.TCSContext:
