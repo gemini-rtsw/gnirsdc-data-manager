@@ -69,13 +69,17 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     logger.log(PRINT, f"Extracted track_dec: {track_dec} degrees")
     logger.log(PRINT, f"Extracted track_frame: {track_frame}")
 
-    # Convert epoch format (e.g., "J2000.0" to 2000.0)
-    epoch_match = re.match(r'J?(\d+(\.\d+)?)', tcs_context['track_equinox'])
+    # Improved regex to handle zero values
+    epoch_match = re.match(r'J?(0|[1-9]\d*)(\.\d*)?', tcs_context['track_equinox'])
     if epoch_match:
-        track_equinox = float(epoch_match.group(1))
+        track_equinox = float(epoch_match.group())
     else:
-        raise ValueError(f"Invalid epoch format: {tcs_context['track_equinox']}")
+        # Handle the case when the telescope is parked or the format is unexpected
+        track_equinox = 0.0
     
+    # Log the extracted track_equinox
+    logger.log(PRINT, f"Extracted track_equinox: {track_equinox}")
+
     time_mjd = float(tcs_context['time'])
 
     # Create an obstime object from the MJD time
