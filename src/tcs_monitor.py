@@ -76,7 +76,7 @@ class TCSMonitor:
             # Return hardcoded MJD for the debug literal time
             return "60519.666666666666"  # MJD for the debug time
 
-        ntp_server = "ntp.gemini.edu"  # Replace with the actual NTP server hostname or IP
+        ntp_server = "localhost"
         try:
             # Use the ntpdate command to query the local NTP server
             output = subprocess.check_output(["ntpdate", "-q", ntp_server], universal_newlines=True)
@@ -96,7 +96,7 @@ class TCSMonitor:
             raise ValueError("Could not parse ntpdate output")
         
         except subprocess.CalledProcessError as e:
-            self.logger.error(f"Error querying NTP server: {e}")
+            self.logger.error(f"Error querying local NTP server: {e}")
         except ValueError as e:
             self.logger.error(f"Error parsing NTP time: {e}")
         except Exception as e:
