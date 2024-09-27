@@ -495,7 +495,7 @@ class GnirsCADCARController(PVGroup):
             return None
 
 
-    ntp_time = pvproperty(value="0.0", dtype=caproto.ChannelType.STRING, read_only=True, doc="Current NTP time in MJD")
+    ntp_time = pvproperty(value='0.0', dtype=caproto.ChannelType.STRING, read_only=True, doc="Current NTP time in MJD")
 
     @ntp_time.scan(period=0.1)  # Scan every 0.1 second
     async def ntp_time(self, instance, async_lib):
@@ -514,7 +514,7 @@ class GnirsCADCARController(PVGroup):
     #------ DC configuration values --------
 
     #------ fowlers - lnr -------------------
-    obsSetupD      = pvproperty(value=1, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.D", doc = "")
+    obsSetupD      = pvproperty(value='1', dtype=caproto.ChannelType.STRING, name="dc:obsSetup.D", doc = "")
     @obsSetupD.putter
     async def obsSetupD(self, instance, value):
         if (self.lnrNum.value != int(value)):
@@ -554,7 +554,7 @@ class GnirsCADCARController(PVGroup):
 
 
     #-------------- digitalAvgs -------------------
-    obsSetupC      = pvproperty(value=1, dtype=caproto.ChannelType.STRING, name="dc:obsSetup.C", doc = "")
+    obsSetupC      = pvproperty(value='1', dtype=caproto.ChannelType.STRING, name="dc:obsSetup.C", doc = "")
     @obsSetupC.putter
     async def obsSetupC(self, instance, value):
         if (self.digitalAvgs.value != int(value)):
@@ -594,7 +594,7 @@ class GnirsCADCARController(PVGroup):
         except Exception as e:
             return
 
-    temperature_status  = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:temperature_status")    
+    temperature_status  = pvproperty(value='0', dtype=caproto.ChannelType.STRING, name="dc:temperature_status")    
     @temperature_status.scan(period=60)  # Scan every 60 seconds
     async def temperature_status(self, instance, async_lib):
         try:
@@ -625,7 +625,7 @@ class GnirsCADCARController(PVGroup):
     sdsuState       = pvproperty(value='NOT INITIALIZED', dtype=caproto.ChannelType.STRING, name="dc:sdsuState", doc = "SDSU Controller State") 
 
     # arSetupH is the process variable (PV) that Seqexec uses to adjust and control the bias levels for the detector.
-    arSetupH       = pvproperty(value=0.6, dtype=caproto.ChannelType.STRING, name="dc:arSetup.H", doc="")
+    arSetupH       = pvproperty(value='0.6', dtype=caproto.ChannelType.STRING, name="dc:arSetup.H", doc="")
     @arSetupH.putter
     async def arSetupH(self, instance, value):
         try:
@@ -645,7 +645,7 @@ class GnirsCADCARController(PVGroup):
 
 
 
-    dataLabel       = pvproperty(value='GN20231011S1800', dtype=caproto.ChannelType.STRING, name="dc:dataLabel", doc = "Data Label") 
+    dataLabel       = pvproperty(value='datalabel', dtype=caproto.ChannelType.STRING, name="dc:dataLabel", doc = "Data Label") 
 
 
     detectorTemp1   = pvproperty(value=0.0, dtype=caproto.ChannelType.DOUBLE, name="dc:detectorTemp1", doc = "Detector Temperature 1")
@@ -656,13 +656,13 @@ class GnirsCADCARController(PVGroup):
     coaddProgress   = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:coaddProgress", doc = "Coadd percent complete") 
 
 
-    setWcsA        = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.A", doc = "")
+    setWcsA        = pvproperty(value='0', dtype=caproto.ChannelType.STRING, name="dc:setWcs.A", doc = "")
 
 
-    detIDVAL       = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:detID.VAL", doc = "")
-    detTypeVAL     = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="sad:dc:detType.VAL", doc = "")
+    detIDVAL       = pvproperty(value='0', dtype=caproto.ChannelType.STRING, name="sad:dc:detID.VAL", doc = "")
+    detTypeVAL     = pvproperty(value='0', dtype=caproto.ChannelType.STRING, name="sad:dc:detType.VAL", doc = "")
     obsepoch       = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="sad:dc:obsepoch", doc = "")
-    setWcsVALA     = pvproperty(value=0, dtype=caproto.ChannelType.STRING, name="dc:setWcs.VALA", doc = "")
+    setWcsVALA     = pvproperty(value='0', dtype=caproto.ChannelType.STRING, name="dc:setWcs.VALA", doc = "")
 
     obsSetupVALC   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name=  "dc:obsSetup.VALC", doc = "")
     obsSetupVALD   = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name=  "dc:obsSetup.VALD", doc = "")
@@ -685,7 +685,7 @@ class GnirsCADCARController(PVGroup):
 
 
 
-    observeA       = pvproperty(value="eng_readout", dtype=caproto.ChannelType.STRING, name="dc:observe.A", doc = "")
+    observeA       = pvproperty(value='eng_readout', dtype=caproto.ChannelType.STRING, name="dc:observe.A", doc = "")
 
     @observeA.putter
     async def observeA(self, instance, value):
