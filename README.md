@@ -6,6 +6,32 @@ The software is run in Docker containers, providing isolation and portability. I
 
 The GMP (Gemini Master Process) is used for GIAPI (Gemini Instrument Application Programming Interface) communication. It works in conjunction with the GDS (Gemini Data System) to process FITS files.
 
+## Quick Start Guide
+
+1. **Power on the ARC Controller**
+   - Ensure the ARC (Astronomical Research Cameras) controller is powered on and properly connected.
+
+2. **Access the System Manager**
+   - Open a web browser and navigate to `http://gn-irdc-lp3:8080`
+   - This will open the System Manager interface, showing the Monitoring tab.
+
+3. **Initialize the Controller**
+   - On the Monitoring tab, locate the "Controller Initialization" section.
+   - Click the "Initialize Controller" button.
+   - Wait for the initialization process to complete. The status will update to "Initialized" when done.
+
+4. **Set Temperature Override (if needed)**
+   - Navigate to the Engineering tab by clicking "Engineering" in the top navigation bar.
+   - Find the "Temperature Interlock Override" section.
+   - Toggle the switch to enable or disable the temperature interlock override.
+   - This allows operation even if the detector temperature is outside the normal range.
+
+5. **Start the Controller**
+   - Return to the Monitoring tab.
+   - Locate the "Start/Stop Controller" section.
+   - Click the "Start Controller" button to begin normal operations.
+
+
 ## Detector Controller Usage
 
 1. SSH to one of the required IRDC servers (gn-irdc-lp1, gn-irdc-lp2, gn-irdc-lp3)
@@ -94,28 +120,71 @@ scp <user>@<server>:/readout_data/fits/* .
 ```
 
 
+## Detector Controller (DC) Operation Scripts
 
-## Scripts
+### dc-start.sh
+Starts the Detector Controller Software and related Docker containers.
+```
+Usage: dc-start.sh [additional arguments]
+```
+- Additional arguments are passed to the `gnirsdc` container.
+- Example: `dc-start.sh --top tgnirs` (for debug mode)
 
-1. `dc-start.sh [additional arguments]`
-   - Starts the Detector Controller Software
-   - Removes the existing `gmp` container if it exists
-   - Runs a new `gmp` container using the specified Docker image
-   - Removes the existing `gnirsdc` container if it exists
-   - Runs a new `gnirsdc` container using the specified Docker image, with privileged access, host network, and a volume mount
-   - Accepts optional additional arguments that are passed to the `gnirsdc` container
+### dc-stop.sh
+Stops the Detector Controller Software and removes related Docker containers.
+```
+Usage: dc-stop.sh
+```
+- No additional flags or arguments.
 
-2. `dc-stop.sh`
-   - Stops the Detector Controller Software
-   - Checks if the `gnirsdc` container is running and stops it if found
-   - Removes the `gnirsdc` container if it exists
-   - Checks if the `gmp` container is running and stops it if found
-   - Removes the `gmp` container if it exists
+### dc-status.sh
+Checks and displays the status of the Detector Controller Software containers.
+```
+Usage: dc-status.sh
+```
+- No additional flags or arguments.
+- Displays running status of `gnirsdc` and `gmp` containers.
 
-3. `dc-status.sh`
-   - Checks the status of the Detector Controller Software
-   - Verifies if the `gnirsdc` container is running and displays its status
-   - Verifies if the `gmp` container is running and displays its status
+### dc-system-manager.sh
+Launches the System Manager web interface for monitoring and controlling the DC software.
+```
+Usage: dc-system-manager.sh [--debug]
+```
+- `--debug`: Starts the System Manager in debug mode.
+- `--help`: Displays help information.
+
+### dc-devel.sh
+Starts Docker containers for the Detector Controller Software in a development environment.
+```
+Usage: dc-devel.sh
+```
+- No additional flags or arguments.
+- Attempts to start containers with development images.
+
+### dc-production.sh
+Updates Docker images by pulling the latest 'production' tag and tagging it as 'current'.
+```
+Usage: dc-production.sh
+```
+- No additional flags or arguments.
+- Ensures 'current' tag points to the latest 'production' version.
+
+### dc-latest.sh
+Updates Docker images by pulling the latest 'latest' tag and tagging it as 'current'.
+```
+Usage: dc-latest.sh
+```
+- No additional flags or arguments.
+- Ensures 'current' tag points to the most recent 'latest' version.
+
+### dc-promote.sh
+Promotes Docker images from 'current' to 'production' tag, archiving the old 'production' image.
+```
+Usage: dc-promote.sh [--help]
+```
+- `--help`: Displays help information about the script's functionality.
+
+Note: These scripts should be run with appropriate permissions, typically as the 'telops' user or a user with Docker access.   
 
 ## Note
 
