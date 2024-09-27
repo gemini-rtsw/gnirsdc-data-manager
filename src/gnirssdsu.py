@@ -495,6 +495,22 @@ class GnirsCADCARController(PVGroup):
             return None
 
 
+    ntp_time = pvproperty(value="0.0", dtype=caproto.ChannelType.STRING, read_only=True, doc="Current NTP time in MJD")
+
+    @ntp_time.scan(period=0.1)  # Scan every 0.1 second
+    async def ntp_time(self, instance, async_lib):
+        try:
+            ntp_time = self.tcs_monitor.get_ntp_time()
+            if ntp_time is None:
+                # Fallback to system time if TCS NTP time is not available
+                current_time = time.time()
+                mjd = (current_time / 86400.0) + 40587  # Convert Unix timestamp to MJD
+                ntp_time = f"{mjd:.6f}"
+            await instance.write(str(ntp_time))
+        except Exception as e:
+            print(f"Error getting NTP time: {str(e)}")
+            await instance.write("Error")
+
     #------ DC configuration values --------
 
     #------ fowlers - lnr -------------------

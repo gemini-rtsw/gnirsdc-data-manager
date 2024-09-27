@@ -8,7 +8,6 @@ import numpy as np
 import socket
 import struct
 from astropy.time import Time
-import ntplib
 import subprocess
 
 # Import custom log levels and DEBUG_MODE
@@ -72,40 +71,10 @@ class TCSMonitor:
             time.sleep(1)  # Check connections every second
 
     def get_ntp_time(self) -> str:
-        if DEBUG_MODE:
-            # Return hardcoded MJD for the debug literal time
-            return "60519.666666666666"  # MJD for the debug time
 
-        ntp_server = "localhost"
-        try:
-            # Use the ntpdate command to query the local NTP server
-            output = subprocess.check_output(["ntpdate", "-q", ntp_server], universal_newlines=True)
-            
-            # Parse the output to get the server time
-            for line in output.split('\n'):
-                if "server" in line:
-                    parts = line.split()
-                    ntp_time = float(parts[-2])
-                    
-                    # Convert to MJD using astropy
-                    mjd = Time(ntp_time, format='unix', scale='utc').mjd
-                    
-                    # Return MJD as a string
-                    return str(mjd)
-            
-            raise ValueError("Could not parse ntpdate output")
-        
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Error querying local NTP server: {e}")
-        except ValueError as e:
-            self.logger.error(f"Error parsing NTP time: {e}")
-        except Exception as e:
-            self.logger.error(f"Unexpected error getting NTP time: {e}")
-
-        # If NTP request fails, fallback to system time
-        self.logger.warning("Falling back to system time.")
-        fallback_time = time.time()
-        mjd = Time(fallback_time, format='unix', scale='utc').mjd
+        # Use system time, which should be synced with NTP
+        current_time = time.time()
+        mjd = Time(current_time, format='unix', scale='utc').mjd
         return str(mjd)
 
     def get_context(self) -> libgnirsioc.TCSContext:

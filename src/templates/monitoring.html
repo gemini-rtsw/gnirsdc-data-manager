@@ -50,6 +50,11 @@
             <span class="status-label">Detector Bias Voltage:</span>
             <span id="detectorBiasValue" class="status-value"></span>
         </div>
+
+        <div class="status-container">
+            <span class="status-label">NTP Time (MJD):</span>
+            <span id="ntpTimeValue" class="status-value"></span>
+        </div>
     </div>
     
     <hr class="section-separator">
@@ -643,6 +648,7 @@
     const actionSelect = document.getElementById('actionSelect');
     const applyActionBtn = document.getElementById('applyActionBtn');
     const coaddsInput = document.getElementById('coadds');
+    const ntpTimeValue = document.getElementById('ntpTimeValue');
 
     let previousPVs = {};
     let userEditing = false;
@@ -756,6 +762,15 @@
                     updateStatusIndicator('sdsuStateIndicator', pvs.sdsu_state === 'INITIALIZED');
                     sdsuStateIndicator.title = `SDSU Controller: ${pvs.sdsu_state}`;
 
+                    // Update NTP Time
+                    const ntpTimeMJD = pvs.ntp_time;
+                    if (ntpTimeMJD) {
+                        const date = mjdToDate(ntpTimeMJD);
+                        ntpTimeValue.textContent = formatDateUTC(date);
+                    } else {
+                        ntpTimeValue.textContent = 'N/A';
+                    }
+
                     // Update form inputs only if values have changed and user is not editing
                     if (!userEditing) {
                         if (pvs.fowler_num !== previousPVs.fowler_num) {
@@ -797,6 +812,16 @@
         }
         // Ensure the indicator is always visible
         indicator.style.display = 'inline-block';
+    }
+
+    // Convert MJD to JavaScript Date object
+    function mjdToDate(mjd) {
+        return new Date((mjd - 40587) * 86400000);
+    }
+
+    // Format Date object to a readable UTC string with 24-hour clock
+    function formatDateUTC(date) {
+        return date.toUTCString().replace(/GMT/, 'UTC');
     }
 
     // Initial load of log messages
