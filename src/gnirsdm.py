@@ -10,6 +10,17 @@ import sys
 import threading
 import time
 
+# Add these lines at the beginning of the script
+import os
+import sys
+
+# Change the current working directory to the script's directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(script_dir)
+
+# Update the Python path to include the script's directory
+sys.path.insert(0, script_dir)
+
 from concurrent import futures
 from functools import partial
 from pathlib import Path

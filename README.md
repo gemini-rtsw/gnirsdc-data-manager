@@ -535,3 +535,65 @@ Remember to perform these steps whenever you're notified of significant changes 
 2. **In `tcs_monitor.py`:**
    - Add the new PV to the `self.tcs_pvs` list.
    - Map the new PV to its corresponding attribute in the `mapping` dictionary.
+
+# Detector Controller Software
+
+
+## Debug Setup
+
+For debugging purposes, you can set up the environment using the following steps:
+
+1. **Start the GMP Server:**
+   Run the following command to start the GMP (Gemini Master Process) server in a Docker container:
+
+   ```bash
+   docker run -d --network=host --name gmp \
+     -v /Users/hawi.stecher/irdc_data/readout_data:/readout_data \
+     -v /Users/hawi.stecher/irdc_data/staging/perm:/staging/perm \
+     registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
+   ```
+
+   This command mounts the necessary volumes for data storage and runs the GMP server in detached mode.
+
+2. **Start the GNIRSDC Development Container:**
+   Launch the GNIRSDC development container with the following command:
+
+   ```bash
+   docker run -itd --name gnirsdc-dev --privileged --network=host \
+     -v `pwd`:/work \
+     registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev bash -l
+   ```
+
+   This command starts an interactive container with the current directory mounted as the `/work` directory.
+
+3. **Run the TCS Simulator:**
+   Inside the GNIRSDC development container, start the TCS (Telescope Control System) simulator:
+
+   ```bash
+   python3 test/tcs_simulator.py
+   ```
+
+4. **Start the GNIRSDC Data Manager:**
+   In the same container, run the GNIRSDC Data Manager in debug mode:
+
+   ```bash
+   python3 src/gnirsdm.py --debug --top tgnirs
+   ```
+
+   Before running this command, you need to set up the GIAPI-GLUE environment:
+
+   ```bash
+   cd giapi-glue-cc
+   source defineGiapiglueEnv.sh
+   cd ..
+   ```
+
+5. **Launch the System Manager Server:**
+   Finally, start the System Manager Server in debug mode:
+
+   ```bash
+   python3 src/system_manager_server.py --debug
+   ```
+
+By following these steps, you'll have a complete debug environment set up with the GMP server, TCS simulator, GNIRSDC Data Manager, and System Manager Server all running in their respective containers or processes.
+
