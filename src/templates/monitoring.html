@@ -241,6 +241,50 @@
                 }, 3000);
             });
     }
+
+    function refreshStatusIndicators() {
+        fetch('/get_all_pvs')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const pvs = data.pvs;
+                    
+                    // Update heartbeat indicator
+                    heartbeatIndicator.className = pvs.heartbeat !== null ? (pvs.heartbeat === 1 ? 'status-indicator heartbeat-on' : 'status-indicator heartbeat-off') : 'status-indicator';
+
+                    // Update TCS Connection indicator
+                    tcsConnectionIndicator.className = pvs.tcs_connection !== null ? (pvs.tcs_connection === 'CONNECTED' ? 'status-indicator status-on' : 'status-indicator status-off') : 'status-indicator';
+
+                    // Update GDS status indicator
+                    gdsStatusIndicator.className = pvs.gmp_status !== null ? (pvs.gmp_status === 'CONNECTED' ? 'status-indicator status-on' : 'status-indicator status-off') : 'status-indicator';
+
+                    // Update SDSU State indicator
+                    sdsuStateIndicator.className = pvs.sdsu_state !== null ? (pvs.sdsu_state === 'INITIALIZED' ? 'status-indicator status-on' : 'status-indicator status-off') : 'status-indicator';
+
+                    // Update interlock indicator
+                    interlockIndicator.className = pvs.interlock_override !== null ? (pvs.interlock_override === 0 ? 'interlock-indicator interlock-on' : 'interlock-indicator interlock-off') : 'interlock-indicator';
+                } else {
+                    // If there's an error, set all indicators to the disconnected state
+                    heartbeatIndicator.className = 'status-indicator';
+                    tcsConnectionIndicator.className = 'status-indicator';
+                    gdsStatusIndicator.className = 'status-indicator';
+                    sdsuStateIndicator.className = 'status-indicator';
+                    interlockIndicator.className = 'interlock-indicator';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching PVs:', error);
+                // If there's an error, set all indicators to the disconnected state
+                heartbeatIndicator.className = 'status-indicator';
+                tcsConnectionIndicator.className = 'status-indicator';
+                gdsStatusIndicator.className = 'status-indicator';
+                sdsuStateIndicator.className = 'status-indicator';
+                interlockIndicator.className = 'interlock-indicator';
+            });
+    }
+
+    // Refresh status indicators every second
+    setInterval(refreshStatusIndicators, 1000);
 </script>
 
 <style>

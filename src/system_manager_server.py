@@ -142,14 +142,8 @@ def config_page():  # Renamed from 'config' to 'config_page'
 @app.route('/monitoring')
 def monitoring():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-    fowler_num = caget(f'{top_name}:dc:lnrNum')
-    digital_avgs = caget(f'{top_name}:dc:digitalAvgs')
-    integ_time = caget(f'{top_name}:dc:integTime.VAL')
-    file_name = caget(f'{top_name}:dc:observe.A')
-    coadds = caget(f'{top_name}:dc:coadds.VAL')
-    return render_template('monitoring.html', active_tab='monitoring', 
-                           fowler_num=fowler_num, digital_avgs=digital_avgs, 
-                           integ_time=integ_time, file_name=file_name, coadds=coadds)
+
+    return render_template('monitoring.html', active_tab='monitoring')
 
 @app.route('/get_log_messages')
 def get_log_messages():

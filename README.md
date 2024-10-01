@@ -9,24 +9,44 @@ The GMP (Gemini Master Process) is used for GIAPI (Gemini Instrument Application
 ## Quick Start Guide
 
 1. **Power on the ARC Controller**
-   - Ensure the ARC (Astronomical Research Cameras) controller is powered on and properly connected.
+   - Ensure the ARC (Astronomical Research Cameras) controller is powered on.
 
 2. **Access the System Manager**
    - Open a web browser and navigate to `http://gn-irdc-lp3:8080`
    - This will open the System Manager interface, showing the Monitoring tab.
 
-3. **Initialize the Controller**
+3. **If the System Manager doesn't open**
+   - ssh telops@gn-irdc-lp3
+   - Start the System Manager with the following command:
+     ```
+     dc-system-manager.sh
+     ```
+   - Open a web browser and navigate to `http://gn-irdc-lp3:8080`
+   - If the System Manager 
+
+4. **Verify that the DC Software is running**
+   - On the Monitoring tab, check the "GNIRS DC Health:" display.
+   - Ensure that the green heartbeat indicator is blinking.
+
+5. **If the DC is not running**
+   - Locate "Select Action" dropdown menu.
+   - Select "Start Controller".
+   - Wait for the DC to initialize.
+   - Check the "GNIRS DC Health:" display again.
+
+6. **Initialize the Controller** 
    - On the Monitoring tab, locate the "Controller Initialization" section.
+   - Locate "Select Action" dropdown menu.
    - Click the "Initialize Controller" button.
    - Wait for the initialization process to complete. The status will update to "Initialized" when done.
 
-4. **Set Temperature Override (if needed)**
+7. **Set Temperature Override (if needed)**
    - Navigate to the Engineering tab by clicking "Engineering" in the top navigation bar.
    - Find the "Temperature Interlock Override" section.
    - Toggle the switch to enable or disable the temperature interlock override.
    - This allows operation even if the detector temperature is outside the normal range.
 
-5. **Start the Controller**
+8. **Start the Controller**
    - Return to the Monitoring tab.
    - Locate the "Start/Stop Controller" section.
    - Click the "Start Controller" button to begin normal operations.
