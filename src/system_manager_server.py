@@ -25,6 +25,7 @@ import paramiko
 import numpy as np
 import io
 import matplotlib.pyplot as plt
+from paramiko.ssh_exception import SSHException
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -73,21 +74,51 @@ SSH_USERNAME = 'telops'
 SSH_KEY_FILE = os.path.expanduser('~/.ssh/id_rsa')
 
 def run_ssh_command(command):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    
+    # List of possible key files to try
+    key_files = [
+        os.path.expanduser('~/.ssh/id_rsa'),
+        os.path.expanduser('~/.ssh/id_ed25519'),
+        os.path.expanduser('~/.ssh/id_ecdsa'),
+        os.path.expanduser('~/.ssh/id_dsa')
+    ]
+    
+    connected = False
+    for key_file in key_files:
+        try:
+            if os.path.exists(key_file):
+                ssh.connect(SSH_HOST, port=SSH_PORT, username=SSH_USERNAME, key_filename=key_file)
+                connected = True
+                logger.info(f"Successfully connected using key: {key_file}")
+                break
+        except (paramiko.ssh_exception.SSHException, IOError) as e:
+            logger.warning(f"Failed to connect with key {key_file}: {str(e)}")
+    
+    if not connected:
+        try:
+            # Fall back to password authentication if no keys worked
+            ssh.connect(SSH_HOST, port=SSH_PORT, username=SSH_USERNAME)
+            logger.info("Connected using password authentication")
+        except paramiko.ssh_exception.AuthenticationException:
+            logger.error("Failed to authenticate with both key and password")
+            raise
+    
     try:
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(SSH_HOST, port=SSH_PORT, username=SSH_USERNAME, key_filename=SSH_KEY_FILE)
-        
         stdin, stdout, stderr = ssh.exec_command(command)
         output = stdout.read().decode('utf-8')
         error = stderr.read().decode('utf-8')
         
-        ssh.close()
+        logger.debug(f"Command output: {output}")
+        logger.debug(f"Command error: {error}")
         
         return output, error
     except Exception as e:
         logger.error(f"Error executing SSH command: {str(e)}")
         raise
+    finally:
+        ssh.close()
 
 def pv_handler(sub, response):
     global log_messages
@@ -467,11 +498,14 @@ def start_controller():
             command = '/usr/local/bin/dc-start.sh'
         
         output, error = run_ssh_command(command)
+        
+        if error:
+            raise Exception(f"Error in command execution: {error}")
+        
         return jsonify({
             "status": "success",
             "message": "Controller started successfully",
-            "output": output,
-            "error": error
+            "output": output
         })
     except Exception as e:
         logger.error(f"Error starting controller: {str(e)}")

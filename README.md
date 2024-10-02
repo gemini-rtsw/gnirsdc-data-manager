@@ -78,6 +78,10 @@ The GMP (Gemini Master Process) is used for GIAPI (Gemini Instrument Application
      ```
      tail -f /readout_data/logs/irdc.log
      ```
+      - If the System Manager gives you an error about .ssh/id_rsa.pub not existing, you can generate one with the following command:
+     ```
+     ssh-keygen
+     ```
    
 7. **Set Temperature Override (if needed)**
    <div style="color: red; font-weight: bold;">
