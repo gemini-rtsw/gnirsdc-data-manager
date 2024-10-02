@@ -67,42 +67,32 @@ function updateEngInfo() {
                 // Handle disk space info
                 let diskSpaceHtml = '';
                 if (data.disk_space && Object.keys(data.disk_space).length > 0) {
+                    diskSpaceHtml = '<div class="table-responsive"><table class="table table-sm table-striped">';
+                    diskSpaceHtml += '<thead><tr><th>Mountpoint</th><th>Device</th><th>Usage</th></tr></thead><tbody>';
                     for (const [mountpoint, info] of Object.entries(data.disk_space)) {
                         const percentUsed = typeof info.percent_used === 'number' ? info.percent_used.toFixed(2) : 'N/A';
                         const barColor = percentUsed > 90 ? 'bg-danger' : percentUsed > 70 ? 'bg-warning' : 'bg-success';
                         diskSpaceHtml += `
-                            <h6>${mountpoint} (${info.device})</h6>
-                            <div class="progress mb-3" style="height: 25px;">
-                                <div class="progress-bar ${barColor}" role="progressbar" style="width: ${percentUsed !== 'N/A' ? percentUsed : 0}%;" 
-                                     aria-valuenow="${percentUsed !== 'N/A' ? percentUsed : 0}" aria-valuemin="0" aria-valuemax="100">
-                                    ${info.used}GB / ${info.total}GB (${percentUsed}% used)
-                                </div>
-                            </div>`;
+                            <tr>
+                                <td>${mountpoint}</td>
+                                <td>${info.device}</td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar ${barColor}" role="progressbar" 
+                                             style="width: ${percentUsed !== 'N/A' ? percentUsed : 0}%;" 
+                                             aria-valuenow="${percentUsed !== 'N/A' ? percentUsed : 0}" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            ${info.used}GB / ${info.total}GB (${percentUsed}% used)
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>`;
                     }
+                    diskSpaceHtml += '</tbody></table></div>';
                 } else {
                     diskSpaceHtml = '<p>No disk space information available.</p>';
                 }
                 document.getElementById('disk-space-info').innerHTML = diskSpaceHtml;
-
-                // Handle volume info (df -h)
-                let volumeHtml = '';
-                if (data.volumes && data.volumes.length > 0) {
-                    volumeHtml = '<table class="table table-striped"><thead><tr><th>Filesystem</th><th>Size</th><th>Used</th><th>Avail</th><th>Use%</th><th>Mounted on</th></tr></thead><tbody>';
-                    data.volumes.forEach(volume => {
-                        volumeHtml += `<tr>
-                            <td>${volume.filesystem || 'N/A'}</td>
-                            <td>${volume.size || 'N/A'}</td>
-                            <td>${volume.used || 'N/A'}</td>
-                            <td>${volume.avail || 'N/A'}</td>
-                            <td>${volume.use_percent || 'N/A'}</td>
-                            <td>${volume.mounted_on || 'N/A'}</td>
-                        </tr>`;
-                    });
-                    volumeHtml += '</tbody></table>';
-                } else {
-                    volumeHtml = '<p>No volume information available.</p>';
-                }
-                document.getElementById('volume-info').innerHTML = volumeHtml;
 
                 // ... rest of the function (update other information) ...
             }
@@ -110,7 +100,6 @@ function updateEngInfo() {
         .catch(error => {
             console.error('Error:', error);
             document.getElementById('disk-space-info').innerHTML = '<p>Error fetching disk space information.</p>';
-            document.getElementById('volume-info').innerHTML = '<p>Error fetching volume information.</p>';
             // ... handle errors for other elements ...
         });
 }
