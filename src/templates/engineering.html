@@ -71,21 +71,11 @@ function updateEngInfo() {
                     diskSpaceHtml += '<thead><tr><th>Mountpoint</th><th>Device</th><th>Usage</th></tr></thead><tbody>';
                     for (const [mountpoint, info] of Object.entries(data.disk_space)) {
                         const percentUsed = typeof info.percent_used === 'number' ? info.percent_used.toFixed(2) : 'N/A';
-                        const barColor = percentUsed > 90 ? 'bg-danger' : percentUsed > 70 ? 'bg-warning' : 'bg-success';
                         diskSpaceHtml += `
                             <tr>
                                 <td>${mountpoint}</td>
                                 <td>${info.device}</td>
-                                <td>
-                                    <div class="progress" style="height: 20px;">
-                                        <div class="progress-bar ${barColor}" role="progressbar" 
-                                             style="width: ${percentUsed !== 'N/A' ? percentUsed : 0}%;" 
-                                             aria-valuenow="${percentUsed !== 'N/A' ? percentUsed : 0}" 
-                                             aria-valuemin="0" aria-valuemax="100">
-                                            ${info.used}GB / ${info.total}GB (${percentUsed}% used)
-                                        </div>
-                                    </div>
-                                </td>
+                                <td>${info.used}GB / ${info.total}GB (${percentUsed}% used)</td>
                             </tr>`;
                     }
                     diskSpaceHtml += '</tbody></table></div>';
@@ -108,4 +98,13 @@ function updateEngInfo() {
 updateEngInfo();
 setInterval(updateEngInfo, 1000);
 </script>
+<style>
+    #disk-space-info table {
+        font-size: 14px;
+    }
+    #disk-space-info th,
+    #disk-space-info td {
+        padding: 0.3rem;
+    }
+</style>
 {% endblock %}
