@@ -26,19 +26,38 @@ build_image:
   services:
     - docker:dind
   before_script:
-  - echo "Logging into GitLab Container Registry with deploy token..."
-  - echo $DEPLOY_TOKEN | docker login $CI_REGISTRY -u $DEPLOY_TOKEN --password-stdin
+    - echo "Logging into GitLab Container Registry with deploy token..."
+    - echo $DEPLOY_TOKEN | docker login $CI_REGISTRY -u $DEPLOY_TOKEN --password-stdin
   script:
     - git clone -b master             https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git  gnirsdc
     - git clone -b main               https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/pycadcar.git              pycadcar
     - git clone -b master             https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git         gnirsdc-tools
     - git clone -b master             https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git           gnirsdc-lib
-    - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev -f $DOCKERFILE_ENV .
+    # Build and push dev image
+    - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN 
+                   --label "org.opencontainers.image.revision=$CI_COMMIT_SHA"
+                   --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev -f $DOCKERFILE_ENV .
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev
-    - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run -f $DOCKERFILE_RUN .
+    
+    # Build and push run image
+    - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN 
+                   --label "org.opencontainers.image.revision=$CI_COMMIT_SHA"
+                   --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run -f $DOCKERFILE_RUN .
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run
-    - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN -f Dockerfile.gmp -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server .
+    
+    # Build and push gmp-server image
+    - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN 
+                   --label "org.opencontainers.image.revision=$CI_COMMIT_SHA"
+                   --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+                   -f Dockerfile.gmp -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server .
     - docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
+    
+    # Tag and push dev image with commit SHA
+    - docker tag $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:$CI_COMMIT_SHORT_SHA
+    - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:$CI_COMMIT_SHORT_SHA
+    
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
 
