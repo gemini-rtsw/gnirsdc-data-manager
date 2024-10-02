@@ -66,13 +66,13 @@ function updateEngInfo() {
             if (data.status === 'success') {
                 let diskSpaceHtml = '';
                 for (const [mountpoint, info] of Object.entries(data.disk_space)) {
-                    const percentUsed = info.percent_used.toFixed(2);
+                    const percentUsed = typeof info.percent_used === 'number' ? info.percent_used.toFixed(2) : 'N/A';
                     const barColor = percentUsed > 90 ? 'bg-danger' : percentUsed > 70 ? 'bg-warning' : 'bg-success';
                     diskSpaceHtml += `
                         <h6>${mountpoint} (${info.device})</h6>
                         <div class="progress mb-3" style="height: 25px;">
-                            <div class="progress-bar ${barColor}" role="progressbar" style="width: ${percentUsed}%;" 
-                                 aria-valuenow="${percentUsed}" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-bar ${barColor}" role="progressbar" style="width: ${percentUsed !== 'N/A' ? percentUsed : 0}%;" 
+                                 aria-valuenow="${percentUsed !== 'N/A' ? percentUsed : 0}" aria-valuemin="0" aria-valuemax="100">
                                 ${info.used}GB / ${info.total}GB (${percentUsed}% used)
                             </div>
                         </div>`;
@@ -97,8 +97,8 @@ function updateEngInfo() {
         });
 }
 
-// Update engineering info every 30 seconds
+// Update engineering info every 1 seconds
 updateEngInfo();
-setInterval(updateEngInfo, 30000);
+setInterval(updateEngInfo, 1000);
 </script>
 {% endblock %}
