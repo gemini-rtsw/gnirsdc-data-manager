@@ -50,6 +50,8 @@ The GMP (Gemini Master Process) is used for GIAPI (Gemini Instrument Application
       - Wait for the DC to initialize.
       - Check the "GNIRS DC Health:" display again.
       - It may take a minute but should not take much more than that.
+      - If the System Manager gives you SSH errors, see the SSH [Troubleshooting Issues on the IRDC Server with the Telops User](#ssh-authentication-issues-on-the-irdc-server-with-the-telops-user) section below.
+         
       - If the DC is still not running, try the following:
          - Open a terminal and run the following command to SSH into the server:
      ```
@@ -78,11 +80,7 @@ The GMP (Gemini Master Process) is used for GIAPI (Gemini Instrument Application
      ```
      tail -f /readout_data/logs/irdc.log
      ```
-      - If the System Manager gives you an error about .ssh/id_rsa.pub not existing, you can generate one with the following command:
-     ```
-     ssh-keygen
-     ```
-   
+
 7. **Set Temperature Override (if needed)**
    <div style="color: red; font-weight: bold;">
        Warning: Overriding the temperature interlock can cause damage to the detector.
@@ -658,4 +656,41 @@ For debugging purposes, you can set up the environment using the following steps
    ```
 
 By following these steps, you'll have a complete debug environment set up with the GMP server, TCS simulator, GNIRSDC Data Manager, and System Manager Server all running in their respective containers or processes.
+
+
+## Troubleshooting
+
+### SSH Authentication Issues on the IRDC Server with the Telops User
+
+If you encounter SSH authentication errors starting or stopping the controller from the System Manager, check the permissions and keys for the telops user. All of these commands are run on the IRDC server (gn-irdc-lp1 or gn-irdc-lp3 for example).
+
+1. Set the correct permissions for the SSH directory and keys:
+
+   ```bash
+   chmod 700 /home/telops/.ssh
+   chmod 600 /home/telops/.ssh/id_rsa
+   chmod 644 /home/telops/.ssh/id_rsa.pub /home/telops/.ssh/authorized_keys
+   ```
+
+2. If the issue persists, you may need to regenerate the SSH key:
+
+   ```bash
+   mv /home/telops/.ssh/id_rsa /home/telops/.ssh/id_rsa.old
+   mv /home/telops/.ssh/id_rsa.pub /home/telops/.ssh/id_rsa.pub.old
+   ssh-keygen -t rsa -b 4096 -f /home/telops/.ssh/id_rsa -N ""
+   ```
+
+3. Update the authorized_keys file with the new public key:
+
+   ```bash
+   cat /home/telops/.ssh/id_rsa.pub > /home/telops/.ssh/authorized_keys
+   ```
+
+4. Restart the system manager:
+
+   ```bash
+   dc-system-manager.sh
+   ```
+
+After performing these steps, try starting the controller again. If you continue to experience issues, please consult the system logs or contact software for support.
 
