@@ -519,6 +519,11 @@ from flask import current_app
 
 last_valid_preview = None
 
+import shutil
+import tempfile
+import os
+import time
+
 @app.route('/preview_latest_fits')
 def preview_latest_fits():
     try:
@@ -531,54 +536,87 @@ def preview_latest_fits():
             return "No FITS files found", 404
         
         latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
-        file_path = os.path.join(fits_dir, latest_file)
+        original_file_path = os.path.join(fits_dir, latest_file)
         current_app.logger.info(f"Latest FITS file: {latest_file}")
 
-        with fits.open(file_path) as hdul:
-            current_app.logger.info(f"FITS file structure: {[hdu.name for hdu in hdul]}")
-            
-            # Try to find the first HDU with data
-            data = None
-            for hdu in hdul:
-                if hdu.data is not None:
-                    data = hdu.data
-                    current_app.logger.info(f"Using data from HDU: {hdu.name}")
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file_path = temp_file.name
+
+        try:
+            # Attempt to copy the file with a timeout
+            start_time = time.time()
+            while time.time() - start_time < 0.1:  # 100ms timeout
+                try:
+                    shutil.copy2(original_file_path, temp_file_path)
                     break
-            
-            if data is None:
-                raise ValueError("No data found in any HDU of the FITS file")
+                except IOError:
+                    time.sleep(0.01)  # Wait 10ms before retrying
+            else:
+                raise TimeoutError("Failed to copy file within timeout")
 
-        current_app.logger.info(f"Data shape: {data.shape}, Data type: {data.dtype}")
+            # Now work with the temporary file copy
+            with fits.open(temp_file_path, memmap=True) as hdul:
+                current_app.logger.info(f"FITS file structure: {[hdu.name for hdu in hdul]}")
+                
+                # Try to find the first HDU with data
+                data = None
+                for hdu in hdul:
+                    if hdu.data is not None:
+                        data = hdu.data
+                        current_app.logger.info(f"Using data from HDU: {hdu.name}")
+                        break
+                
+                if data is None:
+                    raise ValueError("No data found in any HDU of the FITS file")
 
-        # Create a figure and axis
-        fig, ax = plt.subplots(figsize=(10, 8))
+            current_app.logger.info(f"Data shape: {data.shape}, Data type: {data.dtype}")
 
-        # Create an image plot with a colorbar
-        im = ax.imshow(data, cmap='viridis', aspect='auto')
-        plt.colorbar(im, ax=ax, label='Pixel Value')
+            # Create a figure and axis
+            fig, ax = plt.subplots(figsize=(10, 8))
 
-        # Set title and labels
-        ax.set_title(f'Preview of {latest_file}')
-        ax.set_xlabel('X Pixel')
-        ax.set_ylabel('Y Pixel')
+            # Create an image plot with a colorbar
+            im = ax.imshow(data, cmap='viridis', aspect='auto')
+            plt.colorbar(im, ax=ax, label='Pixel Value')
 
-        # Add text with data statistics
-        stats_text = f"Min: {data.min():.2f}\nMax: {data.max():.2f}\nMean: {data.mean():.2f}\nMedian: {np.median(data):.2f}"
-        plt.text(1.05, 0.95, stats_text, transform=ax.transAxes, verticalalignment='top')
+            # Set title and labels
+            ax.set_title(f'Preview of {latest_file}')
+            ax.set_xlabel('X Pixel')
+            ax.set_ylabel('Y Pixel')
 
-        # Save the plot to a bytes buffer
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight')
-        buf.seek(0)
-        plt.close(fig)
+            # Add text with data statistics
+            stats_text = f"Min: {data.min():.2f}\nMax: {data.max():.2f}\nMean: {data.mean():.2f}\nMedian: {np.median(data):.2f}"
+            plt.text(1.05, 0.95, stats_text, transform=ax.transAxes, verticalalignment='top')
 
-        current_app.logger.info("Preview generated successfully")
+            # Save the plot to a bytes buffer
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight')
+            buf.seek(0)
+            plt.close(fig)
 
-        response = send_file(buf, mimetype='image/png')
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '-1'
-        return response
+            current_app.logger.info("Preview generated successfully")
+
+            response = send_file(buf, mimetype='image/png')
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '-1'
+            return response
+
+        except FileNotFoundError:
+            current_app.logger.warning(f"File {latest_file} was deleted before it could be processed")
+            return "File was deleted", 404
+        except TimeoutError as e:
+            current_app.logger.error(f"Timeout while accessing file: {str(e)}")
+            return "File access timeout", 503
+        except Exception as e:
+            current_app.logger.error(f"Error processing file {latest_file}: {str(e)}")
+            return f"Error processing file: {str(e)}", 500
+        finally:
+            # Clean up the temporary file
+            try:
+                os.unlink(temp_file_path)
+            except Exception as e:
+                current_app.logger.error(f"Error deleting temporary file: {str(e)}")
 
     except Exception as e:
         current_app.logger.error(f"Error generating preview: {str(e)}")
