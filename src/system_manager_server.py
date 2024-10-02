@@ -22,6 +22,9 @@ from queue import Queue
 import subprocess
 import markdown2
 import paramiko
+import numpy as np
+import io
+import matplotlib.pyplot as plt
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -142,8 +145,8 @@ def config_page():  # Renamed from 'config' to 'config_page'
 @app.route('/monitoring')
 def monitoring():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-
-    return render_template('monitoring.html', active_tab='monitoring')
+    debug_mode = config_mode == 'DEBUG'
+    return render_template('monitoring.html', active_tab='monitoring', debug_mode=debug_mode)
 
 @app.route('/get_log_messages')
 def get_log_messages():
@@ -502,6 +505,133 @@ def readme():
     html_content = markdown2.markdown(content, extras=["fenced-code-blocks", "tables", "toc"])
     toc = html_content.toc_html
     return render_template('readme.html', active_tab='readme', content=html_content, toc=toc)
+
+import logging
+
+import time
+import os
+from flask import current_app
+
+@app.route('/preview_latest_fits')
+def preview_latest_fits():
+    try:
+        fits_dir = '/readout_data/fits'
+        current_app.logger.info(f"Searching for FITS files in {fits_dir}")
+
+        files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
+        if not files:
+            current_app.logger.warning("No FITS files found in directory")
+            return "No FITS files found", 404
+        
+        latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
+        file_path = os.path.join(fits_dir, latest_file)
+        current_app.logger.info(f"Latest FITS file: {latest_file}")
+
+        with fits.open(file_path) as hdul:
+            current_app.logger.info(f"FITS file structure: {[hdu.name for hdu in hdul]}")
+            
+            # Try to find the first HDU with data
+            data = None
+            for hdu in hdul:
+                if hdu.data is not None:
+                    data = hdu.data
+                    current_app.logger.info(f"Using data from HDU: {hdu.name}")
+                    break
+            
+            if data is None:
+                raise ValueError("No data found in any HDU of the FITS file")
+
+        current_app.logger.info(f"Data shape: {data.shape}, Data type: {data.dtype}")
+
+        # Create a figure and axis
+        fig, ax = plt.subplots(figsize=(10, 8))
+
+        # Create an image plot with a colorbar
+        im = ax.imshow(data, cmap='viridis', aspect='auto')
+        plt.colorbar(im, ax=ax, label='Pixel Value')
+
+        # Set title and labels
+        ax.set_title(f'Preview of {latest_file}')
+        ax.set_xlabel('X Pixel')
+        ax.set_ylabel('Y Pixel')
+
+        # Add text with data statistics
+        stats_text = f"Min: {data.min():.2f}\nMax: {data.max():.2f}\nMean: {data.mean():.2f}\nMedian: {np.median(data):.2f}"
+        plt.text(1.05, 0.95, stats_text, transform=ax.transAxes, verticalalignment='top')
+
+        # Save the plot to a bytes buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        buf.seek(0)
+        plt.close(fig)
+
+        current_app.logger.info("Preview generated successfully")
+
+        response = send_file(buf, mimetype='image/png')
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
+        return response
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating preview: {str(e)}")
+        return f"Error generating preview: {str(e)}", 500
+
+@app.route('/preview')
+def preview():
+    app.logger.debug("Rendering preview template")
+    return render_template('preview.html', active_tab='preview')
+
+last_modified_time = 0
+
+@app.route('/fits_updates')
+def fits_updates():
+    def generate():
+        global last_modified_time
+        while True:
+            fits_dir = '/readout_data/fits'
+            files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
+            if files:
+                latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
+                current_modified_time = os.path.getmtime(os.path.join(fits_dir, latest_file))
+                if current_modified_time > last_modified_time:
+                    last_modified_time = current_modified_time
+                    yield f"data: {latest_file}\n\n"
+            time.sleep(0.1)
+
+    return Response(generate(), content_type='text/event-stream')
+
+def scan_fits_directory():
+    global last_modified_time
+    while True:
+        fits_dir = '/readout_data/fits'
+        files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
+        if files:
+            latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
+            current_modified_time = os.path.getmtime(os.path.join(fits_dir, latest_file))
+            if current_modified_time > last_modified_time:
+                last_modified_time = current_modified_time
+                # You can add any additional processing here if needed
+        time.sleep(0.1)
+
+# Start the background thread
+fits_scan_thread = threading.Thread(target=scan_fits_directory, daemon=True)
+fits_scan_thread.start()
+
+@app.route('/check_latest_fits')
+def check_latest_fits():
+    fits_dir = '/readout_data/fits'
+    files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
+    if not files:
+        return jsonify({"error": "No FITS files found"}), 404
+    
+    latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
+    modified_time = os.path.getmtime(os.path.join(fits_dir, latest_file))
+    
+    return jsonify({
+        "filename": latest_file,
+        "modified_time": modified_time
+    })
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")

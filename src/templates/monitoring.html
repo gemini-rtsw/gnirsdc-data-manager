@@ -2,7 +2,7 @@
 {% block title %}System Monitoring{% endblock %}
 {% block content %}
 <div id="monitoring" class="tabcontent">
-    <h1>System Monitoring</h1>
+    <h1>System Monitoring{% if debug_mode %} - Debug{% endif %}</h1>
     
     <div class="status-grid">
         <div class="status-container">

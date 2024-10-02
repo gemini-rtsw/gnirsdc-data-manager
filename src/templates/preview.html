@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Preview Latest FITS File</h1>
+<div id="image-container">
+    <img id="preview-image" src="{{ url_for('preview_latest_fits') }}" alt="Latest FITS file preview">
+</div>
+<p id="filename"></p>
+<p id="debug-info"></p>
+
+<script>
+    console.log("Script loaded");
+
+    function updatePreview() {
+        const container = document.getElementById('image-container');
+        const debugInfo = document.getElementById('debug-info');
+        const newImg = new Image();
+        newImg.id = 'preview-image';
+        newImg.alt = 'Latest FITS file preview';
+        const newSrc = "{{ url_for('preview_latest_fits') }}?" + new Date().getTime();
+        console.log("Attempting to load image from:", newSrc);
+        newImg.src = newSrc;
+        newImg.onload = function() {
+            console.log("Image loaded successfully");
+            container.innerHTML = '';
+            container.appendChild(newImg);
+            debugInfo.textContent = "Last update: " + new Date().toLocaleTimeString();
+        };
+        newImg.onerror = function() {
+            console.error("Failed to load image:", newSrc);
+            debugInfo.textContent = "Error loading image at " + new Date().toLocaleTimeString();
+            fetch(newSrc)
+                .then(response => response.text())
+                .then(text => {
+                    console.error("Server response:", text);
+                    container.innerHTML = `<pre style="color: red; white-space: pre-wrap;">${text}</pre>`;
+                })
+                .catch(error => {
+                    console.error("Fetch error:", error);
+                    container.innerHTML = '<p style="color: red;">Error fetching image</p>';
+                });
+        };
+    }
+
+    // Update every 5 seconds
+    setInterval(updatePreview, 5000);
+    console.log("Refresh interval set");
+
+    // Initial update
+    updatePreview();
+</script>
+{% endblock %}

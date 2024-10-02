@@ -8,48 +8,86 @@ The GMP (Gemini Master Process) is used for GIAPI (Gemini Instrument Application
 
 ## Quick Start Guide
 
-1. **Power on the ARC Controller**
-   - Ensure the ARC (Astronomical Research Cameras) controller is powered on.
+1. **Ensure the ARC controller is powered on**
+   - Follow the Quick Fix page instructions to power cycle GNIRS DC.
+   - You will see the ARC controller listed on the bootbar.
+   - The status should be green indicating the controller is powered on.
+   - If it is off you can power it on from the bootbar page.
 
 2. **Access the System Manager**
-   - Open a web browser and navigate to `http://gn-irdc-lp3:8080`
+   - Open a web browser and navigate to:
+     ```
+     http://gn-irdc-lp3:8080
+     ```
    - This will open the System Manager interface, showing the Monitoring tab.
 
-3. **If the System Manager doesn't open**
-   - ssh telops@gn-irdc-lp3
-   - Start the System Manager with the following command:
-     ```
-     dc-system-manager.sh
-     ```
-   - Open a web browser and navigate to `http://gn-irdc-lp3:8080`
-   - If the System Manager 
-
-4. **Verify that the DC Software is running**
+3. **Verify that the DC Software is running**
    - On the Monitoring tab, check the "GNIRS DC Health:" display.
    - Ensure that the green heartbeat indicator is blinking.
 
-5. **If the DC is not running**
-   - Locate "Select Action" dropdown menu.
-   - Select "Start Controller".
-   - Wait for the DC to initialize.
-   - Check the "GNIRS DC Health:" display again.
+4. **Initialize the Detector Controller**
+   - On the Monitoring tab, click the "Initialize Controller" button.
+   - Select "Initialize Controller".
+   - Click on the "Apply" button.
+   - The "Controller Initialized:" status indicator should be green.
 
-6. **Initialize the Controller** 
-   - On the Monitoring tab, locate the "Controller Initialization" section.
-   - Locate "Select Action" dropdown menu.
-   - Click the "Initialize Controller" button.
-   - Wait for the initialization process to complete. The status will update to "Initialized" when done.
+5. **Troubleshooting the DC Software**
 
+   - **If the System Manager doesn't open**
+      - SSH into the IRDC server:
+     ```
+     ssh telops@gn-irdc-lp3
+     ```
+      - Start the System Manager with the following command:
+     ```
+     dc-system-manager.sh
+     ```
+      - Open a web browser and navigate to `http://gn-irdc-lp3:8080`
+
+   - **If the DC is not running**
+      - Locate "Select Action" dropdown menu.
+      - Select "Start Controller".
+      - Wait for the DC to initialize.
+      - Check the "GNIRS DC Health:" display again.
+      - It may take a minute but should not take much more than that.
+      - If the DC is still not running, try the following:
+         - Open a terminal and run the following command to SSH into the server:
+     ```
+     ssh telops@gn-irdc-lp3
+     ```
+         - Check the status of the DC software:
+     ```
+     dc-status.sh
+     ```
+         - You should see something like this:
+     ```
+     CONTAINER ID   IMAGE                                                                                              NAMES
+     1ac26040939c   registry...gnirsdc-run:current   "/gnirsdc/entrypoint…"   4 seconds ago   Up 3 seconds             gnirsdc
+     05f3dde51464   registry...gmp-server:current    "/usr/local/bin/entr…"   4 seconds ago   Up 3 seconds             gmp
+     ```
+
+
+      - You should see the "**gnirsdc**" and "**gmp**" containers running
+      - If you don't see this, something is wrong with the DC software.
+      - Start the DC software manually with the following command:
+     ```
+     dc-start.sh
+     ```
+      - Check the status again.
+      - If you still don't see it, contact software for support and check the logs for errors:
+     ```
+     tail -f /readout_data/logs/irdc.log
+     ```
+   
 7. **Set Temperature Override (if needed)**
+   <div style="color: red; font-weight: bold;">
+       Warning: Overriding the temperature interlock can cause damage to the detector.
+   </div>
+
    - Navigate to the Engineering tab by clicking "Engineering" in the top navigation bar.
    - Find the "Temperature Interlock Override" section.
    - Toggle the switch to enable or disable the temperature interlock override.
    - This allows operation even if the detector temperature is outside the normal range.
-
-8. **Start the Controller**
-   - Return to the Monitoring tab.
-   - Locate the "Start/Stop Controller" section.
-   - Click the "Start Controller" button to begin normal operations.
 
 
 ## Detector Controller Usage
