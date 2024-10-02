@@ -37,26 +37,31 @@ build_image:
     - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN 
                    --label "org.opencontainers.image.revision=$CI_COMMIT_SHA"
                    --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev -f $DOCKERFILE_ENV .
-    - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev
+                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:latest
+                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:$CI_COMMIT_SHORT_SHA
+                   -f $DOCKERFILE_ENV .
+    - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:latest
+    - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:$CI_COMMIT_SHORT_SHA
     
     # Build and push run image
     - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN 
                    --label "org.opencontainers.image.revision=$CI_COMMIT_SHA"
                    --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run -f $DOCKERFILE_RUN .
-    - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run
+                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run:latest
+                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run:$CI_COMMIT_SHORT_SHA
+                   -f $DOCKERFILE_RUN .
+    - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run:latest
+    - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run:$CI_COMMIT_SHORT_SHA
     
     # Build and push gmp-server image
     - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN 
                    --label "org.opencontainers.image.revision=$CI_COMMIT_SHA"
                    --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-                   -f Dockerfile.gmp -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server .
-    - docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
-    
-    # Tag and push dev image with commit SHA
-    - docker tag $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:$CI_COMMIT_SHORT_SHA
-    - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:$CI_COMMIT_SHORT_SHA
+                   -f Dockerfile.gmp 
+                   -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:latest
+                   -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:$CI_COMMIT_SHORT_SHA .
+    - docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:latest
+    - docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:$CI_COMMIT_SHORT_SHA
     
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
