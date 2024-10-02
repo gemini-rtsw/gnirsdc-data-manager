@@ -48,7 +48,8 @@ RUN python3.9 -m pip install --no-cache-dir \
     paramiko \
     markdown2  \
     matplotlib \
-    socket
+    socket \
+    psutil
 
 COPY ./pycadcar /pycadcar
 WORKDIR /pycadcar

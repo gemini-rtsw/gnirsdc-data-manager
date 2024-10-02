@@ -27,6 +27,7 @@ import io
 import matplotlib.pyplot as plt
 from paramiko.ssh_exception import SSHException
 import socket
+import shutil
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -687,6 +688,93 @@ def get_hostname():
     except Exception as e:
         logger.error(f"Error getting hostname: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/get_eng_info')
+def get_eng_info():
+    try:
+        disk_space = get_disk_space()
+        dir_sizes = get_directory_sizes()
+        return jsonify({
+            "status": "success",
+            "disk_space": disk_space,
+            "dir_sizes": dir_sizes
+        })
+    except Exception as e:
+        logger.error(f"Error getting engineering info: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+import psutil
+
+def get_disk_space():
+    try:
+        command = "df -h"
+        output, error = run_ssh_command(command)
+        
+        if error:
+            raise Exception(f"Error executing df -h: {error}")
+        
+        lines = output.strip().split('\n')
+        headers = lines[0].split()
+        disk_info = {}
+        
+        for line in lines[1:]:
+            parts = line.split()
+            if len(parts) >= 6:  # Ensure we have all expected fields
+                filesystem = parts[0]
+                size = parts[1]
+                used = parts[2]
+                available = parts[3]
+                use_percent = parts[4]
+                mountpoint = ' '.join(parts[5:])  # Join remaining parts as mountpoint
+                
+                # Convert sizes to GB if possible
+                try:
+                    size_gb = convert_to_gb(size)
+                    used_gb = convert_to_gb(used)
+                    available_gb = convert_to_gb(available)
+                except ValueError:
+                    size_gb = size
+                    used_gb = used
+                    available_gb = available
+                
+                disk_info[mountpoint] = {
+                    'device': filesystem,
+                    'total': size_gb,
+                    'used': used_gb,
+                    'free': available_gb,
+                    'percent_used': use_percent.rstrip('%')
+                }
+        
+        return disk_info
+    except Exception as e:
+        logger.error(f"Error getting disk space: {str(e)}")
+        return {}
+
+def convert_to_gb(size_str):
+    size = float(size_str[:-1])
+    unit = size_str[-1].upper()
+    if unit == 'T':
+        return size * 1024
+    elif unit == 'G':
+        return size
+    elif unit == 'M':
+        return size / 1024
+    elif unit == 'K':
+        return size / (1024 * 1024)
+    else:
+        return size / (1024 * 1024 * 1024)
+
+def get_directory_sizes():
+    base_dir = '/readout_data'
+    dir_sizes = {}
+    
+    for subdir in ['fits', 'logs']:
+        path = os.path.join(base_dir, subdir)
+        if os.path.exists(path):
+            size = subprocess.check_output(['du', '-sh', path]).split()[0].decode('utf-8')
+            dir_sizes[subdir] = size
+    
+    return dir_sizes
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")

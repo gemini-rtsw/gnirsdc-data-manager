@@ -1,11 +1,42 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Engineering Controls</h1>
-<div class="card">
-    <div class="card-body">
-        <h5 class="card-title">Temperature Interlock</h5>
-        <p>Current status: <span id="interlock-status">{{ "Disabled" if interlock_status else "Enabled" }}</span></p>
-        <button id="toggle-interlock" class="btn btn-warning">Toggle Interlock Override</button>
+<h1 class="mb-4">Engineering Controls</h1>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Temperature Interlock</h5>
+            </div>
+            <div class="card-body">
+                <p>Current status: <span id="interlock-status" class="badge bg-{{ 'warning' if interlock_status else 'success' }}">{{ "Disabled" if interlock_status else "Enabled" }}</span></p>
+                <button id="toggle-interlock" class="btn btn-warning">Toggle Interlock Override</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">Disk Space Information</h5>
+            </div>
+            <div class="card-body">
+                <div id="disk-space-info"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">Directory Sizes</h5>
+            </div>
+            <div class="card-body">
+                <div id="directory-sizes"></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -15,7 +46,9 @@ document.getElementById('toggle-interlock').addEventListener('click', function()
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                document.getElementById('interlock-status').textContent = data.new_interlock_status ? 'Disabled' : 'Enabled';
+                const statusElement = document.getElementById('interlock-status');
+                statusElement.textContent = data.new_interlock_status ? 'Disabled' : 'Enabled';
+                statusElement.className = `badge bg-${data.new_interlock_status ? 'warning' : 'success'}`;
             } else {
                 alert('Error: ' + data.message);
             }
@@ -25,5 +58,47 @@ document.getElementById('toggle-interlock').addEventListener('click', function()
             alert('An error occurred while toggling the interlock.');
         });
 });
+
+function updateEngInfo() {
+    fetch('/get_eng_info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                let diskSpaceHtml = '';
+                for (const [mountpoint, info] of Object.entries(data.disk_space)) {
+                    const percentUsed = info.percent_used.toFixed(2);
+                    const barColor = percentUsed > 90 ? 'bg-danger' : percentUsed > 70 ? 'bg-warning' : 'bg-success';
+                    diskSpaceHtml += `
+                        <h6>${mountpoint} (${info.device})</h6>
+                        <div class="progress mb-3" style="height: 25px;">
+                            <div class="progress-bar ${barColor}" role="progressbar" style="width: ${percentUsed}%;" 
+                                 aria-valuenow="${percentUsed}" aria-valuemin="0" aria-valuemax="100">
+                                ${info.used}GB / ${info.total}GB (${percentUsed}% used)
+                            </div>
+                        </div>`;
+                }
+                document.getElementById('disk-space-info').innerHTML = diskSpaceHtml;
+
+                let dirSizesHtml = '<ul class="list-group">';
+                for (const [dir, size] of Object.entries(data.dir_sizes)) {
+                    dirSizesHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                                        /readout_data/${dir}
+                                        <span class="badge bg-primary rounded-pill">${size}</span>
+                                     </li>`;
+                }
+                dirSizesHtml += '</ul>';
+                document.getElementById('directory-sizes').innerHTML = dirSizesHtml;
+            } else {
+                console.error('Error fetching engineering info:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+}
+
+// Update engineering info every 30 seconds
+updateEngInfo();
+setInterval(updateEngInfo, 30000);
 </script>
 {% endblock %}
