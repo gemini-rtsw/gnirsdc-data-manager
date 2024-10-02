@@ -26,6 +26,7 @@ import numpy as np
 import io
 import matplotlib.pyplot as plt
 from paramiko.ssh_exception import SSHException
+import socket
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -677,6 +678,15 @@ def scan_fits_directory():
 # Start the background thread
 fits_scan_thread = threading.Thread(target=scan_fits_directory, daemon=True)
 fits_scan_thread.start()
+
+@app.route('/get_hostname')
+def get_hostname():
+    try:
+        hostname = socket.gethostname()
+        return jsonify({"status": "success", "hostname": hostname})
+    except Exception as e:
+        logger.error(f"Error getting hostname: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")
