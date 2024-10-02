@@ -20,9 +20,32 @@ start_container() {
         echo "The '${container_name}' container does not exist."
     fi
 
+    # Get telops user information
+    TELOPS_UID=$(id -u)
+    TELOPS_GID=$(id -g)
+
     # Run the container
     echo "Running the '${container_name}' container..."
-    output=$(docker run -d --network=host --privileged --name ${container_name} -v /readout_data:/readout_data -v /staging/perm:/staging/perm -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro ${image_name})
+    output=$(docker run -d \
+        --network=host \
+        --privileged \
+        --name ${container_name} \
+        -v /readout_data:/readout_data \
+        -v /staging/perm:/staging/perm \
+        -v /etc/localtime:/etc/localtime:ro \
+        -v /etc/timezone:/etc/timezone:ro \
+        -v /home/telops/.ssh:/home/telops/.ssh:ro \
+        -v /etc/passwd:/etc/passwd:ro \
+        -v /etc/group:/etc/group:ro \
+        -v /etc/shadow:/etc/shadow:ro \
+        -u ${TELOPS_UID}:${TELOPS_GID} \
+        ${image_name})
+
+    # Ensure correct SSH key permissions
+    docker exec ${container_name} chmod 600 /home/telops/.ssh/id_rsa
+
+    # Add localhost to known_hosts
+    docker exec ${container_name} ssh-keyscan -H localhost >> /home/telops/.ssh/known_hosts
 
     # Check if the docker run command executed successfully
     if [ $? -eq 0 ]; then
@@ -60,5 +83,30 @@ gmp_status=$?
 # Start gnirsdc devel container
 docker rm -f gnirsdc
 docker pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev:latest
-docker run -it --network=host --privileged --name gnirsdc -v /readout_data:/readout_data -v /staging/perm:/staging/perm -v /etc/localtime:/etc/localtime:ro -v /etc/timezone:/etc/timezone:ro registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev:latest bash
+
+# Get telops user information
+TELOPS_UID=$(id -u)
+TELOPS_GID=$(id -g)
+
+docker run -it \
+    --network=host \
+    --privileged \
+    --name gnirsdc \
+    -v /readout_data:/readout_data \
+    -v /staging/perm:/staging/perm \
+    -v /etc/localtime:/etc/localtime:ro \
+    -v /etc/timezone:/etc/timezone:ro \
+    -v /home/telops/.ssh:/home/telops/.ssh:ro \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v /etc/group:/etc/group:ro \
+    -v /etc/shadow:/etc/shadow:ro \
+    -u ${TELOPS_UID}:${TELOPS_GID} \
+    registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev:latest bash
+
+# Ensure correct SSH key permissions
+docker exec gnirsdc chmod 600 /home/telops/.ssh/id_rsa
+
+# Add localhost to known_hosts
+docker exec gnirsdc ssh-keyscan -H localhost >> /home/telops/.ssh/known_hosts
+
 gnirsdc_status=$?
