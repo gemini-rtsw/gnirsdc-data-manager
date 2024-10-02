@@ -41,6 +41,7 @@ start_container() {
         -v /etc/group:/etc/group:ro \
         -v /etc/shadow:/etc/shadow:ro \
         -u ${TELOPS_UID}:${TELOPS_GID} \
+        --entrypoint "" \
         ${image_name} ${command})
 
     # Ensure correct SSH key permissions
@@ -94,5 +95,5 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Start system manager server container
-start_container "system_manager_server" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev:latest" "python3 /gnirsdc/src/system_manager_server.py $debug_flag"
+start_container "system_manager_server" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:latest" "python3 /gnirsdc/src/system_manager_server.py $debug_flag"
 system_manager_status=$?
