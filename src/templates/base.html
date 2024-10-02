@@ -41,6 +41,7 @@
         <button class="tablinks {% if active_tab == 'preview' %}active{% endif %}" onclick="location.href='{{ url_for('preview') }}'">Preview Latest</button>
         <button class="tablinks {% if active_tab == 'config' %}active{% endif %}" onclick="location.href='{{ url_for('config_page') }}'">Config Editor</button>
         <button class="tablinks {% if active_tab == 'logs' %}active{% endif %}" onclick="location.href='{{ url_for('logs') }}'">Logs</button>
+        <button class="tablinks {% if active_tab == 'engineering' %}active{% endif %}" onclick="location.href='{{ url_for('engineering') }}'">Engineering</button>
         <button class="tablinks {% if active_tab == 'readme' %}active{% endif %}" onclick="location.href='{{ url_for('readme') }}'">Help</button>
     </div>
 

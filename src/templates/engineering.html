@@ -68,14 +68,21 @@ function updateEngInfo() {
                 let diskSpaceHtml = '';
                 if (data.disk_space && Object.keys(data.disk_space).length > 0) {
                     diskSpaceHtml = '<div class="table-responsive"><table class="table table-sm table-striped">';
-                    diskSpaceHtml += '<thead><tr><th>Mountpoint</th><th>Device</th><th>Usage</th></tr></thead><tbody>';
+                    diskSpaceHtml += '<thead><tr><th>Mountpoint</th><th>Device</th><th>Used</th><th>Total</th><th>Percent Used</th></tr></thead><tbody>';
                     for (const [mountpoint, info] of Object.entries(data.disk_space)) {
-                        const percentUsed = typeof info.percent_used === 'number' ? info.percent_used.toFixed(2) : 'N/A';
+                        const used = parseFloat(info.used);
+                        const total = parseFloat(info.total);
+                        let percentUsed = 'N/A';
+                        if (!isNaN(used) && !isNaN(total) && total > 0) {
+                            percentUsed = ((used / total) * 100).toFixed(2);
+                        }
                         diskSpaceHtml += `
                             <tr>
                                 <td>${mountpoint}</td>
                                 <td>${info.device}</td>
-                                <td>${info.used}GB / ${info.total}GB (${percentUsed}% used)</td>
+                                <td>${info.used}GB</td>
+                                <td>${info.total}GB</td>
+                                <td>${percentUsed}%</td>
                             </tr>`;
                     }
                     diskSpaceHtml += '</tbody></table></div>';
