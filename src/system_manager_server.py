@@ -768,11 +768,16 @@ def get_directory_sizes():
     base_dir = '/readout_data'
     dir_sizes = {}
     
-    for subdir in ['fits', 'logs']:
-        path = os.path.join(base_dir, subdir)
-        if os.path.exists(path):
+    try:
+        # List all subdirectories in the base_dir
+        subdirs = [d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
+        
+        for subdir in subdirs:
+            path = os.path.join(base_dir, subdir)
             size = subprocess.check_output(['du', '-sh', path]).split()[0].decode('utf-8')
             dir_sizes[subdir] = size
+    except Exception as e:
+        logger.error(f"Error getting directory sizes: {str(e)}")
     
     return dir_sizes
 
