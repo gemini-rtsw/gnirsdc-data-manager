@@ -512,6 +512,8 @@ import time
 import os
 from flask import current_app
 
+last_valid_preview = None
+
 @app.route('/preview_latest_fits')
 def preview_latest_fits():
     try:
@@ -577,6 +579,21 @@ def preview_latest_fits():
         current_app.logger.error(f"Error generating preview: {str(e)}")
         return f"Error generating preview: {str(e)}", 500
 
+@app.route('/check_latest_fits')
+def check_latest_fits():
+    fits_dir = '/readout_data/fits'
+    files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
+    if not files:
+        return jsonify({"error": "No FITS files found"}), 404
+    
+    latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
+    modified_time = os.path.getmtime(os.path.join(fits_dir, latest_file))
+    
+    return jsonify({
+        "filename": latest_file,
+        "modified_time": modified_time
+    })
+
 @app.route('/preview')
 def preview():
     app.logger.debug("Rendering preview template")
@@ -617,21 +634,6 @@ def scan_fits_directory():
 # Start the background thread
 fits_scan_thread = threading.Thread(target=scan_fits_directory, daemon=True)
 fits_scan_thread.start()
-
-@app.route('/check_latest_fits')
-def check_latest_fits():
-    fits_dir = '/readout_data/fits'
-    files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
-    if not files:
-        return jsonify({"error": "No FITS files found"}), 404
-    
-    latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
-    modified_time = os.path.getmtime(os.path.join(fits_dir, latest_file))
-    
-    return jsonify({
-        "filename": latest_file,
-        "modified_time": modified_time
-    })
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")

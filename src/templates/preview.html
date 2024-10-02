@@ -2,7 +2,7 @@
 {% block content %}
 <h1>Preview Latest FITS File</h1>
 <div id="image-container">
-    <img id="preview-image" src="{{ url_for('preview_latest_fits') }}" alt="Latest FITS file preview">
+    <img id="preview-image" alt="Latest FITS file preview">
 </div>
 <p id="filename"></p>
 <p id="debug-info"></p>
@@ -10,39 +10,64 @@
 <script>
     console.log("Script loaded");
 
+    let lastKnownFilename = null;
+    let lastModifiedTime = 0;  // Add this line to track the last modified time
+
     function updatePreview() {
         const container = document.getElementById('image-container');
         const debugInfo = document.getElementById('debug-info');
-        const newImg = new Image();
-        newImg.id = 'preview-image';
-        newImg.alt = 'Latest FITS file preview';
-        const newSrc = "{{ url_for('preview_latest_fits') }}?" + new Date().getTime();
-        console.log("Attempting to load image from:", newSrc);
-        newImg.src = newSrc;
-        newImg.onload = function() {
-            console.log("Image loaded successfully");
-            container.innerHTML = '';
-            container.appendChild(newImg);
-            debugInfo.textContent = "Last update: " + new Date().toLocaleTimeString();
-        };
-        newImg.onerror = function() {
-            console.error("Failed to load image:", newSrc);
-            debugInfo.textContent = "Error loading image at " + new Date().toLocaleTimeString();
-            fetch(newSrc)
-                .then(response => response.text())
-                .then(text => {
-                    console.error("Server response:", text);
-                    container.innerHTML = `<pre style="color: red; white-space: pre-wrap;">${text}</pre>`;
-                })
-                .catch(error => {
-                    console.error("Fetch error:", error);
-                    container.innerHTML = '<p style="color: red;">Error fetching image</p>';
-                });
-        };
+        const filenameElement = document.getElementById('filename');
+        const currentImage = document.getElementById('preview-image');
+
+        fetch("{{ url_for('check_latest_fits') }}")
+            .then(response => response.json())
+            .then(data => {
+                // Change this condition to check if the new file is more recent
+                if (data.modified_time > lastModifiedTime) {
+                    console.log("New file detected, updating preview");
+                    const newSrc = "{{ url_for('preview_latest_fits') }}?" + new Date().getTime();
+                    console.log("Attempting to load image from:", newSrc);
+                    
+                    const tempImg = new Image();
+                    tempImg.onload = function() {
+                        console.log("Image loaded successfully");
+                        currentImage.src = newSrc;
+                        lastKnownFilename = data.filename;
+                        lastModifiedTime = data.modified_time;  // Update the last modified time
+                        filenameElement.textContent = "Current file: " + data.filename;
+                        debugInfo.textContent = "Last update: " + new Date().toLocaleTimeString();
+                    };
+                    tempImg.onerror = function() {
+                        console.error("Failed to load image:", newSrc);
+                        debugInfo.textContent = "Error loading image at " + new Date().toLocaleTimeString();
+                    };
+                    tempImg.src = newSrc;
+                } else {
+                    console.log("No new file detected, keeping current preview");
+                }
+            })
+            .catch(error => {
+                console.error("Error checking for latest FITS file:", error);
+                debugInfo.textContent = "Error checking for latest FITS file";
+            });
+    }
+
+    // Set initial image and last modified time
+    window.onload = function() {
+        const currentImage = document.getElementById('preview-image');
+        currentImage.src = "{{ url_for('preview_latest_fits') }}";
+        
+        // Add this fetch to get the initial last modified time
+        fetch("{{ url_for('check_latest_fits') }}")
+            .then(response => response.json())
+            .then(data => {
+                lastModifiedTime = data.modified_time;
+                lastKnownFilename = data.filename;
+            });
     }
 
     // Update every 5 seconds
-    setInterval(updatePreview, 5000);
+    setInterval(updatePreview, 500);
     console.log("Refresh interval set");
 
     // Initial update
