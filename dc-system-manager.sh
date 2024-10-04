@@ -95,5 +95,5 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Start system manager server container
-start_container "system_manager_server" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:latest" "python3 /gnirsdc/src/system_manager_server.py $debug_flag"
+start_container "system_manager_server" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:latest" "python3 /gnirsdc/src/system_manager_server.py ${debug_flag}"
 system_manager_status=$?
