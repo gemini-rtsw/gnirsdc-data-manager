@@ -2,20 +2,54 @@
 {% block content %}
 <h1>FITS Files</h1>
 <p><a href="{{ url_for('preview') }}">Preview Latest FITS File</a></p>
-<style>
-    table {
-        width: 100%;
-        border-collapse: collapse;
+
+<!-- Add date range form and download button in the same row -->
+<div class="form-row">
+    <form method="GET" action="{{ url_for('fits_files') }}" class="date-filter-form">
+        <label for="start_date">Start Date:</label>
+        <input type="date" id="start_date" name="start_date" value="{{ start_date or '' }}">
+        
+        <label for="end_date">End Date:</label>
+        <input type="date" id="end_date" name="end_date" value="{{ end_date or '' }}">
+        
+        <input type="submit" value="Filter" class="btn btn-primary">
+    </form>
     
-    th, td {
-        padding: 8px;
-        text-align: left;
-        border-bottom: 1px solid #ddd;
+    <a href="{{ url_for('download_fits', start_date=start_date, end_date=end_date) }}" class="btn btn-secondary">Download</a>
+</div>
+
+<style>
+    .form-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
     }
-    th {
-        background-color: #e0e0e0;
-        color: #333;
-        font-weight: bold;
+    .date-filter-form {
+        display: flex;
+        align-items: center;
+        margin-right: 10px;
+    }
+    .date-filter-form label,
+    .date-filter-form input {
+        margin-right: 10px;
+    }
+    .btn {
+        display: inline-block;
+        padding: 8px 15px;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        border: none;
+        cursor: pointer;
+    }
+    .btn-primary {
+        background-color: #007bff;
+    }
+    .btn-secondary {
+        background-color: #6c757d;
+    }
+    .btn:hover {
+        opacity: 0.9;
     }
 </style>
 <table>

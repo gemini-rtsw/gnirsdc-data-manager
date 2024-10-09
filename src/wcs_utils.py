@@ -69,10 +69,10 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     logger.log(PRINT, f"Extracted track_dec: {track_dec} degrees")
     logger.log(PRINT, f"Extracted track_frame: {track_frame}")
 
-    # Improved regex to handle zero values
-    epoch_match = re.match(r'J?(0|[1-9]\d*)(\.\d*)?', tcs_context['track_equinox'])
+    # Updated regex to handle more decimal places
+    epoch_match = re.match(r'J?(\d+(?:\.\d+)?)', tcs_context['track_equinox'])
     if epoch_match:
-        track_equinox = float(epoch_match.group())
+        track_equinox = float(epoch_match.group(1))
     else:
         # Handle the case when the telescope is parked or the format is unexpected
         track_equinox = 0.0

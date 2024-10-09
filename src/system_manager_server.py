@@ -28,6 +28,8 @@ import matplotlib.pyplot as plt
 from paramiko.ssh_exception import SSHException
 import socket
 import shutil
+import zipfile
+from io import BytesIO
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -192,10 +194,16 @@ def save():
         config.write(configfile)
     return redirect(url_for('index'))
 
+from datetime import datetime, timedelta
+
 @app.route('/fits')
 def fits_files():
     staging_dir = config[config_mode].get('STAGING_DIR', '/staging/perm')
     readout_dir = config[config_mode].get('READOUT_DIR', '/readout_data/fits')
+    
+    # Get date range parameters
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
     
     all_files = []
     
@@ -214,17 +222,32 @@ def fits_files():
     for f in all_files:
         full_path = os.path.join(staging_dir if f.startswith('staging') else readout_dir, os.path.basename(f))
         stat = os.stat(full_path)
-        files_info.append({
-            'display_path': f,
-            'full_path': full_path,
-            'size': stat.st_size,
-            'mtime': datetime.datetime.fromtimestamp(stat.st_mtime)
-        })
+        file_mtime = datetime.fromtimestamp(stat.st_mtime)
+        
+        # Apply date filter if both start and end dates are provided
+        if start_date and end_date:
+            start = datetime.strptime(start_date, '%Y-%m-%d')
+            end = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)  # Include the entire end date
+            if start <= file_mtime < end:
+                files_info.append({
+                    'display_path': f,
+                    'full_path': full_path,
+                    'size': stat.st_size,
+                    'mtime': file_mtime
+                })
+        else:
+            files_info.append({
+                'display_path': f,
+                'full_path': full_path,
+                'size': stat.st_size,
+                'mtime': file_mtime
+            })
     
     # Sort files by modification time
     files_info.sort(key=lambda x: x['mtime'], reverse=True)
     
-    return render_template('fits_files.html', active_tab='fits', fits_files=files_info)
+    return render_template('fits_files.html', active_tab='fits', fits_files=files_info,
+                           start_date=start_date, end_date=end_date)
 
 @app.route('/fits/<path:filename>')
 def view_fits(filename):
@@ -586,10 +609,6 @@ def preview_latest_fits():
             ax.set_xlabel('X Pixel')
             ax.set_ylabel('Y Pixel')
 
-            # Add text with data statistics
-            stats_text = f"Min: {data.min():.2f}\nMax: {data.max():.2f}\nMean: {data.mean():.2f}\nMedian: {np.median(data):.2f}"
-            plt.text(1.05, 0.95, stats_text, transform=ax.transAxes, verticalalignment='top')
-
             # Save the plot to a bytes buffer
             buf = io.BytesIO()
             plt.savefig(buf, format='png', bbox_inches='tight')
@@ -780,6 +799,52 @@ def get_directory_sizes():
         logger.error(f"Error getting directory sizes: {str(e)}")
     
     return dir_sizes
+
+@app.route('/download_fits')
+def download_fits():
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    # Reuse the logic from fits_files() to get the filtered list of files
+    staging_dir = config[config_mode].get('STAGING_DIR', '/staging/perm')
+    readout_dir = config[config_mode].get('READOUT_DIR', '/readout_data/fits')
+    
+    all_files = []
+    if os.path.exists(staging_dir):
+        staging_files = [os.path.join('staging', f) for f in os.listdir(staging_dir) if f.endswith('.fits')]
+        all_files.extend(staging_files)
+    if os.path.exists(readout_dir):
+        readout_files = [os.path.join('readout', f) for f in os.listdir(readout_dir) if f.endswith('.fits')]
+        all_files.extend(readout_files)
+    
+    files_to_download = []
+    for f in all_files:
+        full_path = os.path.join(staging_dir if f.startswith('staging') else readout_dir, os.path.basename(f))
+        stat = os.stat(full_path)
+        file_mtime = datetime.fromtimestamp(stat.st_mtime)
+        
+        if start_date and end_date:
+            start = datetime.strptime(start_date, '%Y-%m-%d')
+            end = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+            if start <= file_mtime < end:
+                files_to_download.append((f, full_path))
+        else:
+            files_to_download.append((f, full_path))
+    
+    # Create a ZIP file in memory
+    memory_file = BytesIO()
+    with zipfile.ZipFile(memory_file, 'w') as zf:
+        for file_name, file_path in files_to_download:
+            zf.write(file_path, file_name)
+    
+    memory_file.seek(0)
+    
+    return send_file(
+        memory_file,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name='fits_files.zip'
+    )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")
