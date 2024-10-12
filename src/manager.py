@@ -286,12 +286,14 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
         hdulist.append(fits.ImageHDU(data=primary_data, header=ext_header))
 
         if include_eng == True:
-              for fs_n in range(lrns):
-                   ext_header['EXTNAME'] = f'R{fs_n+1:02}'
-                   hdulist.append(fits.ImageHDU(processor.unscramble(raw_reshaped[fs_n]), ext_header))
-              for index, fs_n in enumerate(range(lrns, lrns*2)):
-                   ext_header['EXTNAME'] = f'S{index+1:02}'
-                   hdulist.append(fits.ImageHDU(processor.unscramble(raw_reshaped[fs_n]), ext_header))
+            for fs_n in range(lrns * 2):  # This covers both reference and signal reads
+                is_signal = fs_n >= lrns
+                read_type = 'S' if is_signal else 'R'
+                index = fs_n - lrns if is_signal else fs_n
+        
+                ext_header['EXTNAME'] = f'{read_type}{index+1:02}'
+                hdulist.append(fits.ImageHDU(processor.unscramble(raw_reshaped[fs_n]), ext_header))
+
     else:
         processor = Processor(shift_delta=0, full_frame=True)
         raw_reshaped = data.reshape((lrns * 2, 512, 2048 * ndavgs))
@@ -313,27 +315,19 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
         hdulist.append(fits.ImageHDU(data=primary_data, header=ext_header))
 
         if include_eng == True:
-             # Separate the samples
-             basic_cols = np.arange(32, dtype=int)
-             offsets = (np.arange(64) * (32 * ndavgs))[:,None]
-             cols_in_ads = (basic_cols + offsets).ravel()
-             if lrns == 1:
-                  for n, ads in enumerate([raw_reshaped[0][:,cols_in_ads + (32 * sample)] for sample in range(ndavgs)]):
-                       ext_header['EXTNAME'] = f'R{fs_n+1:02}'
-                       hdulist.append(fits.ImageHDU(processor.unscramble(ads), ext_header))
-                  for n, ads in enumerate([raw_reshaped[1][:,cols_in_ads + (32 * sample)] for sample in range(ndavgs)]):
-                       ext_header['EXTNAME'] = f'S{index+1:02}'
-                       hdulist.append(fits.ImageHDU(processor.unscramble(ads), ext_header))
-             else:
-                  for fs_n in range(lrns):
-                       for n, ads in enumerate([raw_reshaped[fs_n][:,cols_in_ads + (32 * sample)] for sample in range(ndavgs)]):
-                             ext_header['EXTNAME'] = f'R{fs_n+1:02}'
-                             hdulist.append(fits.ImageHDU(processor.unscramble(ads), ext_header))
-                  for fs_n in range(lrns, lrns*2):
-                       index = fs_n - lrns
-                       for n, ads in enumerate([raw_reshaped[fs_n][:,cols_in_ads + (32 * sample)] for sample in range(ndavgs)]):
-                             ext_header['EXTNAME'] = f'S{index+1:02}'
-                             hdulist.append(fits.ImageHDU(processor.unscramble(ads), ext_header))
+            # Separate the samples
+            basic_cols = np.arange(32, dtype=int)
+            offsets = (np.arange(64) * (32 * ndavgs))[:,None]
+            cols_in_ads = (basic_cols + offsets).ravel()
+
+            for fs_n in range(lrns * 2):  # This covers both reference and signal reads
+                is_signal = fs_n >= lrns
+                read_type = 'S' if is_signal else 'R'
+                index = fs_n - lrns if is_signal else fs_n
+            
+                for fs_n, ads in enumerate([raw_reshaped[fs_n][:,cols_in_ads + (32 * sample)] for sample in range(ndavgs)]):
+                    ext_header['EXTNAME'] = f'{read_type}{index+1:02}'
+                    hdulist.append(fits.ImageHDU(processor.unscramble(ads), ext_header))
 
 class TimingMeasurement:
     def __init__(self, name, value):
