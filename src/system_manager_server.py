@@ -67,7 +67,7 @@ ctx = Context()
 
 # Global variables
 log_messages = []
-MAX_LOG_MESSAGES = 100
+MAX_LOG_MESSAGES = 10000
 clients = set()
 clients_lock = threading.Lock()
 

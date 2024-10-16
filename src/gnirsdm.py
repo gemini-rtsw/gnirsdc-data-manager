@@ -52,6 +52,9 @@ from gnirsutil import config, config_mode, DEBUG_MODE
 from logging import getLogger
 from logging_config import set_log_message_func, set_custom_handler_level, IRDC_DEBUG, log_levels
 
+# Global logger
+gnirs_logger = getLogger('GNIRSDC')
+
 WORKING_DIR = os.getcwd()
 os.environ['EPICS_CA_ADDR_LIST'] = config[config_mode].get('EPICS_CA_ADDR_LIST')
 
@@ -362,6 +365,9 @@ class GnirsDataManagerIOC(PVGroup):
         if self.log_message.value != message:
             await self.log_datetime.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             await self.log_message.write(message)
+            
+            # Use the global logger
+            gnirs_logger.print(message)
 
 #-----------------------------------------------------------------------------
     archive_fits = pvproperty(value=1, dtype = ChannelType.INT) 

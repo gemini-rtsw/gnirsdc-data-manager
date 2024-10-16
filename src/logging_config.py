@@ -78,11 +78,18 @@ class TeeStream:
     def flush(self):
         self.original_stream.flush()
 
+# Add this new function
+def log_message_to_logger(message):
+    logger = logging.getLogger('GNIRSDC')
+    logger.info(message)
+
+# Modify the CustomHandler class
 class CustomHandler(logging.Handler):
     def __init__(self, loop=None):
         super().__init__()
-        self.log_message_func = None
-        self.loop = loop  # Store the event loop
+        self.log_message_func = log_message_to_logger  # Set default function
+        self.loop = loop
+        self.is_emitting = False
 
     def set_log_message_func(self, func, loop=None):
         self.log_message_func = func
@@ -90,14 +97,16 @@ class CustomHandler(logging.Handler):
             self.loop = loop
 
     def emit(self, record):
-        if self.log_message_func and record.levelno == LOG_MESSAGE:
-            message = self.format(record)
-            if self.loop and self.loop.is_running():
-                # Schedule the coroutine on the provided event loop
-                asyncio.run_coroutine_threadsafe(self.log_message_func(message), self.loop)
-            else:
-                # Run the coroutine in a new event loop if no event loop is running
-                asyncio.run(self.log_message_func(message))
+        if self.is_emitting:
+            return
+
+        self.is_emitting = True
+        try:
+            if self.log_message_func:
+                message = self.format(record)
+                self.log_message_func(message)
+        finally:
+            self.is_emitting = False
 
 # Global variable to store the custom handler
 custom_handler = None
