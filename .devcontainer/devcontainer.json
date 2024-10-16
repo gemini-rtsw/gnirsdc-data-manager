@@ -5,7 +5,7 @@
     "runArgs": [
         "-it",
         "--network=host",
-        "-v", "${env:HOME}/.ssh:/root/.ssh:ro",
+        "-v", "${env:HOME}/.ssh:/root/.ssh:rw",
         "-v", "${env:HOME}/irdc_data/readout_data:/readout_data:rw",
         "-v", "/etc/localtime:/etc/localtime:ro",
         "-v", "/etc/timezone:/etc/timezone:ro",
