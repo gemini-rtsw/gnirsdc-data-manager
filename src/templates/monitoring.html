@@ -461,14 +461,18 @@
     
     .button-group {
         display: flex;
-        align-items: center;
+        align-items: stretch; /* Changed from center to stretch */
         gap: 10px;
+        height: 38px; /* Set a fixed height for the entire group */
     }
 
     .button-group .btn {
-        height: 38px;  // Set a specific height for buttons in the group
-        line-height: 1.5;  // Adjust line height for vertical centering
-        padding: 0.25rem 0.5rem;  // Reduced button padding
+        height: 100%; /* Make buttons fill the height of the container */
+        line-height: 1.5;
+        padding: 0.375rem 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .narrow-select {
@@ -697,17 +701,29 @@
 
     .button-group {
         display: flex;
-        align-items: center;
+        align-items: stretch; /* Changed from center to stretch */
         gap: 10px;
+        height: 38px; /* Set a fixed height for the entire group */
+    }
+
+    .button-group .btn {
+        height: 100%; /* Make buttons fill the height of the container */
+        line-height: 1.5;
+        padding: 0.375rem 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .progress-container {
         flex-grow: 1;
-        height: 20px;
+        height: 100%; /* Make it fill the height of the container */
         background-color: #f0f0f0;
-        border-radius: 10px;
+        border-radius: 4px;
         overflow: hidden;
         position: relative;
+        display: flex;
+        align-items: center;
     }
 
     .progress-bar {
@@ -717,17 +733,11 @@
         transition: width 0.5s ease-in-out;
     }
 
-    .progress-bar.reset {
-        transition: none;
-    }
-
     #obsProgressText {
         position: absolute;
-        right: 5px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 12px;
+        right: 10px;
         color: #333;
+        z-index: 1;
     }
 
     #startIntegrationBtn:disabled {
@@ -784,12 +794,21 @@
         }
     }
 
+    let isUserScrolled = false;
+
+    fileLogMessagesTextarea.addEventListener('scroll', function() {
+        isUserScrolled = this.scrollTop + this.clientHeight < this.scrollHeight;
+    });
+
     function updateFileLog() {
         fetch('/get_file_log')
             .then(response => response.text())
             .then(data => {
+                const wasScrolledToBottom = !isUserScrolled;
                 fileLogMessagesTextarea.value = data;
-                fileLogMessagesTextarea.scrollTop = fileLogMessagesTextarea.scrollHeight;
+                if (wasScrolledToBottom) {
+                    fileLogMessagesTextarea.scrollTop = fileLogMessagesTextarea.scrollHeight;
+                }
             })
             .catch(error => console.error('Error fetching file log:', error));
     }
@@ -798,24 +817,26 @@
         const progressBar = document.getElementById('obsProgressBar');
         const progressText = document.getElementById('obsProgressText');
         
-        if (rdout === 0) {
+        if (rdout <= 0) {
             progress = 0;
-            progressBar.classList.add('reset');
+            progressBar.style.transition = 'none';  // Disable transition
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', 0);
+            progressText.textContent = '0%';
             startIntegrationBtn.disabled = false;
             startIntegrationBtn.classList.remove('disabled');
+            
+            // Force a reflow to ensure the changes take effect immediately
+            void progressBar.offsetWidth;
+            
+            // Re-enable transition for future updates
+            progressBar.style.transition = 'width 0.5s ease-in-out';
         } else {
-            progressBar.classList.remove('reset');
+            progressBar.style.width = `${progress}%`;
+            progressBar.setAttribute('aria-valuenow', progress);
+            progressText.textContent = `${Math.round(progress)}%`;
             startIntegrationBtn.disabled = true;
             startIntegrationBtn.classList.add('disabled');
-        }
-        
-        progressBar.style.width = `${progress}%`;
-        progressBar.setAttribute('aria-valuenow', progress);
-        progressText.textContent = `${Math.round(progress)}%`;
-
-        // Force a reflow to ensure the 'reset' class takes effect immediately
-        if (rdout === 0) {
-            void progressBar.offsetWidth;
         }
     }
 
