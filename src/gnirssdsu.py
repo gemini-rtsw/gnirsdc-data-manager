@@ -260,7 +260,7 @@ class ObserveCAD(GnirsCAD):
 
                     # Run countdown_timer in a separate thread to prevent blocking
                     exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, int(self.p.obsSetupD.value), int(self.p.obsSetupC.value))
-                    asyncio.create_task(self.countdown_timer(self.p.exposureTime.value))
+                    asyncio.create_task(self.countdown_timer(exposure_delay))
 
                     await self.start_async_exposure()
                 
