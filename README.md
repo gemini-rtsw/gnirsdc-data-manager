@@ -605,6 +605,10 @@ For debugging purposes, you can set up the environment using the following steps
 
 1. **Start the GMP Server:**
    Run the following command to start the GMP (Gemini Master Process) server in a Docker container:
+   ```bash
+   dc-start-gmp.sh
+   ```
+   or
 
    ```bash
    docker run -d --network=host --name gmp \
@@ -617,6 +621,12 @@ For debugging purposes, you can set up the environment using the following steps
 
 2. **Start the GNIRSDC Development Container:**
    Launch the GNIRSDC development container with the following command:
+
+   ```bash
+   dc-devel.sh
+   ```
+
+   or
 
    ```bash
    docker run -itd --name gnirsdc-dev --privileged --network=host \
@@ -636,17 +646,18 @@ For debugging purposes, you can set up the environment using the following steps
 4. **Start the GNIRSDC Data Manager:**
    In the same container, run the GNIRSDC Data Manager in debug mode:
 
-   ```bash
-   python3 src/gnirsdm.py --debug --top tgnirs
-   ```
-
-   Before running this command, you need to set up the GIAPI-GLUE environment:
+   Set up the GIAPI-GLUE environment:
 
    ```bash
    cd giapi-glue-cc
    source defineGiapiglueEnv.sh
    cd ..
+   ```   
+
+   ```bash
+   python3 src/gnirsdm.py --debug --top tgnirs
    ```
+
 
 5. **Launch the System Manager Server:**
    Finally, start the System Manager Server in debug mode:
