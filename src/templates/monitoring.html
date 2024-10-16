@@ -816,6 +816,7 @@
     function updateObsProgress(rdout, progress) {
         const progressBar = document.getElementById('obsProgressBar');
         const progressText = document.getElementById('obsProgressText');
+        const startIntegrationBtn = document.getElementById('startIntegrationBtn');
         
         if (rdout <= 0) {
             progress = 0;
@@ -823,8 +824,9 @@
             progressBar.style.width = '0%';
             progressBar.setAttribute('aria-valuenow', 0);
             progressText.textContent = '0%';
-            startIntegrationBtn.disabled = false;
-            startIntegrationBtn.classList.remove('disabled');
+            startIntegrationBtn.textContent = 'Start Integration';
+            startIntegrationBtn.classList.remove('btn-danger');
+            startIntegrationBtn.classList.add('btn-primary');
             
             // Force a reflow to ensure the changes take effect immediately
             void progressBar.offsetWidth;
@@ -835,8 +837,9 @@
             progressBar.style.width = `${progress}%`;
             progressBar.setAttribute('aria-valuenow', progress);
             progressText.textContent = `${Math.round(progress)}%`;
-            startIntegrationBtn.disabled = true;
-            startIntegrationBtn.classList.add('disabled');
+            startIntegrationBtn.textContent = 'Abort';
+            startIntegrationBtn.classList.remove('btn-primary');
+            startIntegrationBtn.classList.add('btn-danger');
         }
     }
 
@@ -1016,18 +1019,31 @@
     // Call setupSSE initially
     setupSSE();
 
-    // Add event listener for the Start Integration button
+    // Update the event listener for the Start Integration / Abort button
     document.getElementById('startIntegrationBtn').addEventListener('click', function() {
-        fetch('/start_integration', {method: 'POST'})
-            .then(response => response.json())
-            .then(data => {
-                if (data.status !== 'success') {
-                    console.error('Error:', data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+        if (this.textContent === 'Start Integration') {
+            fetch('/start_integration', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status !== 'success') {
+                        console.error('Error:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        } else if (this.textContent === 'Abort') {
+            fetch('/abort_integration', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status !== 'success') {
+                        console.error('Error:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
     });
 
     // Updated event listener for the integration parameters form

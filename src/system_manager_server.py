@@ -330,6 +330,16 @@ def start_integration():
         logger.error(f"Error starting integration: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/abort_integration', methods=['POST'])
+def abort_integration():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        caput(f'{top_name}:dc:abort.DIR', "MARK", wait=True)
+        caput(f'{top_name}:dc:apply.DIR', "START")
+        return jsonify({'status': 'success', 'message': 'Integration aborted'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
 @app.route('/set_integration_params', methods=['POST'])
 def set_integration_params():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
