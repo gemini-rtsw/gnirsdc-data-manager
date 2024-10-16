@@ -381,6 +381,9 @@ def get_all_pvs():
             detector_bias_display = "N/A"
             bias_mode = "UNKNOWN"
 
+        rdout = caget(f'{top_name}:sad:dc:rdout')
+        obs_progress = caget(f'{top_name}:sad:dc:obsProgress')
+
         pvs = {
             'top_name': top_name,
             'heartbeat': caget(f'{top_name}:heartbeat'),
@@ -398,6 +401,8 @@ def get_all_pvs():
             'sdsu_state': caget(f'{top_name}:dc:sdsuState', as_string=True),
             'coadds': caget(f'{top_name}:dc:coadds.VAL'),
             'ntp_time': caget(f'{top_name}:ntp_time'),
+            'rdout': rdout,
+            'obs_progress': obs_progress if rdout != 0 else 0,
         }
         return jsonify({"status": "success", "pvs": pvs})
     except Exception as e:

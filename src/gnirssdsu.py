@@ -358,32 +358,37 @@ class ObserveCAD(GnirsCAD):
 
 
 
-    async def countdown_timer(self, total_time):
+    async def countdown_timer(self, single_readout_time):
+        if single_readout_time <= 0.2:  # about minimum readout time 
+            single_readout_time = 0.2
 
-        if total_time <= 0.2: # about minimum readout time 
-            total_time = 0.2
+        total_coadds = int(self.p.coaddsVAL.value)
+        total_time = single_readout_time * total_coadds
+        start_time = time.time()
 
-        coadds_completed = 0
+        while self.p.rdout.value > 0:
+            current_time = time.time()
+            elapsed_time = current_time - start_time
+            remaining_time = max(total_time - elapsed_time, 0)
 
-        while self.p.rdout.value: # keep looping if rdout is true, if time is up and rdout true then we are doing coadds 
+            # Update timeLeft
+            await self.p.timeLeft.write(str(remaining_time))
 
-            start_time = time.time()
+            # Calculate and update total progress
+            total_progress = min((elapsed_time / total_time) * 100, 100)
+            await self.p.obsProgress.write(total_progress)
 
-            while True:
-                current_time = time.time()
-                elapsed_time = current_time - start_time
-                remaining_time = total_time - elapsed_time
+            # Calculate and update coadd progress
+            coadds_completed = min(int(elapsed_time / single_readout_time), total_coadds)
+            coadd_progress = (coadds_completed / total_coadds) * 100
+            await self.p.coaddProgress.write(coadd_progress)
 
-                await self.p.timeLeft.write(str(max(remaining_time, 0)))
-                await self.p.obsProgress.write(100 - (max(remaining_time, 0) / total_time) * 100)
+            await asyncio.sleep(0.1)  # Update every 0.1 seconds
 
-                await asyncio.sleep(0.05)  
-
-                if remaining_time <= 0 or self.p.rdout.value <= 0:
-                    break
-
-            coadds_completed += 1
-            await self.p.coaddProgress.write(100 * coadds_completed / self.p.coaddsVAL.value)
+        # Ensure final values are set to 100% when complete
+        await self.p.obsProgress.write(100)
+        await self.p.coaddProgress.write(100)
+        await self.p.timeLeft.write('0')
     
     async def setBias(self):
             biasVal = float(self.parent.arSetupH.value)
