@@ -814,6 +814,7 @@
     }
 
     function updateObsProgress(rdout, progress) {
+        console.log('Updating progress:', rdout, progress);
         const progressBar = document.getElementById('obsProgressBar');
         const progressText = document.getElementById('obsProgressText');
         const startIntegrationBtn = document.getElementById('startIntegrationBtn');
@@ -827,6 +828,7 @@
             startIntegrationBtn.textContent = 'Start Integration';
             startIntegrationBtn.classList.remove('btn-danger');
             startIntegrationBtn.classList.add('btn-primary');
+            startIntegrationBtn.disabled = false;  // Ensure button is enabled
             
             // Force a reflow to ensure the changes take effect immediately
             void progressBar.offsetWidth;
@@ -840,6 +842,7 @@
             startIntegrationBtn.textContent = 'Abort';
             startIntegrationBtn.classList.remove('btn-primary');
             startIntegrationBtn.classList.add('btn-danger');
+            startIntegrationBtn.disabled = false;  // Ensure button is enabled
         }
     }
 
@@ -1021,27 +1024,34 @@
 
     // Update the event listener for the Start Integration / Abort button
     document.getElementById('startIntegrationBtn').addEventListener('click', function() {
-        if (this.textContent === 'Start Integration') {
+        const button = this;
+        button.disabled = true;  // Disable button to prevent multiple clicks
+
+        if (button.textContent === 'Start Integration') {
             fetch('/start_integration', {method: 'POST'})
                 .then(response => response.json())
                 .then(data => {
                     if (data.status !== 'success') {
                         console.error('Error:', data.message);
+                        button.disabled = false;  // Re-enable button on error
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
+                    button.disabled = false;  // Re-enable button on error
                 });
-        } else if (this.textContent === 'Abort') {
+        } else if (button.textContent === 'Abort') {
             fetch('/abort_integration', {method: 'POST'})
                 .then(response => response.json())
                 .then(data => {
                     if (data.status !== 'success') {
                         console.error('Error:', data.message);
                     }
+                    // Button state will be reset by the next updateObsProgress call
                 })
                 .catch(error => {
                     console.error('Error:', error);
+                    button.disabled = false;  // Re-enable button on error
                 });
         }
     });
