@@ -159,28 +159,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
     const socket = io('/monitoring');
-    let updateQueue = [];
-    let isUpdating = false;
 
     socket.on('connect', () => {
         console.log('Connected to server');
     });
 
     socket.on('pv_update', (updates) => {
-        updateQueue.push(updates);
-        if (!isUpdating) {
-            processUpdateQueue();
-        }
+        updateStatusIndicators(updates);
     });
-
-    function processUpdateQueue() {
-        isUpdating = true;
-        while (updateQueue.length > 0) {
-            const updates = updateQueue.shift();
-            updateStatusIndicators(updates);
-        }
-        isUpdating = false;
-    }
 
     function updateStatusIndicators(updates) {
         for (const [key, value] of Object.entries(updates)) {
@@ -370,7 +356,7 @@
     }
 
     // Refresh status indicators every second
-    setInterval(refreshStatusIndicators, 1000);
+    setInterval(refreshStatusIndicators, 100);
 
     function getHostname() {
         fetch('/get_hostname')

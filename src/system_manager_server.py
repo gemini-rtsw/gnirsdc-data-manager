@@ -370,16 +370,6 @@ def set_integration_params():
         logger.error(f"Error setting integration parameters: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/get_heartbeat')
-def get_heartbeat():
-    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-    try:
-        heartbeat_value = caget(f'{top_name}:heartbeat')
-        return jsonify({"status": "success", "heartbeat": heartbeat_value})
-    except Exception as e:
-        logger.error(f"Error getting heartbeat value: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
 @app.route('/initialize_sdsu', methods=['POST'])
 def initialize_sdsu():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
