@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ['ASTROPY_USE_SYSTEM_LEAP_SECOND_FILE'] = 'True'
 from caproto.server import pvproperty, PVGroup, ioc_arg_parser, run
 from caproto import ChannelType
 import asyncio

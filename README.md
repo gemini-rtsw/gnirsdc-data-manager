@@ -657,6 +657,7 @@ For debugging purposes, you can set up the environment using the following steps
    ```bash
    python3 src/gnirsdm.py --debug --top tgnirs
    ```
+   Note: --debug is optional. If you don't use --debug the DC will attempt to connect to an ARC.
 
 
 5. **Launch the System Manager Server:**
@@ -665,6 +666,8 @@ For debugging purposes, you can set up the environment using the following steps
    ```bash
    python3 src/system_manager_server.py --debug
    ```
+
+   Note: --debug flag tells the System Manager to use the tgnirs top. It is inconsistent with the --top flag in DC.
 
 By following these steps, you'll have a complete debug environment set up with the GMP server, TCS simulator, GNIRSDC Data Manager, and System Manager Server all running in their respective containers or processes.
 

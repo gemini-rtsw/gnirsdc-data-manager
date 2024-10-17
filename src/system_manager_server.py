@@ -5,7 +5,7 @@ import sys
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 import configparser
-from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify, Response, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify, Response, send_from_directory, make_response
 import datetime
 from caproto.threading.client import Context
 from caproto import SubscriptionType, ChannelType
@@ -377,48 +377,6 @@ def get_heartbeat():
         logger.error(f"Error getting heartbeat value: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/get_all_pvs')
-def get_all_pvs():
-    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-    try:
-        detector_bias_str = caget(f'{top_name}:dc:arSetup.H', as_string=True)
-        try:
-            detector_bias_v = float(detector_bias_str)
-            detector_bias_mv = detector_bias_v * 1000  # Convert V to mV
-            detector_bias_display = f"{detector_bias_mv:.2f} mV"
-            bias_mode = "DEEP" if detector_bias_str == "0.6" else "SHALLOW"
-        except ValueError:
-            detector_bias_display = "N/A"
-            bias_mode = "UNKNOWN"
-
-        rdout = caget(f'{top_name}:sad:dc:rdout')
-        obs_progress = caget(f'{top_name}:sad:dc:obsProgress')
-
-        pvs = {
-            'top_name': top_name,
-            'heartbeat': caget(f'{top_name}:heartbeat'),
-            'tcs_connection': caget(f'{top_name}:tcs_connection'), 
-            'fowler_num': caget(f'{top_name}:dc:lnrNum'),
-            'digital_avgs': caget(f'{top_name}:dc:digitalAvgs'),
-            'integ_time': caget(f'{top_name}:dc:integTime.VAL'),
-            'file_name': caget(f'{top_name}:dc:observe.A'),
-            'temperature': caget(f'{top_name}:dc:temperature'),
-            'interlock_override': caget(f'{top_name}:dc:disable_interlock'),
-            'apply_c_value': caget(f'{top_name}:dc:applyC.VAL'),
-            'gmp_status': caget(f'{top_name}:gmp_status'),
-            'detector_bias': detector_bias_display,
-            'bias_mode': bias_mode,
-            'sdsu_state': caget(f'{top_name}:dc:sdsuState', as_string=True),
-            'coadds': caget(f'{top_name}:dc:coadds.VAL'),
-            'ntp_time': caget(f'{top_name}:ntp_time'),
-            'rdout': rdout,
-            'obs_progress': obs_progress if rdout != 0 else 0,
-        }
-        return jsonify({"status": "success", "pvs": pvs})
-    except Exception as e:
-        logger.error(f"Error getting PV values: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
 @app.route('/initialize_sdsu', methods=['POST'])
 def initialize_sdsu():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
@@ -557,162 +515,135 @@ import time
 import os
 from flask import current_app
 
-last_valid_preview = None
+last_preview_image = None
+last_pv_values = None
+preview_lock = threading.Lock()
 
-import shutil
-import tempfile
-import os
-import time
-
-@app.route('/preview_latest_fits')
-def preview_latest_fits():
+def generate_and_cache_preview_and_pvs():
+    global last_preview_image, last_pv_values
     try:
+        # Generate preview image (existing code)
         fits_dir = '/readout_data/fits'
-        current_app.logger.info(f"Searching for FITS files in {fits_dir}")
-
         files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
         if not files:
-            current_app.logger.warning("No FITS files found in directory")
-            return "No FITS files found", 404
-        
-        latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
-        original_file_path = os.path.join(fits_dir, latest_file)
-        current_app.logger.info(f"Latest FITS file: {latest_file}")
+            current_app.logger.warning("No files found in directory")
+            return
 
-        # Create a temporary file
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file_path = temp_file.name
+        latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
+        file_path = os.path.join(fits_dir, latest_file)
 
         try:
-            # Attempt to copy the file with a timeout
-            start_time = time.time()
-            while time.time() - start_time < 0.1:  # 100ms timeout
-                try:
-                    shutil.copy2(original_file_path, temp_file_path)
-                    break
-                except IOError:
-                    time.sleep(0.01)  # Wait 10ms before retrying
-            else:
-                raise TimeoutError("Failed to copy file within timeout")
-
-            # Now work with the temporary file copy
-            with fits.open(temp_file_path, memmap=True) as hdul:
-                current_app.logger.info(f"FITS file structure: {[hdu.name for hdu in hdul]}")
-                
-                # Try to find the first HDU with data
+            with fits.open(file_path) as hdul:
                 data = None
                 for hdu in hdul:
                     if hdu.data is not None:
                         data = hdu.data
-                        current_app.logger.info(f"Using data from HDU: {hdu.name}")
                         break
                 
                 if data is None:
-                    raise ValueError("No data found in any HDU of the FITS file")
+                    raise ValueError("No data found in any HDU of the file")
 
-            current_app.logger.info(f"Data shape: {data.shape}, Data type: {data.dtype}")
-
-            # Create a figure and axis
             fig, ax = plt.subplots(figsize=(10, 8))
-
-            # Create an image plot with a colorbar
             im = ax.imshow(data, cmap='viridis', aspect='auto')
             plt.colorbar(im, ax=ax, label='Pixel Value')
-
-            # Set title and labels
             ax.set_title(f'Preview of {latest_file}')
             ax.set_xlabel('X Pixel')
             ax.set_ylabel('Y Pixel')
 
-            # Save the plot to a bytes buffer
             buf = io.BytesIO()
             plt.savefig(buf, format='png', bbox_inches='tight')
             buf.seek(0)
             plt.close(fig)
 
-            current_app.logger.info("Preview generated successfully")
+            preview_image = buf.getvalue()
 
-            response = send_file(buf, mimetype='image/png')
-            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
-            response.headers['Pragma'] = 'no-cache'
-            response.headers['Expires'] = '-1'
-            return response
-
-        except FileNotFoundError:
-            current_app.logger.warning(f"File {latest_file} was deleted before it could be processed")
-            return "File was deleted", 404
-        except TimeoutError as e:
-            current_app.logger.error(f"Timeout while accessing file: {str(e)}")
-            return "File access timeout", 503
         except Exception as e:
             current_app.logger.error(f"Error processing file {latest_file}: {str(e)}")
-            return f"Error processing file: {str(e)}", 500
-        finally:
-            # Clean up the temporary file
+            preview_image = None
+
+        # Get PV values (modified from get_all_pvs function)
+        top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+        try:
+            detector_bias_str = caget(f'{top_name}:dc:arSetup.H', as_string=True)
             try:
-                os.unlink(temp_file_path)
-            except Exception as e:
-                current_app.logger.error(f"Error deleting temporary file: {str(e)}")
+                detector_bias_v = float(detector_bias_str)
+                detector_bias_mv = detector_bias_v * 1000
+                detector_bias_display = f"{detector_bias_mv:.2f} mV"
+                bias_mode = "DEEP" if detector_bias_str == "0.6" else "SHALLOW"
+            except ValueError:
+                detector_bias_display = "N/A"
+                bias_mode = "UNKNOWN"
 
+            rdout = caget(f'{top_name}:sad:dc:rdout')
+            obs_progress = caget(f'{top_name}:sad:dc:obsProgress')
+
+            pvs = {
+                'top_name': top_name,
+                'heartbeat': caget(f'{top_name}:heartbeat'),
+                'tcs_connection': caget(f'{top_name}:tcs_connection'), 
+                'fowler_num': caget(f'{top_name}:dc:lnrNum'),
+                'digital_avgs': caget(f'{top_name}:dc:digitalAvgs'),
+                'integ_time': caget(f'{top_name}:dc:integTime.VAL'),
+                'file_name': caget(f'{top_name}:dc:observe.A'),
+                'temperature': caget(f'{top_name}:dc:temperature'),
+                'interlock_override': caget(f'{top_name}:dc:disable_interlock'),
+                'apply_c_value': caget(f'{top_name}:dc:applyC.VAL'),
+                'gmp_status': caget(f'{top_name}:gmp_status'),
+                'detector_bias': detector_bias_display,
+                'bias_mode': bias_mode,
+                'sdsu_state': caget(f'{top_name}:dc:sdsuState', as_string=True),
+                'coadds': caget(f'{top_name}:dc:coadds.VAL'),
+                'ntp_time': caget(f'{top_name}:ntp_time'),
+                'rdout': rdout,
+                'obs_progress': obs_progress if rdout != 0 else 0,
+            }
+        except Exception as e:
+            current_app.logger.error(f"Error getting PV values: {str(e)}")
+            pvs = None
+
+        with preview_lock:
+            last_preview_image = preview_image
+            last_pv_values = pvs
+
+        current_app.logger.info(f"Preview and PVs cached successfully for {latest_file}")
     except Exception as e:
-        current_app.logger.error(f"Error generating preview: {str(e)}")
-        return f"Error generating preview: {str(e)}", 500
-
-@app.route('/check_latest_fits')
-def check_latest_fits():
-    fits_dir = '/readout_data/fits'
-    files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
-    if not files:
-        return jsonify({"error": "No FITS files found"}), 404
-    
-    latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
-    modified_time = os.path.getmtime(os.path.join(fits_dir, latest_file))
-    
-    return jsonify({
-        "filename": latest_file,
-        "modified_time": modified_time
-    })
+        current_app.logger.error(f"Error generating preview and PVs: {str(e)}")
 
 @app.route('/preview')
 def preview():
-    app.logger.debug("Rendering preview template")
     return render_template('preview.html', active_tab='preview')
 
-last_modified_time = 0
+@app.route('/preview_latest_fits')
+def preview_latest_fits():
+    global last_preview_image
+    with preview_lock:
+        if last_preview_image is None:
+            return "No preview available", 404
+        
+        response = make_response(last_preview_image)
+        response.headers.set('Content-Type', 'image/png')
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
+        return response
 
-@app.route('/fits_updates')
-def fits_updates():
-    def generate():
-        global last_modified_time
-        while True:
-            fits_dir = '/readout_data/fits'
-            files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
-            if files:
-                latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
-                current_modified_time = os.path.getmtime(os.path.join(fits_dir, latest_file))
-                if current_modified_time > last_modified_time:
-                    last_modified_time = current_modified_time
-                    yield f"data: {latest_file}\n\n"
-            time.sleep(0.1)
+@app.route('/get_all_pvs')
+def get_all_pvs():
+    global last_pv_values
+    with preview_lock:
+        if last_pv_values is None:
+            return jsonify({"status": "error", "message": "No PV data available"}), 404
+        return jsonify({"status": "success", "pvs": last_pv_values})
 
-    return Response(generate(), content_type='text/event-stream')
-
-def scan_fits_directory():
-    global last_modified_time
+def background_preview_and_pvs_generator():
     while True:
-        fits_dir = '/readout_data/fits'
-        files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
-        if files:
-            latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
-            current_modified_time = os.path.getmtime(os.path.join(fits_dir, latest_file))
-            if current_modified_time > last_modified_time:
-                last_modified_time = current_modified_time
-                # You can add any additional processing here if needed
-        time.sleep(0.1)
+        with app.app_context():
+            generate_and_cache_preview_and_pvs()
+        time.sleep(0.1)  # Generate new preview and PVs every 100ms
 
-# Start the background thread
-fits_scan_thread = threading.Thread(target=scan_fits_directory, daemon=True)
-fits_scan_thread.start()
+# Start the background task
+preview_thread = threading.Thread(target=background_preview_and_pvs_generator, daemon=True)
+preview_thread.start()
 
 @app.route('/get_hostname')
 def get_hostname():

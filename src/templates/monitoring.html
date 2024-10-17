@@ -819,31 +819,38 @@
         const progressText = document.getElementById('obsProgressText');
         const startIntegrationBtn = document.getElementById('startIntegrationBtn');
         
-        if (rdout <= 0) {
-            progress = 0;
-            progressBar.style.transition = 'none';  // Disable transition
+        // Check if this is a new readout (progress less than previous progress)
+        if (progress < parseFloat(progressBar.getAttribute('aria-valuenow'))) {
+            // This is a new readout, reset the progress bar instantly
+            progressBar.style.transition = 'none';
             progressBar.style.width = '0%';
             progressBar.setAttribute('aria-valuenow', 0);
             progressText.textContent = '0%';
-            startIntegrationBtn.textContent = 'Start Integration';
-            startIntegrationBtn.classList.remove('btn-danger');
-            startIntegrationBtn.classList.add('btn-primary');
-            startIntegrationBtn.disabled = false;  // Ensure button is enabled
             
             // Force a reflow to ensure the changes take effect immediately
             void progressBar.offsetWidth;
             
             // Re-enable transition for future updates
             progressBar.style.transition = 'width 0.5s ease-in-out';
+        }
+        
+        if (rdout <= 0) {
+            progress = 0;
+            startIntegrationBtn.textContent = 'Start Integration';
+            startIntegrationBtn.classList.remove('btn-danger');
+            startIntegrationBtn.classList.add('btn-primary');
+            startIntegrationBtn.disabled = false;
         } else {
-            progressBar.style.width = `${progress}%`;
-            progressBar.setAttribute('aria-valuenow', progress);
-            progressText.textContent = `${Math.round(progress)}%`;
             startIntegrationBtn.textContent = 'Abort';
             startIntegrationBtn.classList.remove('btn-primary');
             startIntegrationBtn.classList.add('btn-danger');
-            startIntegrationBtn.disabled = false;  // Ensure button is enabled
+            startIntegrationBtn.disabled = false;
         }
+        
+        // Update progress bar
+        progressBar.style.width = `${progress}%`;
+        progressBar.setAttribute('aria-valuenow', progress);
+        progressText.textContent = `${Math.round(progress)}%`;
     }
 
     function updateAllPVs() {

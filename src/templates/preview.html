@@ -19,7 +19,7 @@
         const filenameElement = document.getElementById('filename');
         const currentImage = document.getElementById('preview-image');
 
-        fetch("{{ url_for('check_latest_fits') }}")
+        fetch("{{ url_for('preview_latest_fits') }}")
             .then(response => response.json())
             .then(data => {
                 // Change this condition to check if the new file is more recent
@@ -58,7 +58,7 @@
         currentImage.src = "{{ url_for('preview_latest_fits') }}";
         
         // Add this fetch to get the initial last modified time
-        fetch("{{ url_for('check_latest_fits') }}")
+        fetch("{{ url_for('preview_latest_fits') }}")
             .then(response => response.json())
             .then(data => {
                 lastModifiedTime = data.modified_time;
