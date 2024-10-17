@@ -30,6 +30,8 @@ import socket
 import shutil
 import zipfile
 from io import BytesIO
+from flask_socketio import SocketIO, emit
+from functools import lru_cache
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -58,6 +60,7 @@ class AlignedCasePreservingConfigParser(configparser.ConfigParser):
             fp.write("\n")
 
 app = Flask(__name__, static_folder='static')
+socketio = SocketIO(app)
 config_path = '../conf/gnirsdc/config.ini'
 config = AlignedCasePreservingConfigParser()
 config.read(config_path)
@@ -792,6 +795,84 @@ def download_fits():
         download_name='fits_files.zip'
     )
 
+@lru_cache(maxsize=1)
+def get_cached_pvs():
+    # This function will cache its result for 0.1 seconds
+    return _get_all_pvs()
+
+def _get_all_pvs():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        # Fetch all PVs at once using a single caget call
+        pv_names = [
+            f'{top_name}:heartbeat',
+            f'{top_name}:tcs_connection',
+            f'{top_name}:dc:lnrNum',
+            f'{top_name}:dc:digitalAvgs',
+            f'{top_name}:dc:integTime.VAL',
+            f'{top_name}:dc:observe.A',
+            f'{top_name}:dc:temperature',
+            f'{top_name}:dc:disable_interlock',
+            f'{top_name}:dc:applyC.VAL',
+            f'{top_name}:gmp_status',
+            f'{top_name}:dc:arSetup.H',
+            f'{top_name}:dc:sdsuState',
+            f'{top_name}:dc:coadds.VAL',
+            f'{top_name}:ntp_time',
+            f'{top_name}:sad:dc:rdout',
+            f'{top_name}:sad:dc:obsProgress'
+        ]
+        values = caget(pv_names)
+
+        # Process the values and create the pvs dictionary
+        pvs = {
+            'heartbeat': values[0],
+            'tcs_connection': values[1],
+            'fowler_num': values[2],
+            'digital_avgs': values[3],
+            'integ_time': values[4],
+            'file_name': values[5],
+            'temperature': values[6],
+            'interlock_override': values[7],
+            'apply_c_value': values[8],
+            'gmp_status': values[9],
+            'detector_bias': values[10],
+            'sdsu_state': values[11],
+            'coadds': values[12],
+            'ntp_time': values[13],
+            'rdout': values[14],
+            'obs_progress': values[15] if values[14] != 0 else 0,
+        }
+
+        return pvs
+    except Exception as e:
+        logger.error(f"Error getting PV values: {str(e)}")
+        return None
+
+last_sent_pvs = {}
+
+def send_pv_updates():
+    global last_sent_pvs
+    while True:
+        current_pvs = get_cached_pvs()
+        if current_pvs:
+            updates = {}
+            for key, value in current_pvs.items():
+                if key not in last_sent_pvs or last_sent_pvs[key] != value:
+                    updates[key] = value
+            if updates:
+                socketio.emit('pv_update', updates, namespace='/monitoring')
+                last_sent_pvs.update(updates)
+        time.sleep(0.1)  # Sleep for 100ms to achieve 10 updates per second
+
+@socketio.on('connect', namespace='/monitoring')
+def on_connect():
+    emit('pv_update', get_cached_pvs())
+
+@socketio.on('get_initial_pvs', namespace='/monitoring')
+def get_initial_pvs():
+    emit('pv_update', get_cached_pvs())
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")
     parser.add_argument("--debug", action="store_true", help="Run in debug mode")
@@ -812,4 +893,4 @@ if __name__ == "__main__":
     subscription_thread.start()
 
     logger.info(f"Starting Flask application on port {args.port}")
-    app.run(host='0.0.0.0', port=args.port, debug=debug_mode, threaded=True)
+    socketio.run(app, host='0.0.0.0', port=args.port, debug=debug_mode)

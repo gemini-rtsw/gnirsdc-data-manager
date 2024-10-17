@@ -11,66 +11,37 @@
     console.log("Script loaded");
 
     let lastKnownFilename = null;
-    let lastModifiedTime = 0;  // Add this line to track the last modified time
+    let lastModifiedTime = 0;
 
     function updatePreview() {
-        const container = document.getElementById('image-container');
         const debugInfo = document.getElementById('debug-info');
         const filenameElement = document.getElementById('filename');
         const currentImage = document.getElementById('preview-image');
 
-        fetch("{{ url_for('preview_latest_fits') }}")
+        // Update the image src with a new timestamp
+        const newSrc = "{{ url_for('preview_latest_fits') }}?" + new Date().getTime();
+        currentImage.src = newSrc;
+
+        // Update filename and debug info
+        fetch("{{ url_for('preview_latest_fits') }}?info=true")
             .then(response => response.json())
             .then(data => {
-                // Change this condition to check if the new file is more recent
-                if (data.modified_time > lastModifiedTime) {
-                    console.log("New file detected, updating preview");
-                    const newSrc = "{{ url_for('preview_latest_fits') }}?" + new Date().getTime();
-                    console.log("Attempting to load image from:", newSrc);
-                    
-                    const tempImg = new Image();
-                    tempImg.onload = function() {
-                        console.log("Image loaded successfully");
-                        currentImage.src = newSrc;
-                        lastKnownFilename = data.filename;
-                        lastModifiedTime = data.modified_time;  // Update the last modified time
-                        filenameElement.textContent = "Current file: " + data.filename;
-                        debugInfo.textContent = "Last update: " + new Date().toLocaleTimeString();
-                    };
-                    tempImg.onerror = function() {
-                        console.error("Failed to load image:", newSrc);
-                        debugInfo.textContent = "Error loading image at " + new Date().toLocaleTimeString();
-                    };
-                    tempImg.src = newSrc;
-                } else {
-                    console.log("No new file detected, keeping current preview");
+                if (data.filename !== lastKnownFilename) {
+                    lastKnownFilename = data.filename;
+                    filenameElement.textContent = "Current file: " + data.filename;
                 }
+                debugInfo.textContent = "Last update: " + new Date().toLocaleTimeString();
             })
             .catch(error => {
-                console.error("Error checking for latest FITS file:", error);
-                debugInfo.textContent = "Error checking for latest FITS file";
+                console.error("Error fetching file info:", error);
             });
     }
-
-    // Set initial image and last modified time
-    window.onload = function() {
-        const currentImage = document.getElementById('preview-image');
-        currentImage.src = "{{ url_for('preview_latest_fits') }}";
-        
-        // Add this fetch to get the initial last modified time
-        fetch("{{ url_for('preview_latest_fits') }}")
-            .then(response => response.json())
-            .then(data => {
-                lastModifiedTime = data.modified_time;
-                lastKnownFilename = data.filename;
-            });
-    }
-
-    // Update every 5 seconds
-    setInterval(updatePreview, 500);
-    console.log("Refresh interval set");
 
     // Initial update
     updatePreview();
+
+    // Update every 0.5 seconds
+    setInterval(updatePreview, 500);
+    console.log("Refresh interval set");
 </script>
 {% endblock %}

@@ -156,7 +156,89 @@
     <pre id="sshOutput"></pre>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
+    const socket = io('/monitoring');
+    let updateQueue = [];
+    let isUpdating = false;
+
+    socket.on('connect', () => {
+        console.log('Connected to server');
+    });
+
+    socket.on('pv_update', (updates) => {
+        updateQueue.push(updates);
+        if (!isUpdating) {
+            processUpdateQueue();
+        }
+    });
+
+    function processUpdateQueue() {
+        isUpdating = true;
+        while (updateQueue.length > 0) {
+            const updates = updateQueue.shift();
+            updateStatusIndicators(updates);
+        }
+        isUpdating = false;
+    }
+
+    function updateStatusIndicators(updates) {
+        for (const [key, value] of Object.entries(updates)) {
+            switch (key) {
+                case 'heartbeat':
+                    updateIndicator('heartbeatIndicator', value, 'heartbeat');
+                    break;
+                case 'tcs_connection':
+                    updateIndicator('tcsConnectionIndicator', value === 'CONNECTED', 'status');
+                    break;
+                case 'gmp_status':
+                    updateIndicator('gdsStatusIndicator', value === 'CONNECTED', 'status');
+                    break;
+                case 'sdsu_state':
+                    updateIndicator('sdsuStateIndicator', value === 'INITIALIZED', 'status');
+                    break;
+                case 'interlock_override':
+                    updateIndicator('interlockIndicator', value === 0, 'interlock');
+                    break;
+                case 'temperature':
+                    updateTextContent('temperatureValue', value ? value.toFixed(2) + ' K' : 'N/A');
+                    break;
+                case 'detector_bias':
+                    updateTextContent('detectorBiasValue', value);
+                    break;
+                case 'ntp_time':
+                    updateTextContent('ntpTimeValue', value);
+                    break;
+                // Add more cases for other PVs as needed
+            }
+        }
+    }
+
+    function updateIndicator(elementId, value, type) {
+        const indicator = document.getElementById(elementId);
+        if (!indicator) return;
+
+        let className = type + '-indicator';
+        if (value) {
+            className += ' ' + type + '-on';
+        } else {
+            className += ' ' + type + '-off';
+        }
+        if (indicator.className !== className) {
+            indicator.className = className;
+        }
+    }
+
+    function updateTextContent(elementId, value) {
+        const element = document.getElementById(elementId);
+        if (element && element.textContent !== value.toString()) {
+            element.textContent = value.toString();
+        }
+    }
+
+    // Request initial PV values
+    socket.emit('get_initial_pvs');
+
     function showLoadingIndicator(message) {
         const loadingIndicator = document.getElementById('loadingIndicator');
         const loadingMessage = document.getElementById('loadingMessage');
