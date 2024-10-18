@@ -32,6 +32,11 @@ import zipfile
 from io import BytesIO
 from flask_socketio import SocketIO, emit
 from functools import lru_cache
+import logging
+import time
+import os
+from flask import current_app
+
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -502,11 +507,7 @@ def readme():
     toc = html_content.toc_html
     return render_template('readme.html', active_tab='readme', content=html_content, toc=toc)
 
-import logging
 
-import time
-import os
-from flask import current_app
 
 last_preview_image = None
 last_pv_values = None
@@ -515,12 +516,14 @@ preview_lock = threading.Lock()
 def generate_and_cache_preview_and_pvs():
     global last_preview_image, last_pv_values
     try:
-        # Generate preview image (existing code)
+        # Generate preview image
         fits_dir = '/readout_data/fits'
         files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
+        
         if not files:
             current_app.logger.warning("No files found in directory")
             preview_image = None
+            latest_file = None
         else:
             latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
             file_path = os.path.join(fits_dir, latest_file)
@@ -554,7 +557,7 @@ def generate_and_cache_preview_and_pvs():
                 current_app.logger.error(f"Error processing file {latest_file}: {str(e)}")
                 preview_image = None
 
-        # Get PV values (modified from get_all_pvs function)
+        # Get PV values (existing code)
         top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
         try:
             detector_bias_str = caget(f'{top_name}:dc:arSetup.H', as_string=True)
@@ -598,7 +601,11 @@ def generate_and_cache_preview_and_pvs():
             last_preview_image = preview_image
             last_pv_values = pvs
 
-        current_app.logger.info(f"Preview and PVs cached successfully for {latest_file}")
+        if latest_file:
+            current_app.logger.info(f"Preview and PVs cached successfully for {latest_file}")
+        else:
+            current_app.logger.info("No preview available, PVs cached successfully")
+
     except Exception as e:
         current_app.logger.error(f"Error generating preview and PVs: {str(e)}")
 
