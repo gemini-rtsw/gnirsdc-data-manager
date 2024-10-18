@@ -12,6 +12,8 @@
         "-v", "/etc/timezone:/etc/timezone:ro",
         "-v", "${env:HOME}/.gitconfig:/root/.gitconfig:ro"
     ],
+    "remoteUser": "root",
+    "updateRemoteUserUID": true,
     "customizations": {
         "vscode": {
             "extensions": [
