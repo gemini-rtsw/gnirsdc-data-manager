@@ -888,4 +888,4 @@ if __name__ == "__main__":
     pv_updates_thread.start()
 
     logger.info(f"Starting Flask application on port {args.port}")
-    socketio.run(app, host='0.0.0.0', port=args.port, debug=debug_mode)
+    socketio.run(app, host='0.0.0.0', port=args.port, debug=debug_mode, allow_unsafe_werkzeug=True)
