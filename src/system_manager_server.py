@@ -520,39 +520,39 @@ def generate_and_cache_preview_and_pvs():
         files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
         if not files:
             current_app.logger.warning("No files found in directory")
-            return
-
-        latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
-        file_path = os.path.join(fits_dir, latest_file)
-
-        try:
-            with fits.open(file_path) as hdul:
-                data = None
-                for hdu in hdul:
-                    if hdu.data is not None:
-                        data = hdu.data
-                        break
-                
-                if data is None:
-                    raise ValueError("No data found in any HDU of the file")
-
-            fig, ax = plt.subplots(figsize=(10, 8))
-            im = ax.imshow(data, cmap='viridis', aspect='auto')
-            plt.colorbar(im, ax=ax, label='Pixel Value')
-            ax.set_title(f'Preview of {latest_file}')
-            ax.set_xlabel('X Pixel')
-            ax.set_ylabel('Y Pixel')
-
-            buf = io.BytesIO()
-            plt.savefig(buf, format='png', bbox_inches='tight')
-            buf.seek(0)
-            plt.close(fig)
-
-            preview_image = buf.getvalue()
-
-        except Exception as e:
-            current_app.logger.error(f"Error processing file {latest_file}: {str(e)}")
             preview_image = None
+        else:
+            latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
+            file_path = os.path.join(fits_dir, latest_file)
+
+            try:
+                with fits.open(file_path) as hdul:
+                    data = None
+                    for hdu in hdul:
+                        if hdu.data is not None:
+                            data = hdu.data
+                            break
+                    
+                    if data is None:
+                        raise ValueError("No data found in any HDU of the file")
+
+                fig, ax = plt.subplots(figsize=(10, 8))
+                im = ax.imshow(data, cmap='viridis', aspect='auto')
+                plt.colorbar(im, ax=ax, label='Pixel Value')
+                ax.set_title(f'Preview of {latest_file}')
+                ax.set_xlabel('X Pixel')
+                ax.set_ylabel('Y Pixel')
+
+                buf = io.BytesIO()
+                plt.savefig(buf, format='png', bbox_inches='tight')
+                buf.seek(0)
+                plt.close(fig)
+
+                preview_image = buf.getvalue()
+
+            except Exception as e:
+                current_app.logger.error(f"Error processing file {latest_file}: {str(e)}")
+                preview_image = None
 
         # Get PV values (modified from get_all_pvs function)
         top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
