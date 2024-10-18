@@ -5,12 +5,12 @@
     "runArgs": [
         "-it",
         "--network=host",
-        "-v", "${env:HOME}/.ssh:/root/.ssh:rw",
+        "-v", "${env:HOME}/.ssh:/mnt/host/.ssh:ro",  
+        "-v", "${env:HOME}/.gitconfig:/mnt/host/.gitconfig:ro",  
         "-v", "${env:HOME}/irdc_data/readout_data:/readout_data:rw",
         "-v", "${env:HOME}/irdc_data/staging/perm:/staging/perm:rw",
         "-v", "/etc/localtime:/etc/localtime:ro",
-        "-v", "/etc/timezone:/etc/timezone:ro",
-        "-v", "${env:HOME}/.gitconfig:/root/.gitconfig:ro"
+        "-v", "/etc/timezone:/etc/timezone:ro"
     ],
     "remoteUser": "root",
     "updateRemoteUserUID": true,
@@ -25,5 +25,5 @@
             ]
         }
     },
-    "postCreateCommand": "chmod 700 /root/.ssh && chmod 600 /root/.ssh/config && chown -R root:root /root/.ssh"
+    "postCreateCommand": "mkdir -p /root/.ssh && cp -r /mnt/host/.ssh/* /root/.ssh/ && chmod 700 /root/.ssh && chmod 600 /root/.ssh/* && chown -R root:root /root/.ssh && cp /mnt/host/.gitconfig /root/.gitconfig && chmod 600 /root/.gitconfig"
 }
