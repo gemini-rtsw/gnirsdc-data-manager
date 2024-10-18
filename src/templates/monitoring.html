@@ -1083,7 +1083,7 @@
         eventSource.onmessage = function(event) {
             const messages = JSON.parse(event.data);
             updateLogMessages(messages);
-            updateAllPVs();  // Call this to update all status indicators
+//            updateAllPVs();  // Call this to update all status indicators
         };
         eventSource.onerror = function(error) {
             console.error('SSE Error:', error);
@@ -1150,7 +1150,7 @@
     });
 
     // Call updateAllPVs every second
-    setInterval(updateAllPVs, 1000);
+    setInterval(updateAllPVs, 100);
 
     // Add event listeners to track when user is editing
     [fowlerNumInput, digitalAvgsInput, integTimeInput, fileNameInput, coaddsInput].forEach(input => {

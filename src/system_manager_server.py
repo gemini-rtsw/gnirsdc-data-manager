@@ -882,5 +882,10 @@ if __name__ == "__main__":
     subscription_thread = threading.Thread(target=run_subscription, daemon=True)
     subscription_thread.start()
 
+    # Start the send_pv_updates thread
+    logger.info("Starting PV updates thread")
+    pv_updates_thread = threading.Thread(target=send_pv_updates, daemon=True)
+    pv_updates_thread.start()
+
     logger.info(f"Starting Flask application on port {args.port}")
     socketio.run(app, host='0.0.0.0', port=args.port, debug=debug_mode)
