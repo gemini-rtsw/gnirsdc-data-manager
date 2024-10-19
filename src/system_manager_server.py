@@ -598,13 +598,14 @@ def generate_and_cache_preview_and_pvs():
             pvs = None
 
         with preview_lock:
-            last_preview_image = preview_image
+            if preview_image is not None:
+                last_preview_image = preview_image
             last_pv_values = pvs
 
         if latest_file:
             current_app.logger.info(f"Preview and PVs cached successfully for {latest_file}")
         else:
-            current_app.logger.info("No preview available, PVs cached successfully")
+            current_app.logger.info("No new preview available, PVs cached successfully")
 
     except Exception as e:
         current_app.logger.error(f"Error generating preview and PVs: {str(e)}")
@@ -617,15 +618,29 @@ def preview():
 def preview_latest_fits():
     global last_preview_image
     with preview_lock:
-        if last_preview_image is None:
-            return "No preview available", 404
-        
-        response = make_response(last_preview_image)
-        response.headers.set('Content-Type', 'image/png')
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '-1'
-        return response
+        if request.args.get('info') == 'true':
+            # Return JSON with file info
+            if last_preview_image is None:
+                return jsonify({"status": "error", "message": "No preview available"}), 404
+            else:
+                # You might want to store the filename along with the image data
+                # For now, we'll just return a placeholder filename
+                return jsonify({
+                    "status": "success",
+                    "filename": "latest_fits_preview.png",
+                    "timestamp": time.time()
+                })
+        else:
+            # Return the actual image data
+            if last_preview_image is None:
+                return "No preview available", 404
+            
+            response = make_response(last_preview_image)
+            response.headers.set('Content-Type', 'image/png')
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '-1'
+            return response
 
 @app.route('/get_all_pvs')
 def get_all_pvs():
