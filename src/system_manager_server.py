@@ -623,11 +623,8 @@ def preview_latest_fits():
             if last_preview_image is None:
                 return jsonify({"status": "error", "message": "No preview available"}), 404
             else:
-                # You might want to store the filename along with the image data
-                # For now, we'll just return a placeholder filename
                 return jsonify({
                     "status": "success",
-                    "filename": "latest_fits_preview.png",
                     "timestamp": time.time()
                 })
         else:

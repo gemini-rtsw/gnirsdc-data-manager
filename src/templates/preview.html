@@ -26,9 +26,6 @@
         fetch("{{ url_for('preview_latest_fits') }}?info=true")
             .then(response => response.json())
             .then(data => {
-                if (!data.filename) {
-                    filenameElement.textContent = "No FITS file available for preview. ";
-                }
                 debugInfo.textContent = "Last update: " + new Date().toLocaleTimeString();
             })
             .catch(error => {
