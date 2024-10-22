@@ -156,17 +156,8 @@
     <pre id="sshOutput"></pre>
 </div>
 
-<script src="{{ url_for('static', filename='js/socket.io.js') }}"></script>
 <script>
-    const socket = io('/monitoring');
 
-    socket.on('connect', () => {
-        console.log('Connected to server');
-    });
-
-    socket.on('pv_update', (updates) => {
-        updateStatusIndicators(updates);
-    });
 
     function updateStatusIndicators(updates) {
         for (const [key, value] of Object.entries(updates)) {
@@ -1081,8 +1072,8 @@
     function setupSSE() {
         const eventSource = new EventSource('/sse');
         eventSource.onmessage = function(event) {
-            const messages = JSON.parse(event.data);
-            updateLogMessages(messages);
+            const updates = JSON.parse(event.data);
+            updateLogMessages(updates);
 //            updateAllPVs();  // Call this to update all status indicators
         };
         eventSource.onerror = function(error) {

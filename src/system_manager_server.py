@@ -30,7 +30,6 @@ import socket
 import shutil
 import zipfile
 from io import BytesIO
-from flask_socketio import SocketIO, emit
 from functools import lru_cache
 import logging
 import time
@@ -65,7 +64,6 @@ class AlignedCasePreservingConfigParser(configparser.ConfigParser):
             fp.write("\n")
 
 app = Flask(__name__, static_folder='static')
-socketio = SocketIO(app)
 config_path = '../conf/gnirsdc/config.ini'
 config = AlignedCasePreservingConfigParser()
 config.read(config_path)
@@ -870,17 +868,11 @@ def send_pv_updates():
                 if key not in last_sent_pvs or last_sent_pvs[key] != value:
                     updates[key] = value
             if updates:
-                socketio.emit('pv_update', updates, namespace='/monitoring')
+                with clients_lock:
+                    for client_queue in clients:
+                        client_queue.put(json.dumps(updates))
                 last_sent_pvs.update(updates)
         time.sleep(0.1)  # Sleep for 100ms to achieve 10 updates per second
-
-@socketio.on('connect', namespace='/monitoring')
-def on_connect():
-    emit('pv_update', get_cached_pvs())
-
-@socketio.on('get_initial_pvs', namespace='/monitoring')
-def get_initial_pvs():
-    emit('pv_update', get_cached_pvs())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")
@@ -907,4 +899,4 @@ if __name__ == "__main__":
     pv_updates_thread.start()
 
     logger.info(f"Starting Flask application on port {args.port}")
-    socketio.run(app, host='0.0.0.0', port=args.port, debug=debug_mode, allow_unsafe_werkzeug=True)
+    app.run(host='0.0.0.0', port=args.port, debug=debug_mode)
