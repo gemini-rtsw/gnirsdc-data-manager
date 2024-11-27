@@ -459,6 +459,15 @@ def start_controller():
     try:
         mode = request.json.get('mode', 'normal')
         
+        # Set the appropriate top name based on mode
+        if mode in ['debug', 'full_debug']:
+            config[config_mode]['DEFAULT_PREFIX'] = 'tgnirs'
+            subscribe_to_pv()
+        else:
+            # Reset to default from config file
+            config.read(config_path)
+            subscribe_to_pv()
+        
         if mode == 'normal':
             command = '/usr/local/bin/dc-start.sh'
         elif mode == 'debug':
@@ -477,7 +486,8 @@ def start_controller():
             "status": "success",
             "message": "Controller started successfully",
             "output": output,
-            "error": error
+            "error": error,
+            "top_name": config[config_mode]['DEFAULT_PREFIX']  # Return the current top name
         })
     except Exception as e:
         logger.error(f"Error starting controller: {str(e)}")

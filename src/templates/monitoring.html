@@ -281,6 +281,10 @@
                 if (data.error) {
                     updateLoadingIndicator('\nErrors:\n' + data.error);
                 }
+                // Update the top name display with the new value
+                if (data.top_name) {
+                    document.getElementById('topNameValue').textContent = data.top_name;
+                }
                 setTimeout(() => {
                     hideLoadingIndicator();
                     alert(`Controller started successfully${modeText}: ${data.message}`);
@@ -1298,6 +1302,10 @@
                 updateLoadingIndicator(data.output);
                 if (data.error) {
                     updateLoadingIndicator('\nErrors:\n' + data.error);
+                }
+                // Update the top name display with the new value
+                if (data.top_name) {
+                    document.getElementById('topNameValue').textContent = data.top_name;
                 }
                 setTimeout(() => {
                     hideLoadingIndicator();
