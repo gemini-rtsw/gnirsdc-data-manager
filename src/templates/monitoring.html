@@ -69,6 +69,8 @@
                 <option value="clear">Clear Errors</option>
                 <option value="tdl">TDL</option>
                 <option value="start_controller">Start/Restart Controller</option>
+                <option value="start_controller_debug">Start/Restart Controller (Debug)</option>
+                <option value="start_controller_full_debug">Start/Restart Controller (Full Debug)</option>
                 <option value="stop_controller">Stop Controller</option>
             </select>
             <button id="applyActionBtn" class="btn btn-primary" disabled>Apply</button>
@@ -157,7 +159,30 @@
 </div>
 
 <script>
+    // Move the updateHostname function definition to the top
+    function updateHostname() {
+        fetch('/get_hostname')
+            .then(response => response.json())
+            .then(data => {
+                const hostnameDisplay = document.getElementById('hostnameDisplay');
+                if (hostnameDisplay) {
+                    hostnameDisplay.textContent = data.hostname || 'Unknown';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching hostname:', error);
+                const hostnameDisplay = document.getElementById('hostnameDisplay');
+                if (hostnameDisplay) {
+                    hostnameDisplay.textContent = 'Error';
+                }
+            });
+    }
 
+    // Call updateHostname immediately and periodically
+    document.addEventListener('DOMContentLoaded', () => {
+        updateHostname(); // Initial call
+        setInterval(updateHostname, 5000); // Update every 5 seconds
+    });
 
     function updateStatusIndicators(updates) {
         for (const [key, value] of Object.entries(updates)) {
@@ -237,38 +262,46 @@
         loadingIndicator.style.display = 'none';
     }
 
-    function startController() {
-        showLoadingIndicator('Starting controller...');
-        fetch('/start_controller', {method: 'POST'})
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    console.log('Controller started successfully:', data.message);
-                    updateLoadingIndicator(data.output);
-                    if (data.error) {
-                        updateLoadingIndicator('\nErrors:\n' + data.error);
-                    }
-                    setTimeout(() => {
-                        hideLoadingIndicator();
-                        alert('Controller started successfully: ' + data.message);
-                    }, 3000);
-                } else {
-                    console.error('Error starting controller:', data.message);
-                    updateLoadingIndicator('Error: ' + data.message);
-                    setTimeout(() => {
-                        hideLoadingIndicator();
-                        alert('Error starting controller: ' + data.message);
-                    }, 3000);
+    function startController(mode = 'normal') {
+        const modeText = mode === 'normal' ? '' : ` (${mode.replace('_', ' ')})`;
+        showLoadingIndicator(`Starting controller${modeText}...`);
+        
+        fetch('/start_controller', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ mode: mode })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('Controller started successfully:', data.message);
+                updateLoadingIndicator(data.output);
+                if (data.error) {
+                    updateLoadingIndicator('\nErrors:\n' + data.error);
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                updateLoadingIndicator('Error: ' + error);
                 setTimeout(() => {
                     hideLoadingIndicator();
-                    alert('Error: ' + error);
+                    alert(`Controller started successfully${modeText}: ${data.message}`);
                 }, 3000);
-            });
+            } else {
+                console.error('Error starting controller:', data.message);
+                updateLoadingIndicator('Error: ' + data.message);
+                setTimeout(() => {
+                    hideLoadingIndicator();
+                    alert(`Error starting controller${modeText}: ${data.message}`);
+                }, 3000);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            updateLoadingIndicator('Error: ' + error);
+            setTimeout(() => {
+                hideLoadingIndicator();
+                alert('Error: ' + error);
+            }, 3000);
+        });
     }
 
     function stopController() {
@@ -349,24 +382,16 @@
     // Refresh status indicators every second
     setInterval(refreshStatusIndicators, 100);
 
-    function getHostname() {
+    function updateHostname() {
         fetch('/get_hostname')
             .then(response => response.json())
             .then(data => {
-                if (data.status === 'success') {
-                    document.getElementById('hostnameDisplay').textContent = data.hostname;
-                } else {
-                    document.getElementById('hostnameDisplay').textContent = 'Unknown';
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching hostname:', error);
-                document.getElementById('hostnameDisplay').textContent = 'Unknown';
+                document.getElementById('hostnameDisplay').textContent = data.hostname;
             });
     }
 
-    // Call getHostname when the page loads
-    document.addEventListener('DOMContentLoaded', getHostname);
+    // Call it when the page loads
+    document.addEventListener('DOMContentLoaded', updateHostname);
 </script>
 
 <style>
@@ -1202,7 +1227,11 @@
         } else if (selectedAction === 'tdl') {
             applyTDL();
         } else if (selectedAction === 'start_controller') {
-            startController();
+            startController('normal');
+        } else if (selectedAction === 'start_controller_debug') {
+            startController('debug');
+        } else if (selectedAction === 'start_controller_full_debug') {
+            startController('full_debug');
         } else if (selectedAction === 'stop_controller') {
             stopController();
         }
@@ -1251,38 +1280,46 @@
             });
     }
 
-    function startController() {
-        showLoadingIndicator('Starting controller...');
-        fetch('/start_controller', {method: 'POST'})
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    console.log('Controller started successfully:', data.message);
-                    updateLoadingIndicator(data.output);
-                    if (data.error) {
-                        updateLoadingIndicator('\nErrors:\n' + data.error);
-                    }
-                    setTimeout(() => {
-                        hideLoadingIndicator();
-                        alert('Controller started successfully: ' + data.message);
-                    }, 3000);
-                } else {
-                    console.error('Error starting controller:', data.message);
-                    updateLoadingIndicator('Error: ' + data.message);
-                    setTimeout(() => {
-                        hideLoadingIndicator();
-                        alert('Error starting controller: ' + data.message);
-                    }, 3000);
+    function startController(mode = 'normal') {
+        const modeText = mode === 'normal' ? '' : ` (${mode.replace('_', ' ')})`;
+        showLoadingIndicator(`Starting controller${modeText}...`);
+        
+        fetch('/start_controller', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ mode: mode })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('Controller started successfully:', data.message);
+                updateLoadingIndicator(data.output);
+                if (data.error) {
+                    updateLoadingIndicator('\nErrors:\n' + data.error);
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                updateLoadingIndicator('Error: ' + error);
                 setTimeout(() => {
                     hideLoadingIndicator();
-                    alert('Error: ' + error);
+                    alert(`Controller started successfully${modeText}: ${data.message}`);
                 }, 3000);
-            });
+            } else {
+                console.error('Error starting controller:', data.message);
+                updateLoadingIndicator('Error: ' + data.message);
+                setTimeout(() => {
+                    hideLoadingIndicator();
+                    alert(`Error starting controller${modeText}: ${data.message}`);
+                }, 3000);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            updateLoadingIndicator('Error: ' + error);
+            setTimeout(() => {
+                hideLoadingIndicator();
+                alert('Error: ' + error);
+            }, 3000);
+        });
     }
 
     function stopController() {

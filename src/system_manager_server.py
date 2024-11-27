@@ -457,10 +457,16 @@ def apply_tdl():
 @app.route('/start_controller', methods=['POST'])
 def start_controller():
     try:
-        if config_mode == 'DEBUG':
-            command = '/usr/local/bin/dc-start.sh --top tgnirs'
-        else:
+        mode = request.json.get('mode', 'normal')
+        
+        if mode == 'normal':
             command = '/usr/local/bin/dc-start.sh'
+        elif mode == 'debug':
+            command = '/usr/local/bin/dc-start.sh --top tgnirs'
+        elif mode == 'full_debug':
+            command = '/usr/local/bin/dc-start.sh --top tgnirs --debug'
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
         
         output, error = run_ssh_command(command)
         
@@ -470,7 +476,8 @@ def start_controller():
         return jsonify({
             "status": "success",
             "message": "Controller started successfully",
-            "output": output
+            "output": output,
+            "error": error
         })
     except Exception as e:
         logger.error(f"Error starting controller: {str(e)}")
@@ -658,7 +665,7 @@ preview_thread.start()
 @app.route('/get_hostname')
 def get_hostname():
     try:
-        hostname = socket.gethostname()
+        hostname = subprocess.check_output(['hostname']).decode('utf-8').strip()
         return jsonify({"status": "success", "hostname": hostname})
     except Exception as e:
         logger.error(f"Error getting hostname: {str(e)}")
