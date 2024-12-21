@@ -708,3 +708,47 @@ If you encounter SSH authentication errors starting or stopping the controller f
 
 After performing these steps, try starting the controller again. If you continue to experience issues, please consult the system logs or contact software for support.
 
+
+## Building the SDSU Firmware
+
+The firmware for the SDSU ARC controller can be built using the following steps:
+
+1. **Clone the repository:**
+   ```bash
+   git clone git@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-dsp.git
+   ```
+
+2. **Navigate to the repository directory:**
+   ```bash
+   cd gnirsdc-dsp
+   ```
+
+3. **Build the firmware:**
+   ```bash
+   ./build-firmware.sh
+   ```
+
+4. **Locate the built firmware:**
+   ```bash
+   find . -name '*.lod'
+   ```
+   Example output:
+   ```
+   ./FullFrame-unified-AladdinII/AladdinII_SDSU_Firmware.lod
+   ./FullFrame-unified-AladdinIII/AladdinIII_SDSU_Firmware.lod
+   ```
+
+5. **Copy the firmware to the appropriate directory:**
+   - If using the GNIRSDC container, copy the firmware files to `/gnirsdc/src/firmware` within the container:
+     ```bash
+     docker cp ./FullFrame-unified-AladdinII/AladdinII_SDSU_Firmware.lod gnirsdc:/gnirsdc/src/firmware
+     docker cp ./FullFrame-unified-AladdinIII/AladdinIII_SDSU_Firmware.lod gnirsdc:/gnirsdc/src/firmware
+     ```
+   - If the firmware directory is mounted locally, copy the firmware to `/readout_data/firmware`:
+     ```bash
+     cp ./FullFrame-unified-AladdinII/AladdinII_SDSU_Firmware.lod /readout_data/firmware
+     cp ./FullFrame-unified-AladdinIII/AladdinIII_SDSU_Firmware.lod /readout_data/firmware
+     ```
+
+6. **Reinitialize the controller:**
+   - Use the System Manager or CLI to reinitialize the controller to apply the new firmware.
