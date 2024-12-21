@@ -739,12 +739,12 @@ The firmware for the SDSU ARC controller can be built using the following steps:
    ```
 
 5. **Copy the firmware to the appropriate directory:**
-   - If using the GNIRSDC container, copy the firmware files to `/gnirsdc/src/firmware` within the container:
+   - To copy the firmware directly into the container, copy the firmware files to `/gnirsdc/src/firmware` within the container:
      ```bash
      docker cp ./FullFrame-unified-AladdinII/AladdinII_SDSU_Firmware.lod gnirsdc:/gnirsdc/src/firmware
      docker cp ./FullFrame-unified-AladdinIII/AladdinIII_SDSU_Firmware.lod gnirsdc:/gnirsdc/src/firmware
      ```
-   - If the firmware directory is mounted locally, copy the firmware to `/readout_data/firmware`:
+   - If the firmware directory is mounted to the local filesystem, copy the firmware to `/readout_data/firmware`:
      ```bash
      cp ./FullFrame-unified-AladdinII/AladdinII_SDSU_Firmware.lod /readout_data/firmware
      cp ./FullFrame-unified-AladdinIII/AladdinIII_SDSU_Firmware.lod /readout_data/firmware
