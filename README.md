@@ -751,4 +751,4 @@ The firmware for the SDSU ARC controller can be built using the following steps:
      ```
 
 6. **Reinitialize the controller:**
-   - Use the System Manager or CLI to reinitialize the controller to apply the new firmware.
+   - Use the System Manager to reinitialize the controller to apply the new firmware.
