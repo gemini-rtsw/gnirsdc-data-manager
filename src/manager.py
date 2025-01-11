@@ -250,7 +250,8 @@ def process_image(data, lnrs, ndavgs):
 
         subtracted = reshaped[lnrs:] - reshaped[:lnrs]
 
-        return processor.unscramble(subtracted.mean(axis=0))
+        # Flip the image horizontally after unscrambling
+        return np.fliplr(processor.unscramble(subtracted.mean(axis=0)))
 
     else:
         processor = Processor(shift_delta=0, full_frame=True)
@@ -260,11 +261,11 @@ def process_image(data, lnrs, ndavgs):
 
         subtracted = averaged_samples[lnrs:] - averaged_samples[:lnrs]
 
-        return processor.unscramble(subtracted.mean(axis=0))
+        # Flip the image horizontally after unscrambling
+        return np.fliplr(processor.unscramble(subtracted.mean(axis=0)))
     
 
 def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, include_eng):
-
     extname = 'ENG' if include_eng else 'SCI'
     ext_header['EXTNAME'] = extname
 
@@ -274,25 +275,20 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
         reshaped = raw_reshaped.astype(np.float32)
         subtracted = reshaped[lrns:] - reshaped[:lrns]
 
-
-        # Processed data to be saved in the primary HDU
-        primary_data = processor.unscramble(subtracted.mean(axis=0))
-
-        # Update the primary HDU with the processed data
-        #hdulist[0].data = primary_data
-
-        # First, save the final product
-        #hdulist.append(fits.ImageHDU(primary_data, ext_header))
+        # Flip the processed data horizontally after unscrambling
+        primary_data = np.fliplr(processor.unscramble(subtracted.mean(axis=0)))
         hdulist.append(fits.ImageHDU(data=primary_data, header=ext_header))
 
         if include_eng == True:
-            for fs_n in range(lrns * 2):  # This covers both reference and signal reads
+            for fs_n in range(lrns * 2):
                 is_signal = fs_n >= lrns
                 read_type = 'S' if is_signal else 'R'
                 index = fs_n - lrns if is_signal else fs_n
         
                 ext_header['EXTNAME'] = f'{read_type}{index+1:02}'
-                hdulist.append(fits.ImageHDU(processor.unscramble(raw_reshaped[fs_n]), ext_header))
+                # Flip each engineering frame horizontally
+                eng_data = np.fliplr(processor.unscramble(raw_reshaped[fs_n]))
+                hdulist.append(fits.ImageHDU(eng_data, ext_header))
 
     else:
         processor = Processor(shift_delta=0, full_frame=True)
@@ -302,16 +298,8 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
 
         subtracted = averaged_samples[lrns:] - averaged_samples[:lrns]
 
-
-        # Processed data to be saved in the primary HDU
-        primary_data = processor.unscramble(subtracted.mean(axis=0))
-
-        # Update the primary HDU with the processed data
-        #hdulist[0].data = primary_data
-
-        # First, save the final product
-        #hdulist.append(fits.ImageHDU(primary_data, ext_header))
-        # Append the processed data to the HDU list as an extension with the specific ext_header
+        # Flip the processed data horizontally after unscrambling
+        primary_data = np.fliplr(processor.unscramble(subtracted.mean(axis=0)))
         hdulist.append(fits.ImageHDU(data=primary_data, header=ext_header))
 
         if include_eng == True:
@@ -327,7 +315,9 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
             
                 for fs_n, ads in enumerate([raw_reshaped[fs_n][:,cols_in_ads + (32 * sample)] for sample in range(ndavgs)]):
                     ext_header['EXTNAME'] = f'{read_type}{index+1:02}'
-                    hdulist.append(fits.ImageHDU(processor.unscramble(ads), ext_header))
+                    # Flip each engineering frame horizontally
+                    eng_data = np.fliplr(processor.unscramble(ads))
+                    hdulist.append(fits.ImageHDU(eng_data, ext_header))
 
 class TimingMeasurement:
     def __init__(self, name, value):
