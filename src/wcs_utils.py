@@ -142,10 +142,25 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     # Separate pixel coordinates
     x_pixel, y_pixel = pixel_coords[:, 0], pixel_coords[:, 1]
 
-    # Fit WCS transformation
+    # Get CRPA
+    crpa = -52.6559717229396  # From FITS header
+    
+    # Create rotation matrix
+ #   rot_angle = np.radians(crpa)
+ #   rot_matrix = np.array([
+ #       [np.cos(rot_angle), -np.sin(rot_angle)],
+ #       [np.sin(rot_angle), np.cos(rot_angle)]
+ #   ])
+    
+    # Rotate pixel coordinates
+#    pixel_coords_rotated = np.dot(rot_matrix, pixel_coords.T).T
+    
+    # Now call fit_wcs_from_points with rotated coordinates
     wcs = fit_wcs_from_points(
-        (x_pixel, y_pixel),
+#        (pixel_coords_rotated[:, 0], pixel_coords_rotated[:, 1]),
+        (x_pixel, y_pixel), 
         sky_coords_icrs
+ #       projection='TAN'
     )
 
     # Set equinox and radesys
@@ -158,6 +173,11 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     logger.log(IRDC_DEBUG, f"CD1_2 = {wcs.wcs.cd[0, 1]}")
     logger.log(IRDC_DEBUG, f"CD2_1 = {wcs.wcs.cd[1, 0]}")
     logger.log(IRDC_DEBUG, f"CD2_2 = {wcs.wcs.cd[1, 1]}")
+
+    print(f"inst_pa from context: {inst_pa}")
+    print(f"rotation_angle (radians): {rotation_angle}")
+    print(f"Sample original offset: {instrument_offsets[0]}")
+    print(f"Sample rotated offset: {rotated_offsets[0]}")
 
     return wcs
 

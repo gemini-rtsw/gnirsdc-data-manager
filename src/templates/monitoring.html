@@ -68,6 +68,8 @@
                 <option value="initialize">Initialize ARC Controller</option>
                 <option value="clear">Clear Errors</option>
                 <option value="tdl">TDL</option>
+                <option value="power_on_cad">PowerOnCAD</option>
+                <option value="power_off_cad">PowerOffCAD</option>
                 <option value="start_controller">Start/Restart DC Software</option>
                 <option value="start_controller_debug">Start/Restart DC Software (Debug)</option>
                 <option value="start_controller_full_debug">Start/Restart DC Software (Full Debug)</option>
@@ -396,6 +398,45 @@
 
     // Call it when the page loads
     document.addEventListener('DOMContentLoaded', updateHostname);
+
+    function applyTDL() {
+        fetch('/apply_tdl', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    console.error('Error:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    function powerOnCAD() {
+        fetch('/power_on_cad', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    console.error('Error:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    function powerOffCAD() {
+        fetch('/power_off_cad', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    console.error('Error:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
 </script>
 
 <style>
@@ -1230,6 +1271,10 @@
             clearErrors();
         } else if (selectedAction === 'tdl') {
             applyTDL();
+        } else if (selectedAction === 'power_on_cad') {
+            powerOnCAD();
+        } else if (selectedAction === 'power_off_cad') {
+            powerOffCAD();
         } else if (selectedAction === 'start_controller') {
             startController('normal');
         } else if (selectedAction === 'start_controller_debug') {
@@ -1273,6 +1318,32 @@
 
     function applyTDL() {
         fetch('/apply_tdl', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    console.error('Error:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    function powerOnCAD() {
+        fetch('/power_on_cad', {method: 'POST'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    console.error('Error:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    function powerOffCAD() {
+        fetch('/power_off_cad', {method: 'POST'})
             .then(response => response.json())
             .then(data => {
                 if (data.status !== 'success') {

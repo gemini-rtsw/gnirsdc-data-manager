@@ -384,6 +384,28 @@ def initialize_sdsu():
         logger.error(f"Error initializing SDSU: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/power_on_cad', methods=['POST'])
+def power_on_cad():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        caput(f'{top_name}:dc:powerOn.DIR', "MARK", wait=True)
+        caput(f'{top_name}:dc:apply.DIR', "START")
+        return jsonify({"status": "success", "message": "CAD powered on successfully"})
+    except Exception as e:
+        logger.error(f"Error powering on CAD: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/power_off_cad', methods=['POST'])
+def power_off_cad():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        caput(f'{top_name}:dc:powerOff.DIR', "MARK", wait=True)
+        caput(f'{top_name}:dc:apply.DIR', "START")
+        return jsonify({"status": "success", "message": "CAD powered off successfully"})
+    except Exception as e:
+        logger.error(f"Error powering off CAD: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/get_file_log')
 def get_file_log():
     log_dir = config[config_mode].get('LOG_DIR', '/readout_data/logs')

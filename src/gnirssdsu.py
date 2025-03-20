@@ -189,9 +189,28 @@ class InitSDSUCAD(GnirsCAD):
         return False
 
 
+class PowerOnCAD(GnirsCAD):
+    async def start(self):
+        if self.controller is None:
+            await self.logMessage(f"Controller not initialized")
+            await self.MESS.write("Controller not initialized")
+            return False
+        else:
+            self.controller.powerOn()
+            await self.MESS.write("Power On Successful")
+            return True
 
 
-
+class PowerOffCAD(GnirsCAD):
+    async def start(self):
+        if self.controller is None:
+            await self.logMessage(f"Controller not initialized")
+            await self.MESS.write("Controller not initialized")
+            return False
+        else:
+            self.controller.powerOff()
+            await self.MESS.write("Power Off Successful")
+            return True 
 
 
 class DCConfigCAD(GnirsCAD):
@@ -441,6 +460,8 @@ class GnirsCADCARController(PVGroup):
     bias = SubGroup(BiasCAD, prefix='dc:bias.')
     init = SubGroup(InitCAD, prefix='dc:init.')
     initSDSU = SubGroup(InitSDSUCAD, prefix='dc:initSDSU.')
+    powerOn = SubGroup(PowerOnCAD, prefix='dc:powerOn.')
+    powerOff = SubGroup(PowerOffCAD, prefix='dc:powerOff.')
     dcconfig = SubGroup(DCConfigCAD, prefix='dc:dcconfig.')
     endObserve = SubGroup(AbortCAD, prefix='dc:endObserve.')
     abort = SubGroup(AbortCAD, prefix='dc:abort.')
@@ -475,7 +496,7 @@ class GnirsCADCARController(PVGroup):
 
 
         # some kind of order bug. observe must go first or seqexec will error ?? 
-        self.apply.cads.records = [self.observe, self.dcconfig, self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.TDL, self.bias]
+        self.apply.cads.records = [self.observe, self.dcconfig, self.endObserve, self.abort, self.observe, self.stop, self.init, self.initSDSU, self.powerOn, self.powerOff, self.TDL, self.bias]
 
         # Observe has it's own CAR
         self.observe.cars.records = [self.observeC]

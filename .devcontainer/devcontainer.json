@@ -8,9 +8,7 @@
         "-v", "${env:HOME}/.ssh:/mnt/host/.ssh:ro",  
         "-v", "${env:HOME}/.gitconfig:/mnt/host/.gitconfig:ro",  
         "-v", "${env:HOME}/irdc_data/readout_data:/readout_data:rw",
-        "-v", "${env:HOME}/irdc_data/staging/perm:/staging/perm:rw",
-        "-v", "/etc/localtime:/etc/localtime:ro",
-        "-v", "/etc/timezone:/etc/timezone:ro"
+        "-v", "${env:HOME}/irdc_data/staging/perm:/staging/perm:rw"
     ],
     "remoteUser": "root",
     "updateRemoteUserUID": true,

@@ -27,6 +27,8 @@ class TCSContext(PVGroup):
     camera = pvproperty(value='ShortBlue_G5540', dtype=str, name='tgnirs:sad:cc:cameraPosition')
     
     # Add instrument position angle PV
+    #90.0 - 59.0
+    #-52.6559717229396
     instr_pa = pvproperty(value=90.0 - 59.0, dtype=float, name='tc:instrPA')
     port = pvproperty(value=3, dtype=int, name='tag:port:nirs')
     #ao = pvproperty(value='IN', dtype=str, name='tag:aoName')

@@ -752,3 +752,45 @@ The firmware for the SDSU ARC controller can be built using the following steps:
 
 6. **Reinitialize the controller:**
    - Use the System Manager to reinitialize the controller to apply the new firmware.
+
+# macOS Debug Setup
+
+For a simplified debug setup on macOS, follow these steps:
+
+1. **Start the GMP Server:**
+   Run the following command to start the GMP (Gemini Master Process) server in a Docker container:
+   ```bash
+   docker run -d --network=host --name gmp \
+     -v /Users/hawi.stecher/irdc_data/readout_data:/readout_data \
+     -v /Users/hawi.stecher/irdc_data/staging/perm:/staging/perm \
+     registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-serverhstecher-ml1:gnirsdc-data-manager
+   ```
+
+2. **Run the TCS Simulator:**
+   Inside the VSCode dev container terminal, run:
+   ```bash
+   python3 test/tcs_simulator.py
+   ```
+   This simulates the Telescope Control System for testing purposes.
+
+3. **Start the GNIRSDC Data Manager:**
+   Open a new terminal in the VSCode dev container and run:
+   ```bash
+   python3 gnirsdm.py --debug
+   ```
+   
+4. **Launch the System Manager Server:**
+   Open another terminal in the VSCode dev container and run:
+   ```bash
+   python3 system_manager_server.py --debug
+   ```
+
+5. **Access the System Manager:**
+   Open a web browser and navigate to:
+   ```
+   http://localhost:8080
+   ```
+
+This setup provides a complete debug environment with the GMP server, TCS simulator, GNIRSDC Data Manager, and System Manager Server all running in their respective containers or processes.
+
+Note: The `--debug` flag is important as it tells the components to run in debug mode without attempting to connect to actual hardware.
