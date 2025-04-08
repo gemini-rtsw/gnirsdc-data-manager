@@ -196,10 +196,18 @@ class PowerOnCAD(GnirsCAD):
             await self.MESS.write("Controller not initialized")
             return False
         else:
-            self.controller.powerOn()
-            await self.MESS.write("Power On Successful")
-            return True
-
+            try:
+                self.controller.powerOn()
+                await self.logMessage("Voltage activation successful")
+                await self.MESS.write("Voltage activation successful")
+                return True
+            
+            except Exception as e:
+                error_message = str(e)
+                await self.logMessage(f"An exception occurred: {error_message}")
+                await self.MESS.write(f"An exception occurred: {error_message}")
+                return False
+            
 
 class PowerOffCAD(GnirsCAD):
     async def start(self):
@@ -208,9 +216,17 @@ class PowerOffCAD(GnirsCAD):
             await self.MESS.write("Controller not initialized")
             return False
         else:
-            self.controller.powerOff()
-            await self.MESS.write("Power Off Successful")
-            return True 
+            try:
+                self.controller.powerOff()
+                await self.logMessage("Voltage deactivation successful")
+                await self.MESS.write("Voltage deactivation successful")
+                return True 
+            
+            except Exception as e:
+                error_message = str(e)
+                await self.logMessage(f"An exception occurred: {error_message}")
+                await self.MESS.write(f"An exception occurred: {error_message}")
+                return False
 
 
 class DCConfigCAD(GnirsCAD):
