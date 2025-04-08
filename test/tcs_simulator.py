@@ -8,11 +8,11 @@ import asyncio
 from astropy.time import Time
 
 class TCSContext(PVGroup):
-    # Right Ascension (RA) in sexagesimal format matching header RA of 68.3586666666667 degrees
-    track_ra = pvproperty(value="04:33:26.08", dtype=str, name='tc:sad:currentRA')
+    # Right Ascension (RA) in sexagesimal format matching header RA of 67.4006958333333 degrees
+    track_ra = pvproperty(value="04:29:36.17", dtype=str, name='tc:sad:currentRA')
 
-    # Declination (Dec) in sexagesimal format matching header Dec of 22.7570611111111 degrees
-    track_dec = pvproperty(value="+22:45:25.42", dtype=str, name='tc:sad:currentDec')
+    # Declination (Dec) in sexagesimal format matching header Dec of 24.5976555555556 degrees
+    track_dec = pvproperty(value="+24:35:51.56", dtype=str, name='tc:sad:currentDec')
 
     # Coordinate frame matching header 'TRKFRAME'
     track_frame = pvproperty(value='FK5', dtype=str, name='tc:sad:sourceATrackFrame')
@@ -20,8 +20,31 @@ class TCSContext(PVGroup):
     # Equinox matching header 'TRKEQUIN' of 2000.0
     track_equinox = pvproperty(value='J2000.0', dtype=str, name='tc:sad:sourceAEpoch')
 
+    # TCS context array (45 elements)
+    ast_ctx = pvproperty(
+        name='tc:ak:astCtx.VALA',
+        value=[0.0] * 45,  # Initialize with 45 zeros
+        dtype=ChannelType.DOUBLE,
+        max_length=45,
+        doc='TCS context array'
+    )
+
+    @ast_ctx.startup
+    async def ast_ctx(self, instance, async_lib):
+        # Initialize with specific values
+        initial_values = [
+            1.73462e+09, 0.310309, 0.422724, 0.851477, 128000, 0.145194, 
+            0.000247885, -7.43704e-05, -5.18987e-05, 0.000128232, -7.37791e-06, 
+            0.345991, 0.339129, 0.94074, 1.461e-06, 4213.4, 275.34, 619.57, 
+            0.1404, 0.5, 0.0065, 0.000178272, -1.98957e-07, 2.47415, 1.82288e-06, 
+            3.41779e-13, 1.83958e-16, 3.4177e-13, 1.36354e-16, 3.37543e-10, 
+            -5.58104e-07, -0.199816, -0.0834657, -0.199816, -0.0834657, -0.199816, 
+            -0.0834657, -0.199816, -0.0834657, 0, 1, 0, 0, 0, 1
+        ]
+        await instance.write(value=initial_values)
+
     # Observation time in Modified Julian Date (MJD) matching header 'MJD_OBS'
-    time_tai = pvproperty(value=60571.5623074667, dtype=float, precision=3, name='tc:sad:djmls')
+    time_tai = pvproperty(value=60663.4006663199, dtype=float, precision=3, name='tc:sad:djmls')
 
     # Update camera PV
     camera = pvproperty(value='ShortBlue_G5540', dtype=str, name='tgnirs:sad:cc:cameraPosition')

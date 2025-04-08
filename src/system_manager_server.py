@@ -549,19 +549,25 @@ def readme():
 last_preview_image = None
 last_pv_values = None
 preview_lock = threading.Lock()
+no_files_warning_logged = False
+no_preview_logged = False  # Add this flag
 
 def generate_and_cache_preview_and_pvs():
-    global last_preview_image, last_pv_values
+    global last_preview_image, last_pv_values, no_files_warning_logged, no_preview_logged
     try:
         # Generate preview image
         fits_dir = '/readout_data/fits'
+        os.makedirs(fits_dir, exist_ok=True)
         files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
         
         if not files:
-            current_app.logger.warning("No files found in directory")
+            if not no_files_warning_logged:
+                current_app.logger.warning("No files found in directory")
+                no_files_warning_logged = True
             preview_image = None
             latest_file = None
         else:
+            no_files_warning_logged = False
             latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
             file_path = os.path.join(fits_dir, latest_file)
 
@@ -589,6 +595,7 @@ def generate_and_cache_preview_and_pvs():
                 plt.close(fig)
 
                 preview_image = buf.getvalue()
+                no_preview_logged = False  # Reset when we get a preview
 
             except Exception as e:
                 current_app.logger.error(f"Error processing file {latest_file}: {str(e)}")
@@ -642,7 +649,9 @@ def generate_and_cache_preview_and_pvs():
         if latest_file:
             current_app.logger.info(f"Preview and PVs cached successfully for {latest_file}")
         else:
-            current_app.logger.info("No new preview available, PVs cached successfully")
+            if not no_preview_logged:
+                current_app.logger.info("No new preview available, PVs cached successfully")
+                no_preview_logged = True
 
     except Exception as e:
         current_app.logger.error(f"Error generating preview and PVs: {str(e)}")
