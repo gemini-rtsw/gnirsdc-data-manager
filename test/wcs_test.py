@@ -15,23 +15,27 @@ from src.wcs_utils import process_wcs_data, load_all_files
 # Load all WCS files
 load_all_files()
 
-# Define the real header values as tcs_context
+# Define the real header values as tcs_context for N20241219S0088.fits
 tcs_context = {
-    'track_ra': "04:33:26.08",          # RA in hourangle string format
-    'track_dec': "+22:45:25.42",         # DEC in degrees string format
+    'track_ra': "00:45:28.81",         # RA in hourangle string format (converted from 11.3700416666667)
+    'track_dec': "+41:54:09.90",       # DEC in degrees string format (converted from 41.90275)
     'track_frame': 'FK5',
     'track_equinox': 'J2000.0',
-    'time': 60571.5623074667,            # MJD of observation start
-    'ra_offset': -2.47726331562134,      # Telescope offset in RA in arcsec
-    'dec_offset': 0.619344902202265,      # Telescope offset in DEC in arcsec
-    'pm_ra': 0.0,                        # Proper Motion in RA (arcsec/year)
-    'pm_dec': 0.0                        # Proper Motion in Dec (arcsec/year)    
+    'time': 60663.3445497426,          # MJD of observation start (MJD_OBS)
+    'ra_offset': 1.48031131656736,     # Telescope offset in RA in arcsec (RAOFFSET)
+    'dec_offset': 0.0344496035053328,  # Telescope offset in DEC in arcsec (DECOFFSE)
+    'pm_ra': 0.0,                      # Proper Motion in RA (arcsec/year) (PMRA)
+    'pm_dec': 0.0,                     # Proper Motion in Dec (arcsec/year) (PMDEC)
+    'inst_pa': 89.818 - 292.22,        # IAA - PA (IAA - PA)
+    # Mount pointing origin values (in arcseconds)
+    'mount_origin_x': -0.778508,       # Mount pointing origin in X (arcsec)
+    'mount_origin_y': 15.0837          # Mount pointing origin in Y (arcsec)
 }
 
 # Define parameters
 port = 3
 camera = 'short'
-ao = 'OUT'
+ao = 'park-pos.'
 
 # Process WCS data
 wcs = process_wcs_data(port, camera, ao, tcs_context)
@@ -51,15 +55,15 @@ print(f"CD2_2   = {wcs.wcs.cd[1, 1]}")
 print(f"EQUINOX = {wcs.wcs.equinox}")
 
 # Print the real FITS header values for comparison
-print("\nReal FITS Header Values:")
+print("\nReal FITS Header Values for N20241219S0088.fits:")
 print("CTYPE1  = 'RA---TAN'")
-print("CRPIX1  = 496.09046165875")
-print("CRVAL1  = 68.3552197363359")
+print("CRPIX1  = 496.090823676464")
+print("CRVAL1  = 11.3740732760405")
 print("CTYPE2  = 'DEC--TAN'")
-print("CRPIX2  = 629.961909100396")
-print("CRVAL2  = 22.7510440262337")
-print("CD1_1   = -3.62424139562799E-05")
-print("CD1_2   = -2.18690840336252E-05")
-print("CD2_1   = 2.16030382479371E-05")
-print("CD2_2   = -3.68117762385558E-05")
+print("CRPIX2  = 629.961947165382")
+print("CRVAL2  = 41.9087958888901")
+print("CD1_1   = 3.88344523031505E-05")
+print("CD1_2   = 1.66870209963025E-05")
+print("CD2_1   = -1.65014646994829E-05")
+print("CD2_2   = 3.94268801298063E-05")
 print("EQUINOX = 2000.0")
