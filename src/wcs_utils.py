@@ -58,6 +58,53 @@ def load_all_files():
 
 
 
+def calculate_crpix_for_target(wcs, target_ra, target_dec, ra_offset=0.0, dec_offset=0.0, pmra=0.0, pmdec=0.0, dt=0.0):
+    """
+    Calculate the CRPIX values that would place the target at the reference pixel.
+    
+    Parameters:
+    -----------
+    wcs : astropy.wcs.WCS
+        The WCS object with existing parameters
+    target_ra : float
+        Target RA in degrees
+    target_dec : float
+        Target DEC in degrees
+    ra_offset : float, optional
+        RA offset in arcseconds
+    dec_offset : float, optional
+        DEC offset in arcseconds
+    pmra : float, optional
+        Proper motion in RA (arcsec/year)
+    pmdec : float, optional
+        Proper motion in DEC (arcsec/year)
+    dt : float, optional
+        Time difference in years between coordinate epoch and observation epoch
+    
+    Returns:
+    --------
+    tuple
+        (crpix1, crpix2) - the calculated CRPIX values
+    """
+    # Calculate the expected position with offsets and proper motion
+    expected_ra = target_ra + ra_offset/3600.0 + pmra/3600.0*dt
+    expected_dec = target_dec + dec_offset/3600.0 + pmdec/3600.0*dt
+    
+    # Find where the target is in pixel space with current WCS
+    # These are the pixel coordinates where the target falls
+    target_x, target_y = wcs.wcs_world2pix(expected_ra, expected_dec, 1)
+    
+    # The simplest approach: use the target's pixel coordinates as CRPIX
+    # This will make the CRVAL point directly at the target position
+    new_crpix1 = target_x
+    new_crpix2 = target_y
+    
+    logger.log(IRDC_DEBUG, f"Target coordinates: RA={expected_ra}, DEC={expected_dec}")
+    logger.log(IRDC_DEBUG, f"Target pixel position (new CRPIX): ({new_crpix1}, {new_crpix2})")
+    logger.log(IRDC_DEBUG, f"Original CRPIX: ({wcs.wcs.crpix[0]}, {wcs.wcs.crpix[1]})")
+    
+    return new_crpix1, new_crpix2
+
 def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     # Extract and convert the TCS context information
     track_ra = Angle(tcs_context['track_ra'], unit=u.hourangle).deg
@@ -94,6 +141,7 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     dec_offset = tcs_context.get('dec_offset', 0.0) * u.arcsec
 
     # Get the instrument position angle
+    inst_iaa = Angle(tcs_context.get('inst_iaa', 0.0), unit=u.deg).deg
     inst_pa = Angle(tcs_context.get('inst_pa', 0.0), unit=u.deg).deg
 
     # Create a SkyCoord object for the tracking position with obstime and proper motion
@@ -113,10 +161,13 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     
     # Center the instrument offsets
     center = np.mean(instrument_offsets, axis=0)
-    centered_offsets = instrument_offsets - center
+#    centered_offsets = instrument_offsets - center
+
+#-0.778508 15.0837
+    centered_offsets = instrument_offsets # - (-0.778508, 15.0837)
 
     # Rotate centered instrument offsets by inst_pa
-    rotation_angle = np.radians(inst_pa)
+    rotation_angle = np.radians(inst_iaa - inst_pa)
     rotation_matrix = np.array([
         [np.cos(rotation_angle), -np.sin(rotation_angle)],
         [np.sin(rotation_angle), np.cos(rotation_angle)]
@@ -124,7 +175,9 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     rotated_offsets = centered_offsets @ rotation_matrix.T
 
     # Translate back
-    final_offsets = rotated_offsets + center
+#    final_offsets = rotated_offsets + center
+#    final_offsets = rotated_offsets + (-0.778508, 15.0837)
+    final_offsets = rotated_offsets # + (30, 30)
 
     # Apply units to final offsets
     delta_ra = final_offsets[:, 0] * u.arcsec
@@ -139,22 +192,11 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     # Convert the sky coordinates to ICRS frame
     sky_coords_icrs = sky_coords.transform_to(ICRS())
 
+
     # Separate pixel coordinates
     x_pixel, y_pixel = pixel_coords[:, 0], pixel_coords[:, 1]
 
-    # Get CRPA
-    crpa = -52.6559717229396  # From FITS header
-    
-    # Create rotation matrix
- #   rot_angle = np.radians(crpa)
- #   rot_matrix = np.array([
- #       [np.cos(rot_angle), -np.sin(rot_angle)],
- #       [np.sin(rot_angle), np.cos(rot_angle)]
- #   ])
-    
-    # Rotate pixel coordinates
-#    pixel_coords_rotated = np.dot(rot_matrix, pixel_coords.T).T
-    
+
     # Now call fit_wcs_from_points with rotated coordinates
     wcs = fit_wcs_from_points(
 #        (pixel_coords_rotated[:, 0], pixel_coords_rotated[:, 1]),
@@ -174,11 +216,35 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     logger.log(IRDC_DEBUG, f"CD2_1 = {wcs.wcs.cd[1, 0]}")
     logger.log(IRDC_DEBUG, f"CD2_2 = {wcs.wcs.cd[1, 1]}")
 
-    print(f"inst_pa from context: {inst_pa}")
-    print(f"rotation_angle (radians): {rotation_angle}")
-    print(f"Sample original offset: {instrument_offsets[0]}")
-    print(f"Sample rotated offset: {rotated_offsets[0]}")
 
+    # Calculate CRPIX for target if requested in tcs_context
+    if tcs_context.get('recalculate_crpix', False):
+        # Calculate the epoch difference for proper motion
+        if 'coord_epoch' in tcs_context and 'obs_epoch' in tcs_context:
+            dt = tcs_context['obs_epoch'] - tcs_context['coord_epoch']
+        else:
+            # Approximate from equinox and current time
+            curr_year = Time(obstime, format='mjd').decimalyear
+            dt = curr_year - track_equinox
+        
+        logger.log(IRDC_DEBUG, f"Epoch difference for PM: {dt} years")
+        
+        # Calculate new CRPIX values
+        new_crpix1, new_crpix2 = calculate_crpix_for_target(
+            wcs, 
+            track_ra, 
+            track_dec,
+            ra_offset=ra_offset.value,
+            dec_offset=dec_offset.value,
+            pmra=pm_ra.value,
+            pmdec=pm_dec.value,
+            dt=dt
+        )
+        
+        # Update the WCS with new CRPIX values
+        wcs.wcs.crpix = np.array([new_crpix1, new_crpix2])
+        logger.log(IRDC_DEBUG, f"Updated CRPIX values: ({new_crpix1}, {new_crpix2})")
+    
     return wcs
 
 
@@ -267,3 +333,4 @@ ao = 'OUT'
 
 wcs = process_wcs_data(port, camera, ao, tcs_context)
 '''
+

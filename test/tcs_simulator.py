@@ -20,6 +20,8 @@ class TCSContext(PVGroup):
     # Equinox matching header 'TRKEQUIN' of 2000.0
     track_equinox = pvproperty(value='J2000.0', dtype=str, name='tc:sad:sourceAEpoch')
 
+
+    
     # TCS context array (45 elements)
     ast_ctx = pvproperty(
         name='tc:ak:astCtx.VALA',
@@ -50,9 +52,17 @@ class TCSContext(PVGroup):
     camera = pvproperty(value='ShortBlue_G5540', dtype=str, name='tgnirs:sad:cc:cameraPosition')
     
     # Add instrument position angle PV
-    #90.0 - 59.0
-    #-52.6559717229396
-    instr_pa = pvproperty(value=90.0 - 59.0, dtype=float, name='tc:instrPA')
+
+
+    ra_offset = pvproperty(value=2.82962477863191, dtype=float, name='tc:sad:raOffset')
+    dec_offset = pvproperty(value=-0.490166004284015, dtype=float, name='tc:sad:decOffset')
+    pm_ra = pvproperty(value=1.86856864913779E-05, dtype=float, name='tc:sad:pmRa')
+    pm_dec = pvproperty(value=-0.000774999987160837, dtype=float, name='tc:sad:pmDec')
+    instr_iaa = pvproperty(value=89.818, dtype=float, name='tc:instrIAA')
+    instr_pa = pvproperty(value=70.0, dtype=float, name='tc:instrPA')
+
+
+
     port = pvproperty(value=3, dtype=int, name='tag:port:nirs')
     #ao = pvproperty(value='IN', dtype=str, name='tag:aoName')
     ao = pvproperty(value='park-pos.', dtype=str, name='tag:aoName')

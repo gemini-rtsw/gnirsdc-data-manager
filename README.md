@@ -794,3 +794,108 @@ For a simplified debug setup on macOS, follow these steps:
 This setup provides a complete debug environment with the GMP server, TCS simulator, GNIRSDC Data Manager, and System Manager Server all running in their respective containers or processes.
 
 Note: The `--debug` flag is important as it tells the components to run in debug mode without attempting to connect to actual hardware.
+
+## GNIRS WCS Procedures
+
+The WCS files are stored in `/gemini/GEM5/gnirs/DC/DC/data/`, and they have names like "gnirs_3_short.wcs".
+
+Update this web page so that we can keep track of WCS changes: internal.gemini.edu/science/instruments/GNIRS/Systems_Reference/wcs/gnirsWCS.html
+
+The WCS depends on the hotspot, so if the hotspot is significantly off and there are huge offsets, gwcs may fail in very weird ways, and you may need to start with the single star method.
+
+Typically, we check the WCS for GNIRS short blue camera.
+
+### Using an "astrometric field"
+
+If you've doing the hotspot, IAA, checkouts already just skip to step 5.
+
+1. Choose a field with a bright star at the center and many Gaia/2MASS stars in the field
+2. Check that science fold values have been updated and are correct
+3. Slew to the astrometric field
+4. Do GNIRS hotspot and Refine the IAA if necessary
+5. Take an image
+6. Run gwcs to derive new WCS. If you've done the IAA checkouts, the output from giaa gives WCS offsets (WCS dX, WCS dY)
+7. If WCS is good within 1-2 arcseconds then don't do anything. otherwise continue with the rest of the steps
+8. Follow the 'Adjusting the WCS with shiftwcs.sh' and 'Using offsets with a single star below'
+9. Upload the WCS file if needed to `/gemini/GEM5/gnirs/DC/DC/data/`. Note the shiftwcs.sh script automatically makes a backup of the original WCS file, so you don't need to manually make a backup
+10. Reload the WCS file if needed (Mark/Start) using the initWcsCAD (DC-->Additional Screens-->initWcsCAD)
+11. Take another image and re-run gwcs to confirm the new WCS
+
+### Adjusting the WCS with shiftwcs.sh
+
+Log in to gemvx@pisces and run the shiftwcs.csh script using the offsets outputted by WCS. This script should be located in `/home/gemvx/bin/shiftwcs.sh`. Go to the directory where the NIRI wcs are stored and run this script. Note the script automatically backups the original copy of the WCS so you can revert back to it if needed.
+
+```
+shiftwcs.sh - shift an instrument WCS
+
+SYNOPSIS
+
+shiftwcs.sh [-p] wcsfile xshift yshift
+
+DESCRIPTION
+
+Make a backup of the supplied WCS file by appending it's last modification date, then shift the WCS file in X and Y. By default the supplied X and Y shifts are assumed to be in arcseconds. One may give offsets in pixels with the -p option. Note that shifts in arcseconds are in the TELESCOPE reference frame, and shifts in pixels are in the DETECTOR reference frame. For this reason it may be more intuitive to apply shifts in pixels, although shifts due to hotspot changes may be easier to apply in arcseconds.
+
+OPTIONS
+
+-p : Apply shifts in pixels instead of arcseconds
+```
+
+Reload the WCS file (Mark/Start) using the initWcsCAD (DC>Additional Screens)
+Take another image to confirm the new WCS (make sure the compass on the QuickLook Tool is correct)
+
+### Using offsets with a single star (when there are less than ~9 stars in the field)
+
+1. Choose a field with a single bright star
+2. Have the SOS center the star on the CR center while guiding
+3. Create an observation with ~10 offsets which move the star to the field extremes, starting and ending at (0,0)
+4. Record the instrument offsets (X,Y) from the TSD for each position (instrument offsets are NOT the P,Q offsets in the OT offset iterator!)
+5. Use IRAF imexam "r" to record the star position on each image (in pixels)
+6. Create a "raw" coordinate file with the image number, Instrument offsets and Image coordinates:
+
+```
+> cat gnirs.raw
+# N     Instrument      Image
+#       X       Y       X       Y
+232     2.66   7.08     511.00  512.51
+233     -5.37 15.05     878.21 145.36
+234     -5.30 -0.95     144.91 148.78
+235     10.63 15.12     878.95 876.40
+236     10.70 -0.88     145.26 879.84
+237     2.66   7.08     511.16 513.69
+```
+
+7. Create the wcs file by running this raw file through awk:
+```
+awk '$1>0 {printf "%6.2f %6.2f  %8.4f %8.4f\n", $4,$5,$2/1.61144,$3/1.61144}' gnirs.raw > gnirs.wcs
+```
+
+This will:
+- convert the Instrument offsets from arcseconds to millimeters by dividing by 1.61144
+- re-order the columns to be Image Coordinates (x,y) and Instrument Offsets (x,y)
+
+```
+> cat gnirs.wcs
+511.00 512.51    1.6507   4.3936
+878.21 145.36   -3.3324   9.3395
+144.91 148.78   -3.2890  -0.5895
+878.95 876.40    6.5966   9.3829
+145.26 879.84    6.6400  -0.5461
+511.16 513.69    1.6507   4.3936
+```
+
+8. Update the WCS file on pisces
+9. Make a backup of the old WCS file (if there isn't one already):
+```
+mv gnirs_3_short.wcs gnirs_3_short.wcs.date
+```
+10. Copy the new WCS file: (the syntax is p<port>f<camera><altair>.wcs)
+```
+scp gnirs.wcs gemvx@pisces:/gemini/GEM5/gnirs/DC/DC/data//gnirs_3_short.wcs
+```
+11. Reload the WCS file (Mark/Start) using the initWcsCAD (DC>Additional Screens)
+12. Take another image to confirm the new WCS (make sure the compass on the QuickLook Tool is correct)
+
+R. Mason 20130424
+
+updated 2018 Nov 27 - astephens + MES
