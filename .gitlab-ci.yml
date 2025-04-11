@@ -72,8 +72,10 @@ pages:
   script:
     - apk add --no-cache pandoc nodejs npm python3 py3-pip
     - apk add --no-cache py3-pandocfilters
+    - npm install -g @mermaid-js/mermaid-cli
+    - pip install pandoc-mermaid-filter
     - mkdir public
-    - pandoc README.md -f markdown+raw_html -t html5 --toc --toc-depth=3 --highlight-style pygments --number-sections --template=src/templates/template.html --metadata title="Detector Controller Software" -o public/index.html
+    - pandoc README.md -f markdown+raw_html -t html5 --toc --toc-depth=3 --highlight-style pygments --number-sections --template=src/templates/template.html --metadata title="Detector Controller Software" --filter pandoc-mermaid -o public/index.html
   artifacts:
     paths:
       - public

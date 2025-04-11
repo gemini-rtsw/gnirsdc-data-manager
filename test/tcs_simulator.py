@@ -54,12 +54,12 @@ class TCSContext(PVGroup):
     # Add instrument position angle PV
 
 
-    ra_offset = pvproperty(value=2.82962477863191, dtype=float, name='tc:sad:raOffset')
-    dec_offset = pvproperty(value=-0.490166004284015, dtype=float, name='tc:sad:decOffset')
-    pm_ra = pvproperty(value=1.86856864913779E-05, dtype=float, name='tc:sad:pmRa')
-    pm_dec = pvproperty(value=-0.000774999987160837, dtype=float, name='tc:sad:pmDec')
-    instr_iaa = pvproperty(value=89.818, dtype=float, name='tc:instrIAA')
-    instr_pa = pvproperty(value=70.0, dtype=float, name='tc:instrPA')
+    ra_offset = pvproperty(value=2.82962477863191, dtype=float, name='tc:sad:sourceADiffRA.VAL')
+    dec_offset = pvproperty(value=-0.490166004284015, dtype=float, name='tc:sad:sourceADiffDec.VAL')
+    pm_ra = pvproperty(value=1.86856864913779E-05, dtype=float, name='tc:sad:sourceAPMRA.VAL')
+    pm_dec = pvproperty(value=-0.000774999987160837, dtype=float, name='tc:sad:sourceAPMDec.VAL')
+    instr_iaa = pvproperty(value=89.818, dtype=float, name='tc:sad:instrAA.VAL')
+    instr_pa = pvproperty(value=70.0, dtype=float, name='tc:sad:instrPA.VAL')
 
 
 

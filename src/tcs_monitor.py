@@ -26,8 +26,13 @@ class TCSMonitor:
             f'{tcs_prefix}sad:currentDec',        # 'track_dec'
             f'{tcs_prefix}sad:sourceATrackFrame', # 'track_frame'
             f'{tcs_prefix}sad:sourceAEpoch',      # 'track_equinox'
-            f'{tcs_prefix}instrPA',           # 'instrument position angle'
-            f'{cc_prefix}sad:cc:cameraPosition',      # 'camera'
+            f'{tcs_prefix}sad:sourceADiffRA.VAL', # 'ra_offset'
+            f'{tcs_prefix}sad:sourceADiffDec.VAL', # 'dec_offset'
+            f'{tcs_prefix}sad:sourceAPMRA.VAL',   # 'pm_ra'
+            f'{tcs_prefix}sad:sourceAPMDec.VAL',  # 'pm_dec'
+            f'{tcs_prefix}sad:instrAA.VAL',       # 'inst_iaa'
+            f'{tcs_prefix}sad:instrPA.VAL',       # 'inst_pa'
+            f'{cc_prefix}sad:cc:cameraPosition',  # 'camera'
             f'{ag_prefix}port:nirs',              # 'port'
             f'{ag_prefix}aoName'                  # 'ao' 
         ]
@@ -88,8 +93,13 @@ class TCSMonitor:
             'currentDec': 'track_dec',
             'sourceATrackFrame': 'track_frame',
             'sourceAEpoch': 'track_equinox',
-            'instrPA': 'inst_pa',  # Changed from 'camera' to 'instrument_pa'
-            'cameraPosition': 'camera',  # Added mapping for 'cameraPosition'
+            'sourceADiffRA.VAL': 'ra_offset',
+            'sourceADiffDec.VAL': 'dec_offset',
+            'sourceAPMRA.VAL': 'pm_ra',
+            'sourceAPMDec.VAL': 'pm_dec',
+            'instrAA.VAL': 'inst_iaa',
+            'instrPA.VAL': 'inst_pa',
+            'cameraPosition': 'camera',
             'nirs': 'port',
             'aoName': 'ao'
         }
