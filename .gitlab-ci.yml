@@ -70,13 +70,13 @@ pages:
   stage: pages
   image: alpine:latest
   script:
-    - apk add --no-cache pandoc nodejs npm python3
+    - apk add --no-cache pandoc nodejs npm python3 chromium chromium-chromedriver
     - npm install -g @mermaid-js/mermaid-cli
     - mkdir -p public
     # Extract and convert Mermaid diagrams to SVG
     - mkdir -p diagrams
     - grep -A 10 '```mermaid' README.md | sed -n '/```mermaid/,/```/p' | sed 's/```mermaid//;s/```//' > diagrams/diagram.mmd
-    - npx -p @mermaid-js/mermaid-cli mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg
+    - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npx -p @mermaid-js/mermaid-cli mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg
     # Convert markdown to HTML, replacing Mermaid code blocks with SVG images
     - sed 's/```mermaid.*```/![Mermaid Diagram](diagrams\/diagram.svg)/' README.md > README.processed.md
     - pandoc README.processed.md -f markdown+raw_html -t html5 --toc --toc-depth=3 --highlight-style pygments --number-sections --template=src/templates/template.html --metadata title="Detector Controller Software" -o public/index.html
