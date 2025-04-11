@@ -533,7 +533,7 @@ Remember to perform these steps whenever you're notified of significant changes 
 
 # Changing TCS Process Variable (PV) in the TCS context
 
-```mermaid
+<div class="mermaid">
 graph TD
     TCS[TCS IOC] -->|EPICS data| A[Python EPICS IOC]
     AG[AG IOC] -->|EPICS data| A
@@ -542,7 +542,7 @@ graph TD
     C --> D[Write raw data with header and readout]
     D --> A
     A --> E[Rebuild raw files into final FITS file]
-```
+</div>
 
 *Figure 1: Data flow diagram showing how TCS and AG IOCs provide EPICS data to the Python EPICS IOC, which then processes the data through the Pybind11 library to create FITS files with proper headers.*
 
