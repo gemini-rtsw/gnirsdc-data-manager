@@ -31,7 +31,7 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         utend = pdu['UTEND']
         lnrs = int(pdu['LNRS'])
         ndavgs = int(pdu['NDAVGS'])
-        exptime = float(pdu['EXPTIME'])
+        exptime = round(float(pdu['EXPTIME']), 3)
         reqtime = float(pdu['EXPREQ'])
         min_int = float(pdu['MIN_INT'])
         singleq = pdu.get('1Q', False)
@@ -58,10 +58,19 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         tcs_port = pdu.get('TCS_PORT', '')
         tcs_camera = pdu.get('TCS_CAMERA', '')
         tcs_ao = pdu.get('TCS_AO', '')
-        tcs_inst_pa = pdu.get('TCS_INST_PA', '')  
+        tcs_inst_pa = pdu.get('TCS_INST_PA', '')
+        tcs_ra_offset = pdu.get('TCS_RA_OFFSET', '')
+        tcs_dec_offset = pdu.get('TCS_DEC_OFFSET', '')
+        tcs_pm_ra = pdu.get('TCS_PM_RA', '')
+        tcs_pm_dec = pdu.get('TCS_PM_DEC', '')
+        tcs_inst_iaa = pdu.get('TCS_INST_IAA', '')
 
         # Check if TCS context is missing
-        tcs_context_missing = any(value == '' for value in [tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_time, tcs_port, tcs_camera, tcs_ao, tcs_inst_pa])
+        tcs_context_missing = any(value == '' for value in [
+            tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_time, 
+            tcs_port, tcs_camera, tcs_ao, tcs_inst_pa, tcs_ra_offset,
+            tcs_dec_offset, tcs_pm_ra, tcs_pm_dec, tcs_inst_iaa
+        ])
 
         if not tcs_context_missing:
             tcs_context = {
@@ -73,7 +82,12 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
                 'port': int(tcs_port),
                 'camera': tcs_camera,
                 'ao': tcs_ao,
-                'inst_pa': tcs_inst_pa  
+                'inst_pa': tcs_inst_pa,
+                'ra_offset': tcs_ra_offset,
+                'dec_offset': tcs_dec_offset,
+                'pm_ra': tcs_pm_ra,
+                'pm_dec': tcs_pm_dec,
+                'inst_iaa': tcs_inst_iaa
             }
         else:
             tcs_context = None
@@ -95,7 +109,7 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
     fits_header['INSTRUME'] = ('GNIRS', 'Instrument used to acquire data')
 
     # Adding other header keywords related to your data
-    fits_header['DATALAB']  = (data_label, 'DHS Data Label')
+#    fits_header['DATALAB']  = (data_label, 'DHS Data Label')
     fits_header['DATE-OBS'] = (dateobs, 'UT Date of observation (YYYY-MM-DD)')
     fits_header['TIME-OBS'] = (utstart, 'Time of observation')
     fits_header['UTSTART']  = (utstart, 'UT at observation start')
