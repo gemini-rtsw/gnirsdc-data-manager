@@ -94,7 +94,7 @@ pages:
         }
       }
       EOF
-    - npx -p @mermaid-js/mermaid-cli mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg
+    - /usr/local/bin/mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg
     # Convert markdown to HTML, replacing Mermaid code blocks with SVG images
     - |
       sed 's/```mermaid.*```/![Mermaid Diagram](diagrams\/diagram.svg)/' README.md > README.processed.md
