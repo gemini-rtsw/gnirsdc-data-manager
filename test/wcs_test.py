@@ -31,8 +31,6 @@ tcs_context = {
     # Mount pointing origin values (in arcseconds)
     'mount_origin_x': -1.49941,        # Mount pointing origin in X (arcsec)
     'mount_origin_y': 15.0983,          # Mount pointing origin in Y (arcsec)
-    # New parameters for CRPIX calculation
-    'recalculate_crpix': True,         # Flag to trigger CRPIX recalculation
     'coord_epoch': 2000.0,             # Epoch of coordinates (EPOCH)
     'obs_epoch': 2024.96659012418      # Epoch of observation (OBSEPOCH)
 }

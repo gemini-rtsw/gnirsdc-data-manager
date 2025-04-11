@@ -533,6 +533,19 @@ Remember to perform these steps whenever you're notified of significant changes 
 
 # Changing TCS Process Variable (PV) in the TCS context
 
+```mermaid
+graph TD
+    TCS[TCS IOC] -->|EPICS data| A[Python EPICS IOC]
+    AG[AG IOC] -->|EPICS data| A
+    A --> B[Send header data]
+    B --> C[Pybind11 Library]
+    C --> D[Write raw data with header and readout]
+    D --> A
+    A --> E[Rebuild raw files into final FITS file]
+```
+
+*Figure 1: Data flow diagram showing how TCS and AG IOCs provide EPICS data to the Python EPICS IOC, which then processes the data through the Pybind11 library to create FITS files with proper headers.*
+
 ## 1. Modify the `fits_header_definitions.py` file
 - **File path:** `src/fits_header_definitions.py`
 - **Task:** Add the new TCS PV and ensure it is included in the TCS context.

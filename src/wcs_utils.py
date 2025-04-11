@@ -217,34 +217,33 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
     logger.log(IRDC_DEBUG, f"CD2_2 = {wcs.wcs.cd[1, 1]}")
 
 
-    # Calculate CRPIX for target if requested in tcs_context
-    if tcs_context.get('recalculate_crpix', False):
-        # Calculate the epoch difference for proper motion
-        if 'coord_epoch' in tcs_context and 'obs_epoch' in tcs_context:
-            dt = tcs_context['obs_epoch'] - tcs_context['coord_epoch']
-        else:
-            # Approximate from equinox and current time
-            curr_year = Time(obstime, format='mjd').decimalyear
-            dt = curr_year - track_equinox
-        
-        logger.log(IRDC_DEBUG, f"Epoch difference for PM: {dt} years")
-        
-        # Calculate new CRPIX values
-        new_crpix1, new_crpix2 = calculate_crpix_for_target(
-            wcs, 
-            track_ra, 
-            track_dec,
-            ra_offset=ra_offset.value,
-            dec_offset=dec_offset.value,
-            pmra=pm_ra.value,
-            pmdec=pm_dec.value,
-            dt=dt
-        )
-        
-        # Update the WCS with new CRPIX values
-        wcs.wcs.crpix = np.array([new_crpix1, new_crpix2])
-        logger.log(IRDC_DEBUG, f"Updated CRPIX values: ({new_crpix1}, {new_crpix2})")
+    # Calculate CRPIX for target
+    # Calculate the epoch difference for proper motion
+    if 'coord_epoch' in tcs_context and 'obs_epoch' in tcs_context:
+        dt = tcs_context['obs_epoch'] - tcs_context['coord_epoch']
+    else:
+        # Approximate from equinox and current time
+        curr_year = Time(obstime, format='mjd').decimalyear
+        dt = curr_year - track_equinox
     
+    logger.log(IRDC_DEBUG, f"Epoch difference for PM: {dt} years")
+    
+    # Calculate new CRPIX values
+    new_crpix1, new_crpix2 = calculate_crpix_for_target(
+        wcs, 
+        track_ra, 
+        track_dec,
+        ra_offset=ra_offset.value,
+        dec_offset=dec_offset.value,
+        pmra=pm_ra.value,
+        pmdec=pm_dec.value,
+        dt=dt
+    )
+    
+    # Update the WCS with new CRPIX values
+    wcs.wcs.crpix = np.array([new_crpix1, new_crpix2])
+    logger.log(IRDC_DEBUG, f"Updated CRPIX values: ({new_crpix1}, {new_crpix2})")
+
     return wcs
 
 
