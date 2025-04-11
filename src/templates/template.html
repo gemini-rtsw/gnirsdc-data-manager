@@ -17,6 +17,10 @@
                     curve: 'basis'
                 }
             });
+            // Re-render all Mermaid diagrams
+            document.querySelectorAll('.mermaid').forEach(function(element) {
+                mermaid.init(undefined, element);
+            });
         });
     </script>
     <style>
