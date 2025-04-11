@@ -68,9 +68,10 @@ build_image:
 
 pages:
   stage: pages
-  image: alpine:latest
+  image: node:20-alpine
+  before_script:
+    - apk add --no-cache pandoc python3 chromium chromium-chromedriver
   script:
-    - apk add --no-cache pandoc nodejs npm python3 chromium chromium-chromedriver
     - npm install -g @mermaid-js/mermaid-cli@latest
     - mkdir -p public
     # Extract and convert Mermaid diagrams to SVG
@@ -81,7 +82,19 @@ pages:
       sed 's/```mermaid//;s/```//' > diagrams/diagram.mmd
     # Create Mermaid config file
     - |
-      echo '{"puppeteerConfig": {"args": ["--no-sandbox", "--disable-setuid-sandbox"]}}' > .mermaidrc.json
+      cat > .mermaidrc.json << 'EOF'
+      {
+        "puppeteerConfig": {
+          "args": [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-accelerated-2d-canvas",
+            "--disable-gpu"
+          ]
+        }
+      }
+      EOF
     - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser npx -p @mermaid-js/mermaid-cli mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg
     # Convert markdown to HTML, replacing Mermaid code blocks with SVG images
     - |
