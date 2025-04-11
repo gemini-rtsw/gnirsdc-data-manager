@@ -76,6 +76,8 @@ pages:
     # Extract and convert Mermaid diagrams to SVG
     - mkdir -p diagrams
     - grep -A 10 '```mermaid' README.md | sed -n '/```mermaid/,/```/p' | sed 's/```mermaid//;s/```//' > diagrams/diagram.mmd
+    # Create Mermaid config file
+    - echo '{"puppeteerConfig": {"args": ["--no-sandbox", "--disable-setuid-sandbox"]}}' > .mermaidrc.json
     - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser npx -p @mermaid-js/mermaid-cli mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg
     # Convert markdown to HTML, replacing Mermaid code blocks with SVG images
     - sed 's/```mermaid.*```/![Mermaid Diagram](diagrams\/diagram.svg)/' README.md > README.processed.md
