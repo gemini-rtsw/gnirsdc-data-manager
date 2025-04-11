@@ -64,7 +64,7 @@ build_image:
     - docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:$CI_COMMIT_SHORT_SHA
     
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == "master" && $ONLY_PAGES != "true"'
 
 pages:
   stage: pages
