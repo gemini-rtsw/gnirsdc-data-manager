@@ -32,31 +32,34 @@ build_image:
     - git clone -b master https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git gnirsdc-tools
     - git clone -b master https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git gnirsdc-lib
     # Build and push dev image
-    - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN 
-                   --label "org.opencontainers.image.revision=$CI_COMMIT_SHA"
-                   --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:latest
-                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:$CI_COMMIT_SHORT_SHA
+    - |
+      docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN \
+                   --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
+                   --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:latest \
+                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:$CI_COMMIT_SHORT_SHA \
                    -f $DOCKERFILE_ENV .
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:latest
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:$CI_COMMIT_SHORT_SHA
     
     # Build and push run image
-    - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN 
-                   --label "org.opencontainers.image.revision=$CI_COMMIT_SHA"
-                   --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run:latest
-                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run:$CI_COMMIT_SHORT_SHA
+    - |
+      docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN \
+                   --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
+                   --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run:latest \
+                   -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run:$CI_COMMIT_SHORT_SHA \
                    -f $DOCKERFILE_RUN .
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run:latest
     - docker push $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run:$CI_COMMIT_SHORT_SHA
     
     # Build and push gmp-server image
-    - docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN 
-                   --label "org.opencontainers.image.revision=$CI_COMMIT_SHA"
-                   --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-                   -f Dockerfile.gmp 
-                   -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:latest
+    - |
+      docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN \
+                   --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
+                   --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+                   -f Dockerfile.gmp \
+                   -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:latest \
                    -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:$CI_COMMIT_SHORT_SHA .
     - docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:latest
     - docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:$CI_COMMIT_SHORT_SHA
@@ -72,13 +75,28 @@ pages:
     - mkdir -p public
     # Extract and convert Mermaid diagrams to SVG
     - mkdir -p diagrams
-    - grep -A 10 '```mermaid' README.md | sed -n '/```mermaid/,/```/p' | sed 's/```mermaid//;s/```//' > diagrams/diagram.mmd
+    - |
+      grep -A 10 '```mermaid' README.md | \
+      sed -n '/```mermaid/,/```/p' | \
+      sed 's/```mermaid//;s/```//' > diagrams/diagram.mmd
     # Create Mermaid config file
-    - echo '{"puppeteerConfig": {"args": ["--no-sandbox", "--disable-setuid-sandbox"]}}' > .mermaidrc.json
+    - |
+      echo '{"puppeteerConfig": {"args": ["--no-sandbox", "--disable-setuid-sandbox"]}}' > .mermaidrc.json
     - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser npx -p @mermaid-js/mermaid-cli mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg
     # Convert markdown to HTML, replacing Mermaid code blocks with SVG images
-    - sed 's/```mermaid.*```/![Mermaid Diagram](diagrams\/diagram.svg)/' README.md > README.processed.md
-    - pandoc README.processed.md -f markdown+raw_html -t html5 --toc --toc-depth=3 --highlight-style pygments --number-sections --template=src/templates/template.html --metadata title="Detector Controller Software" -o public/index.html
+    - |
+      sed 's/```mermaid.*```/![Mermaid Diagram](diagrams\/diagram.svg)/' README.md > README.processed.md
+    - |
+      pandoc README.processed.md \
+        -f markdown+raw_html \
+        -t html5 \
+        --toc \
+        --toc-depth=3 \
+        --highlight-style pygments \
+        --number-sections \
+        --template=src/templates/template.html \
+        --metadata title="Detector Controller Software" \
+        -o public/index.html
     - cp diagrams/diagram.svg public/
   artifacts:
     paths:
