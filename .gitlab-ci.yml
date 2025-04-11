@@ -79,7 +79,22 @@ pages:
       grep -A 10 '```mermaid' README.md | \
       sed -n '/```mermaid/,/```/p' | \
       sed 's/```mermaid//;s/```//' > diagrams/diagram.mmd
-    - mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg
+    # Create Mermaid config file
+    - |
+      cat > .mermaidrc.json << 'EOF'
+      {
+        "puppeteerConfig": {
+          "args": [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-accelerated-2d-canvas",
+            "--disable-gpu"
+          ]
+        }
+      }
+      EOF
+    - npx -p @mermaid-js/mermaid-cli mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg
     # Convert markdown to HTML, replacing Mermaid code blocks with SVG images
     - |
       sed 's/```mermaid.*```/![Mermaid Diagram](diagrams\/diagram.svg)/' README.md > README.processed.md
