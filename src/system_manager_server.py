@@ -76,6 +76,7 @@ log_messages = []
 MAX_LOG_MESSAGES = 10000
 clients = set()
 clients_lock = threading.Lock()
+active_subscription = None  # Track the active subscription
 
 # SSH configuration
 SSH_HOST = 'localhost'  # Since we're using --network=host, localhost refers to the host machine
@@ -120,9 +121,17 @@ def pv_handler(sub, response):
             client_queue.put(json.dumps(log_messages))
 
 def subscribe_to_pv():
-    global config_mode
+    global config_mode, active_subscription
     pv_name = f"{config[config_mode].get('DEFAULT_PREFIX', 'nirs')}:log_message"
     logger.info(f"Subscribing to PV: {pv_name}")
+    
+    # Unsubscribe from existing subscription if there is one
+    if active_subscription is not None:
+        try:
+            active_subscription.clear()
+            logger.info("Unsubscribed from previous PV")
+        except Exception as e:
+            logger.error(f"Error unsubscribing from previous PV: {str(e)}")
     
     while True:
         try:
@@ -130,13 +139,15 @@ def subscribe_to_pv():
             sub = pv.subscribe(data_type='time')
             sub.add_callback(pv_handler)
             logger.info(f"Successfully subscribed to PV: {pv_name}")
+            active_subscription = sub
             return sub
         except Exception as e:
             logger.error(f"Error subscribing to PV {pv_name}: {str(e)}")
             time.sleep(5)  # Wait before retrying
 
 def run_subscription():
-    subscribe_to_pv()
+    global active_subscription
+    active_subscription = subscribe_to_pv()
     while True:
         time.sleep(1)  # Keep the thread alive
 
@@ -938,6 +949,14 @@ if __name__ == "__main__":
         logger.info("Running in production mode")
 
     logger.info("Starting PV subscription thread")
+    # Clear any existing PV subscriptions
+    if 'active_subscription' in globals() and active_subscription is not None:
+        try:
+            active_subscription.clear()
+            logger.info("Cleared existing subscription at startup")
+        except Exception as e:
+            logger.error(f"Error clearing existing subscription: {str(e)}")
+    
     subscription_thread = threading.Thread(target=run_subscription, daemon=True)
     subscription_thread.start()
 
