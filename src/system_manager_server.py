@@ -35,6 +35,7 @@ import logging
 import time
 import os
 from flask import current_app
+from collections import deque  # Import deque for more efficient log message handling
 
 
 # Set up logging
@@ -72,8 +73,8 @@ config.read(config_path)
 ctx = Context()
 
 # Global variables
-log_messages = []
-MAX_LOG_MESSAGES = 10000
+log_messages = deque(maxlen=1000)  # Use deque with fixed maxlen instead of list
+MAX_LOG_MESSAGES = 1000  # Keep this for reference
 clients = set()
 clients_lock = threading.Lock()
 active_subscription = None  # Track the active subscription
@@ -112,13 +113,13 @@ def pv_handler(sub, response):
     
     log_entry = {"status": "connected", "value": value}
     log_messages.append(log_entry)
-    log_messages = log_messages[-MAX_LOG_MESSAGES:]
+    # No slicing needed with deque as it automatically handles the maxlen
     logger.debug(f"Added log entry: {log_entry}")
     
     # Notify all clients
     with clients_lock:
         for client_queue in clients:
-            client_queue.put(json.dumps(log_messages))
+            client_queue.put(json.dumps(list(log_messages)))  # Convert deque to list for JSON serialization
 
 def subscribe_to_pv():
     global config_mode, active_subscription
@@ -176,7 +177,7 @@ def get_log_messages():
     return jsonify([{
         "status": entry["status"],
         "value": entry["value"]
-    } for entry in log_messages])
+    } for entry in list(log_messages)])  # Convert deque to list for JSON serialization
 
 @app.route('/logs')
 def logs():
