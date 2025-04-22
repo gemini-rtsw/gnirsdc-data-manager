@@ -128,7 +128,16 @@ def pv_handler(sub, response):
             pass  # Skip slow clients
 
 def setup_all_subscriptions():
+    global active_subscription
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    
+    # Close previous subscription if it exists
+    if active_subscription is not None:
+        try:
+            active_subscription.clear()
+            active_subscription = None
+        except Exception as e:
+            logger.error(f"Error clearing existing subscription: {str(e)}")
     
     # Just subscribe to the log message PV as before
     pv_name = f"{top_name}:log_message"
