@@ -119,7 +119,7 @@ def pv_handler(sub, response):
     # Notify all clients
     with clients_lock:
         for client_queue in clients:
-            client_queue.put(json.dumps(list(log_messages)))  # Convert deque to list for JSON serialization
+            client_queue.put(json.dumps({"value": value}))
 
 def subscribe_to_pv():
     global config_mode, active_subscription

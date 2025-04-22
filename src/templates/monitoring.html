@@ -627,8 +627,8 @@
         grid-template-columns: 1fr 1fr;
         gap: 1rem;
         align-items: start;
-        max-width: 1000px;  // Increased max-width for wider columns
-        margin: 0;  // Remove auto margin to align to the top
+        max-width: 1000px;  /* Increased max-width for wider columns */
+        margin: 0;  /* Remove auto margin to align to the top */
     }
 
     .column {
@@ -907,7 +907,19 @@
     let userEditing = false;
 
     function updateLogMessages(messages) {
-        let logText = '';
+        // Check if we received a single message with just a value property
+        if (messages && messages.value) {
+            // This is the new format - just append the single message
+            logMessagesTextarea.value += `${messages.value}\n`;
+            logMessagesTextarea.scrollTop = logMessagesTextarea.scrollHeight;
+            // Always show as connected when receiving messages
+            connectionStatus.textContent = "Connected";
+            connectionStatus.style.color = 'green';
+            return;
+        }
+        
+        // Fall back to old behavior for backwards compatibility
+/*        let logText = '';
         let lastStatus = 'unknown';
         messages.forEach(function(entry) {
             logText += `${entry.value}\n`;  // Remove ${entry.timestamp} -
@@ -915,7 +927,7 @@
         });
         logMessagesTextarea.value = logText;
         logMessagesTextarea.scrollTop = logMessagesTextarea.scrollHeight;
-        
+  */      
         if (lastStatus === "connected") {
             connectionStatus.textContent = "Connected";
             connectionStatus.style.color = 'green';
