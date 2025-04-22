@@ -72,7 +72,8 @@ __version__=0.1
 
 DEFAULT_DATADIR = '/home/readout_data'
 
-
+# GNAAC Drops first and last row of data for NAXIS2 = 1022 - set true if needed
+FORCE_DROP_ROWS = False
 
 class ProcessingError(RuntimeError):
     pass
@@ -277,8 +278,9 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
 
         # Flip the processed data vertically (top to bottom)
         primary_data = np.flip(processor.unscramble(subtracted.mean(axis=0)), axis=0)
-        # Drop first and last row only at the end before appending to HDUlist
-        primary_data = primary_data[1:-1, :]
+        # GNAAC Drops first and last row
+        if FORCE_DROP_ROWS:
+            primary_data = primary_data[1:-1, :]
         hdulist.append(fits.ImageHDU(data=primary_data, header=ext_header))
 
         if include_eng == True:
@@ -290,8 +292,9 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
                 ext_header['EXTNAME'] = f'{read_type}{index+1:02}'
                 # Flip each engineering frame vertically (top to bottom)
                 eng_data = np.flip(processor.unscramble(raw_reshaped[fs_n]), axis=0)
-                # Drop first and last row only at the end before appending to HDUlist
-                eng_data = eng_data[1:-1, :]
+                # GNAAC Drops first and last row
+                if FORCE_DROP_ROWS:
+                    eng_data = eng_data[1:-1, :]
                 hdulist.append(fits.ImageHDU(eng_data, ext_header))
 
     else:
@@ -304,8 +307,9 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
 
         # Flip the processed data vertically (top to bottom)
         primary_data = np.flip(processor.unscramble(subtracted.mean(axis=0)), axis=0)
-        # Drop first and last row only at the end before appending to HDUlist
-        primary_data = primary_data[1:-1, :]
+        # GNAAC Drops first and last row
+        if FORCE_DROP_ROWS:
+            primary_data = primary_data[1:-1, :]
         hdulist.append(fits.ImageHDU(data=primary_data, header=ext_header))
 
         if include_eng == True:
@@ -323,8 +327,9 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
                     ext_header['EXTNAME'] = f'{read_type}{index+1:02}'
                     # Flip each engineering frame vertically (top to bottom)
                     eng_data = np.flip(processor.unscramble(ads), axis=0)
-                    # Drop first and last row only at the end before appending to HDUlist
-                    eng_data = eng_data[1:-1, :]
+                    # GNAAC Drops first and last row
+                    if FORCE_DROP_ROWS:
+                        eng_data = eng_data[1:-1, :]
                     hdulist.append(fits.ImageHDU(eng_data, ext_header))
 
 class TimingMeasurement:
@@ -368,8 +373,9 @@ def create_hdulist(header, raw_path, dc_commit = None, lib_commit = None):
 
                 coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)
 
-            # Drop first and last row only at the end before appending to HDUList
-            coadd_data = coadd_data[1:-1, :]
+            # GNAAC Drops first and last row
+            if FORCE_DROP_ROWS:
+                coadd_data = coadd_data[1:-1, :]
             hdulist.append(fits.ImageHDU(coadd_data, header = ext_header))
         else:
             for n in range(total_frames):
