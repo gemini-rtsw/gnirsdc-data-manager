@@ -93,6 +93,10 @@
                     <label for="coadds">Coadds:</label>
                     <input type="number" id="coadds" name="coadds" value="{{ coadds }}" class="form-control">
                 </div>
+                <div class="form-group">
+                    <label for="sequence">Sequence:</label>
+                    <input type="number" id="sequence" name="sequence" value="{{ sequence }}" min="1" class="form-control">
+                </div>
             </div>
             <div class="column">
                 <div class="form-group">
@@ -895,6 +899,7 @@
     const actionSelect = document.getElementById('actionSelect');
     const applyActionBtn = document.getElementById('applyActionBtn');
     const coaddsInput = document.getElementById('coadds');
+    const sequenceInput = document.getElementById('sequence');
     const ntpTimeValue = document.getElementById('ntpTimeValue');
     const startIntegrationBtn = document.getElementById('startIntegrationBtn');
 
@@ -1085,6 +1090,9 @@
                         if (pvs.coadds !== previousPVs.coadds) {
                             coaddsInput.value = pvs.coadds;
                         }
+                        if (pvs.sequence !== previousPVs.sequence) {
+                            sequenceInput.value = pvs.sequence;
+                        }
                     }
 
                     // Update previous PV values
@@ -1214,7 +1222,7 @@
     setInterval(updateAllPVs, 100);
 
     // Add event listeners to track when user is editing
-    [fowlerNumInput, digitalAvgsInput, integTimeInput, fileNameInput, coaddsInput].forEach(input => {
+    [fowlerNumInput, digitalAvgsInput, integTimeInput, fileNameInput, coaddsInput, sequenceInput].forEach(input => {
         input.addEventListener('focus', () => userEditing = true);
         input.addEventListener('blur', () => {
             userEditing = false;

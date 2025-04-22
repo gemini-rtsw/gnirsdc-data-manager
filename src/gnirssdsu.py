@@ -248,8 +248,13 @@ class AbortCAD(GnirsCAD):
             await self.MESS.write("Controller not initialized")
             return False
         else:
+            # Abort the current exposure
             self.controller.abortExposure()
-            await self.logMessage(f"Aborting Exposure")
+            
+            # Set the sequence abort flag to stop any running sequence
+            self.parent.sequence_abort = True
+            
+            await self.logMessage(f"Aborting Exposure and Sequence")
             await self.MESS.write("Abort Successful")
             return True
 
@@ -271,12 +276,20 @@ class ObserveCAD(GnirsCAD):
         else:
 
             if (int(self.p.rdout.value) == 0):
+                # Reset the sequence abort flag when starting a new sequence
+                self.parent.sequence_abort = False
 
                 if self.p.sequence.value < 1:
                     await self.p.sequence.write(1)
 
                 for i in range(self.p.sequence.value, 0, -1):   # reverse and end at i = 1
+                    # Check if sequence has been aborted
+                    if self.parent.sequence_abort:
+                        await self.logMessage(f"Sequence aborted after {self.p.sequence.value - i} exposures")
+                        break
+                        
                     # Add the timestamp to the observeA value if labelTimeStamp is greater than 0
+                    # (labelTimeStamp is automatically enabled when sequence count > 1)
                     if self.p.labelTimeStamp.value > 0:
                         timestamp = get_current_timestamp()
                         await self.p.observeA.write(f"{timestamp}-{i}")
@@ -302,6 +315,16 @@ class ObserveCAD(GnirsCAD):
                     await self.p.sequenceLeft.write(i) # keep track of the remaining exposures
                                                        # end at 1 so it will do a single exposure if sequence is not manually set
 
+
+
+                # Reset the sequence abort flag at the end of the sequence
+                self.parent.sequence_abort = False
+                
+                # reset all manual parameters to default values
+                # set sequence to 1
+                await self.p.sequence.write(1)
+                # disable timestamp
+                await self.p.labelTimeStamp.write(0)
                 # and turn off raw data
                 await self.p.parent.include_eng.write(0)
                 # set write to fits archive by default don't want a test write to affect a seqexec readout
@@ -402,6 +425,7 @@ class ObserveCAD(GnirsCAD):
         start_time = time.time()
 
         while self.p.rdout.value > 0:
+
             current_time = time.time()
             elapsed_time = current_time - start_time
             remaining_time = max(total_time - elapsed_time, 0)
@@ -490,6 +514,8 @@ class GnirsCADCARController(PVGroup):
         super().__init__(*args, **kwargs)
         print(f"Debug mode: {DEBUG_MODE}")
 
+        # Add flag to track if a sequence should be aborted
+        self.sequence_abort = False
 
         self.lakeshore = Lakeshore325(TEMP_CON_IP, TEMP_CON_PORT)
         self.lakeshore.connect()
@@ -660,6 +686,12 @@ class GnirsCADCARController(PVGroup):
     @sequence.putter
     async def sequence(self, instance, value):
         await self.sequenceLeft.write(value)
+        # Auto enable timestamp labeling when sequence count is greater than 1
+        if value > 1:
+            await self.labelTimeStamp.write(1)
+            await self.parent.logMessage(f"Auto-enabled timestamp labeling for sequence of {value}")
+        # If sequence count is 1, no need to change the timestamp setting as it will
+        # be reset at the end of the exposure sequence
 
 
     sequenceLeft    = pvproperty(value=0, dtype=caproto.ChannelType.LONG, name="dc:sequenceLeft", doc = "Exposures left to readout")

@@ -367,19 +367,22 @@ def set_integration_params():
         integ_time = float(request.form.get('integ_time', 0))
         file_name = request.form.get('file_name', '')
         coadds = max(1, int(request.form.get('coadds', 1)))
+        sequence = max(1, int(request.form.get('sequence', 1)))
 
         caput(f'{top_name}:dc:lnrNum', fowler_num, wait=True)
         caput(f'{top_name}:dc:digitalAvgs', digital_avgs, wait=True)
         caput(f'{top_name}:dc:integTime.VAL', integ_time, wait=True)
         caput(f'{top_name}:dc:observe.A', file_name, wait=True)
         caput(f'{top_name}:dc:coadds.VAL', coadds, wait=True)
+        caput(f'{top_name}:dc:sequence', sequence, wait=True)
 
         return jsonify({
             "status": "success",
             "message": "Integration parameters set successfully",
             "fowler_num": fowler_num,
             "digital_avgs": digital_avgs,
-            "coadds": coadds
+            "coadds": coadds,
+            "sequence": sequence
         })
     except Exception as e:
         logger.error(f"Error setting integration parameters: {str(e)}")
@@ -664,6 +667,7 @@ def update_pvs_only():
                 'bias_mode': bias_mode,
                 'sdsu_state': caget(f'{top_name}:dc:sdsuState', as_string=True),
                 'coadds': caget(f'{top_name}:dc:coadds.VAL'),
+                'sequence': caget(f'{top_name}:dc:sequence'),
                 'ntp_time': caget(f'{top_name}:ntp_time'),
                 'rdout': rdout,
                 'obs_progress': obs_progress if rdout != 0 else 0,
@@ -906,6 +910,7 @@ def _get_all_pvs():
             f'{top_name}:dc:arSetup.H',
             f'{top_name}:dc:sdsuState',
             f'{top_name}:dc:coadds.VAL',
+            f'{top_name}:dc:sequence',
             f'{top_name}:ntp_time',
             f'{top_name}:sad:dc:rdout',
             f'{top_name}:sad:dc:obsProgress'
@@ -927,9 +932,10 @@ def _get_all_pvs():
             'detector_bias': values[10],
             'sdsu_state': values[11],
             'coadds': values[12],
-            'ntp_time': values[13],
-            'rdout': values[14],
-            'obs_progress': values[15] if values[14] != 0 else 0,
+            'sequence': values[13],
+            'ntp_time': values[14],
+            'rdout': values[15],
+            'obs_progress': values[16] if values[15] != 0 else 0,
         }
 
         return pvs
