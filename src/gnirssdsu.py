@@ -308,10 +308,18 @@ class ObserveCAD(GnirsCAD):
 
                     # Run countdown_timer in a separate thread to prevent blocking
                     exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, int(self.p.lnrNum.value), int(self.p.digitalAvgs.value))
-                    asyncio.create_task(self.countdown_timer(exposure_delay))
+                    countdown_task = asyncio.create_task(self.countdown_timer(exposure_delay))
 
                     await self.start_async_exposure()
-                
+                    
+                    # Cancel the countdown timer task after exposure completes
+                    if not countdown_task.done():
+                        countdown_task.cancel()
+                        # Ensure final values are set to 0% when cancelled
+                        await self.p.obsProgress.write(0)
+                        await self.p.coaddProgress.write(0)
+                        await self.p.timeLeft.write('0')
+                    
                     await self.p.sequenceLeft.write(i) # keep track of the remaining exposures
                                                        # end at 1 so it will do a single exposure if sequence is not manually set
 
@@ -423,9 +431,14 @@ class ObserveCAD(GnirsCAD):
         total_coadds = int(self.p.coaddsVAL.value)
         total_time = single_readout_time * total_coadds
         start_time = time.time()
+        
+
+        # Reset progress values at the start of a new exposure
+        await self.p.obsProgress.write(0)
+        await self.p.coaddProgress.write(0)
+        await self.p.timeLeft.write(str(total_time))
 
         while self.p.rdout.value > 0:
-
             current_time = time.time()
             elapsed_time = current_time - start_time
             remaining_time = max(total_time - elapsed_time, 0)
