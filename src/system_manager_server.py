@@ -18,7 +18,7 @@ import json
 import caproto
 from epics import caput, caget
 from astropy.io import fits
-from queue import Queue
+from queue import Queue, Full as QueueFull
 import subprocess
 import markdown2
 import paramiko
@@ -104,7 +104,6 @@ def run_ssh_command(command):
         raise
 
 def pv_handler(sub, response):
-    global log_messages
     value = response.data[0]
     if isinstance(value, bytes):
         value = value.decode('utf-8')
@@ -113,44 +112,47 @@ def pv_handler(sub, response):
     
     log_entry = {"status": "connected", "value": value}
     log_messages.append(log_entry)
-    # No slicing needed with deque as it automatically handles the maxlen
-    logger.debug(f"Added log entry: {log_entry}")
     
-    # Notify all clients
+    # Create the message outside the lock
+    message = json.dumps({"value": value})
+    
+    # Copy the client queues while holding the lock briefly
     with clients_lock:
-        for client_queue in clients:
-            client_queue.put(json.dumps({"value": value}))
+        client_queues = list(clients)
+    
+    # Process each queue without holding the lock
+    for queue in client_queues:
+        try:
+            queue.put_nowait(message)
+        except QueueFull:
+            pass  # Skip slow clients
 
-def subscribe_to_pv():
-    global config_mode, active_subscription
-    pv_name = f"{config[config_mode].get('DEFAULT_PREFIX', 'nirs')}:log_message"
+def setup_all_subscriptions():
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    
+    # Just subscribe to the log message PV as before
+    pv_name = f"{top_name}:log_message"
     logger.info(f"Subscribing to PV: {pv_name}")
     
-    # Unsubscribe from existing subscription if there is one
-    if active_subscription is not None:
-        try:
-            active_subscription.clear()
-            logger.info("Unsubscribed from previous PV")
-        except Exception as e:
-            logger.error(f"Error unsubscribing from previous PV: {str(e)}")
-    
-    while True:
-        try:
-            pv, = ctx.get_pvs(pv_name)
-            sub = pv.subscribe(data_type='time')
-            sub.add_callback(pv_handler)
-            logger.info(f"Successfully subscribed to PV: {pv_name}")
-            active_subscription = sub
-            return sub
-        except Exception as e:
-            logger.error(f"Error subscribing to PV {pv_name}: {str(e)}")
-            time.sleep(5)  # Wait before retrying
+    try:
+        pv, = ctx.get_pvs(pv_name)
+        sub = pv.subscribe(data_type='time')
+        sub.add_callback(pv_handler)
+        logger.info(f"Successfully subscribed to PV: {pv_name}")
+        return sub
+    except Exception as e:
+        logger.error(f"Error subscribing to PV {pv_name}: {str(e)}")
+        return None
 
-def run_subscription():
+def run_subscription_system():
     global active_subscription
-    active_subscription = subscribe_to_pv()
+    
+    # Subscribe to the log message PV
+    active_subscription = setup_all_subscriptions()
+    
+    # Keep the thread alive
     while True:
-        time.sleep(1)  # Keep the thread alive
+        time.sleep(1)
 
 @app.route('/')
 def index():
@@ -321,19 +323,121 @@ def view_fits_header(filename):
     else:
         return "FITS file not found", 404
 
+# Define a central PV subscription manager
+class PVSubscriptionManager:
+    def __init__(self, ctx):
+        self.ctx = ctx
+        self.subscriptions = {}
+        self.latest_values = {}
+        self.subscription_lock = threading.Lock()
+
+    def handle_subscription(self, sub, response):
+        pv_name = sub.pv.name
+        value = response.data[0]
+        if isinstance(value, bytes):
+            try:
+                value = value.decode('utf-8')
+            except UnicodeDecodeError:
+                pass  # Keep as bytes if it can't be decoded
+            
+        logger.debug(f"PV update: {pv_name} = {value}")
+        
+        with self.subscription_lock:
+            self.latest_values[pv_name] = value
+        
+        # Special handling for log messages
+        if pv_name.endswith(':log_message'):
+            # Add to log_messages queue like before
+            log_entry = {"status": "connected", "value": value}
+            log_messages.append(log_entry)
+            logger.debug(f"Added log entry: {log_entry}")
+            
+            # For log messages, send in the format expected by the frontend
+            with clients_lock:
+                log_update = json.dumps({"value": value})
+                for client_queue in clients:
+                    try:
+                        client_queue.put_nowait(log_update)
+                    except QueueFull:
+                        pass  # Skip slow clients
+        else:
+            # Normal handling for other PVs
+            with clients_lock:
+                short_name = pv_name.split(':')[-1]  # Extract just the final part of the PV name
+                update_msg = json.dumps({short_name: value})
+                for client_queue in clients:
+                    try:
+                        client_queue.put_nowait(update_msg)
+                    except QueueFull:
+                        pass  # Skip slow clients
+
+    def subscribe_to_pv(self, pv_name):
+        """Subscribe to a PV if not already subscribed"""
+        with self.subscription_lock:
+            if pv_name in self.subscriptions:
+                return self.subscriptions[pv_name]
+            
+            try:
+                pv, = self.ctx.get_pvs(pv_name)
+                sub = pv.subscribe(data_type='time')
+                sub.add_callback(self.handle_subscription)
+                self.subscriptions[pv_name] = sub
+                logger.info(f"Subscribed to PV: {pv_name}")
+                return sub
+            except Exception as e:
+                logger.error(f"Error subscribing to PV {pv_name}: {str(e)}")
+                return None
+
+    def subscribe_to_multiple_pvs(self, pv_names):
+        """Subscribe to multiple PVs at once"""
+        results = []
+        for pv_name in pv_names:
+            sub = self.subscribe_to_pv(pv_name)
+            results.append(sub)
+        return results
+
+    def get_latest_value(self, pv_name):
+        """Get the latest value for a PV"""
+        with self.subscription_lock:
+            return self.latest_values.get(pv_name)
+
+    def check_subscription_health(self):
+        """Check if any subscriptions need to be reconnected"""
+        with self.subscription_lock:
+            for pv_name, sub in list(self.subscriptions.items()):
+                if not sub.circuit_ready:
+                    logger.warning(f"Subscription to {pv_name} disconnected, reconnecting")
+                    # Remove old subscription
+                    self.subscriptions.pop(pv_name, None)
+                    # Try to resubscribe
+                    self.subscribe_to_pv(pv_name)
+
+# Create a global instance
+pv_manager = PVSubscriptionManager(ctx)
+
+# Modify the SSE route to use non-blocking queue
 @app.route('/sse')
 def sse():
     def event_stream():
-        client_queue = Queue()
+        # Use a queue with maximum size to prevent memory issues
+        client_queue = Queue(maxsize=100)
+        
         with clients_lock:
             clients.add(client_queue)
+        
         try:
             while True:
-                message = client_queue.get()
-                yield f"data: {message}\n\n"
+                try:
+                    # Use a timeout to prevent completely blocking
+                    message = client_queue.get(timeout=30)
+                    yield f"data: {message}\n\n"
+                except Exception as e:
+                    # Send an empty update to keep connection alive
+                    yield f"data: {{}}\n\n"
         finally:
             with clients_lock:
-                clients.remove(client_queue)
+                if client_queue in clients:
+                    clients.remove(client_queue)
 
     return Response(event_stream(), content_type='text/event-stream')
 
@@ -499,11 +603,11 @@ def start_controller():
         # Set the appropriate top name based on mode
         if mode in ['debug', 'full_debug']:
             config[config_mode]['DEFAULT_PREFIX'] = 'tgnirs'
-            subscribe_to_pv()
+            setup_all_subscriptions()
         else:
             # Reset to default from config file
             config.read(config_path)
-            subscribe_to_pv()
+            setup_all_subscriptions()
         
         if mode == 'normal':
             command = '/usr/local/bin/dc-start.sh'
@@ -976,22 +1080,9 @@ if __name__ == "__main__":
         debug_mode = False
         logger.info("Running in production mode")
 
-    logger.info("Starting PV subscription thread")
-    # Clear any existing PV subscriptions
-    if 'active_subscription' in globals() and active_subscription is not None:
-        try:
-            active_subscription.clear()
-            logger.info("Cleared existing subscription at startup")
-        except Exception as e:
-            logger.error(f"Error clearing existing subscription: {str(e)}")
-    
-    subscription_thread = threading.Thread(target=run_subscription, daemon=True)
+    logger.info("Starting PV subscription system")
+    subscription_thread = threading.Thread(target=run_subscription_system, daemon=True)
     subscription_thread.start()
-
-    # Start the send_pv_updates thread
-    logger.info("Starting PV updates thread")
-    pv_updates_thread = threading.Thread(target=send_pv_updates, daemon=True)
-    pv_updates_thread.start()
 
     logger.info(f"Starting Flask application on port {args.port}")
     app.run(host='0.0.0.0', port=args.port, debug=debug_mode)
