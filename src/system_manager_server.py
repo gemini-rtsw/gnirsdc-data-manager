@@ -564,8 +564,9 @@ preview_lock = threading.Lock()
 no_files_warning_logged = False
 no_preview_logged = False  # Add this flag
 
-def generate_and_cache_preview_and_pvs():
-    global last_preview_image, last_pv_values, no_files_warning_logged, no_preview_logged
+def update_preview_only():
+    """Update the preview image only"""
+    global last_preview_image, no_files_warning_logged, no_preview_logged
     try:
         # Generate preview image
         fits_dir = '/readout_data/fits'
@@ -613,6 +614,24 @@ def generate_and_cache_preview_and_pvs():
                 current_app.logger.error(f"Error processing file {latest_file}: {str(e)}")
                 preview_image = None
 
+        with preview_lock:
+            if preview_image is not None:
+                last_preview_image = preview_image
+
+        if latest_file:
+            current_app.logger.info(f"Preview cached successfully for {latest_file}")
+        else:
+            if not no_preview_logged:
+                current_app.logger.info("No new preview available")
+                no_preview_logged = True
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating preview: {str(e)}")
+
+def update_pvs_only():
+    """Update PV values only"""
+    global last_pv_values
+    try:
         # Get PV values (existing code)
         top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
         try:
@@ -649,24 +668,28 @@ def generate_and_cache_preview_and_pvs():
                 'rdout': rdout,
                 'obs_progress': obs_progress if rdout != 0 else 0,
             }
+            
+            with preview_lock:
+                last_pv_values = pvs
+                
         except Exception as e:
             current_app.logger.error(f"Error getting PV values: {str(e)}")
-            pvs = None
-
-        with preview_lock:
-            if preview_image is not None:
-                last_preview_image = preview_image
-            last_pv_values = pvs
-
-        if latest_file:
-            current_app.logger.info(f"Preview and PVs cached successfully for {latest_file}")
-        else:
-            if not no_preview_logged:
-                current_app.logger.info("No new preview available, PVs cached successfully")
-                no_preview_logged = True
-
     except Exception as e:
-        current_app.logger.error(f"Error generating preview and PVs: {str(e)}")
+        current_app.logger.error(f"Error in PV update: {str(e)}")
+
+def preview_thread_function():
+    """Thread function for preview updates"""
+    while True:
+        with app.app_context():
+            update_preview_only()
+        time.sleep(1.0)  # Update preview every 1 second
+
+def pv_thread_function():
+    """Thread function for PV updates"""
+    while True:
+        with app.app_context():
+            update_pvs_only()
+        time.sleep(0.1)  # Update PVs every 100ms
 
 @app.route('/preview')
 def preview():
@@ -705,15 +728,13 @@ def get_all_pvs():
             return jsonify({"status": "error", "message": "No PV data available"}), 404
         return jsonify({"status": "success", "pvs": last_pv_values})
 
-def background_preview_and_pvs_generator():
-    while True:
-        with app.app_context():
-            generate_and_cache_preview_and_pvs()
-        time.sleep(0.1)  # Generate new preview and PVs every 100ms
-
-# Start the background task
-preview_thread = threading.Thread(target=background_preview_and_pvs_generator, daemon=True)
+# Replace the existing thread code with this
+# Start the background tasks
+preview_thread = threading.Thread(target=preview_thread_function, daemon=True)
 preview_thread.start()
+
+pv_thread = threading.Thread(target=pv_thread_function, daemon=True)
+pv_thread.start()
 
 @app.route('/get_hostname')
 def get_hostname():
