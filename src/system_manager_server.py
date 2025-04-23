@@ -331,6 +331,22 @@ class PVSubscriptionManager:
 
     def check_subscription_health(self):
         """Check if any subscriptions need to be reconnected"""
+        disconnected_count = 0
+        total_count = len(self.subscriptions)
+        
+        # Count disconnected PVs
+        with self.subscription_lock:
+            for pv_name, sub in list(self.subscriptions.items()):
+                if not sub.pv.connected:
+                    disconnected_count += 1
+        
+        # If most PVs are disconnected, force complete reinit
+        if disconnected_count > 0 and disconnected_count / total_count > 0.5:
+            logger.warning(f"{disconnected_count}/{total_count} PVs disconnected. Forcing complete reconnection...")
+            reinitialize_connections()
+            return
+        
+        # Regular connection check for individual PVs
         with self.subscription_lock:
             for pv_name, sub in list(self.subscriptions.items()):
                 if not sub.pv.connected:
@@ -1132,7 +1148,7 @@ def subscription_health_check():
             pv_manager.check_subscription_health()
         except Exception as e:
             logger.error(f"Error in subscription health check: {str(e)}")
-        time.sleep(30)  # Check every 30 seconds
+        time.sleep(5)  # Check every 5 seconds
 
 # Start the subscription health check thread
 health_check_thread = threading.Thread(target=subscription_health_check, daemon=True)
@@ -1291,6 +1307,27 @@ def download_fits():
 
 def initialize_subscriptions():
     """Initialize all PV subscriptions at startup"""
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    logger.info(f"Setting up core PV subscriptions with prefix: {top_name}")
+    pv_manager.setup_core_subscriptions(top_name)
+
+# Add this function at the global level, after the pv_manager is created
+def reinitialize_connections():
+    """Completely reinitialize all EPICS connections"""
+    global ctx, pv_manager
+    
+    logger.warning("Reinitializing all EPICS connections from scratch")
+    
+    # Clear existing subscriptions
+    pv_manager.clear_all_subscriptions()
+    
+    # Create a new context
+    ctx = Context()
+    
+    # Create a new manager
+    pv_manager = PVSubscriptionManager(ctx)
+    
+    # Initialize subscriptions just like at startup
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
     logger.info(f"Setting up core PV subscriptions with prefix: {top_name}")
     pv_manager.setup_core_subscriptions(top_name)
