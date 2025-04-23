@@ -167,6 +167,7 @@
 <script>
     // Initialize global variables
     let lastStatus = {};  // Initialize lastStatus to prevent reference errors
+    let serverConnected = true; // Track server connection status
 
     // Move the updateHostname function definition to the top
     function updateHostname() {
@@ -197,7 +198,8 @@
         for (const [key, value] of Object.entries(updates)) {
             switch (key) {
                 case 'heartbeat':
-                    updateIndicator('heartbeatIndicator', value, 'heartbeat');
+                    console.log('Heartbeat update received:', value, typeof value);
+                    updateIndicator('heartbeatIndicator', value === 1, 'heartbeat');
                     break;
                 case 'tcs_connection':
                     updateIndicator('tcsConnectionIndicator', value === 'CONNECTED', 'status');
@@ -241,6 +243,7 @@
             // Handle different PV updates based on key
             switch (key) {
                 case 'heartbeat':
+                    console.log('Heartbeat update received:', value, typeof value);
                     updateIndicator('heartbeatIndicator', value === 1, 'heartbeat');
                     break;
                 case 'tcs_connection':
@@ -308,6 +311,12 @@
         const indicator = document.getElementById(elementId);
         if (!indicator) return;
         
+        // If server is disconnected, override with the disconnected style
+        if (!serverConnected) {
+            indicator.className = `status-indicator server-disconnected`;
+            return;
+        }
+        
         indicator.className = `status-indicator ${isConnected ? (type === 'heartbeat' ? 'heartbeat-on' : 'status-on') : (type === 'heartbeat' ? 'heartbeat-off' : 'status-off')}`;
     }
 
@@ -315,9 +324,17 @@
         const indicator = document.getElementById(elementId);
         if (!indicator) return;
         
+        // If server is disconnected, override with the disconnected style
+        if (!serverConnected) {
+            indicator.className = `status-indicator server-disconnected`;
+            return;
+        }
+        
         if (type === 'interlock') {
             indicator.className = `interlock-indicator ${isOn ? 'interlock-on' : 'interlock-off'}`;
             indicator.title = `Temperature Interlock: ${isOn ? 'ON' : 'OFF'}`;
+        } else if (type === 'heartbeat') {
+            indicator.className = `status-indicator ${isOn ? 'heartbeat-on' : 'heartbeat-off'}`;
         } else {
             indicator.className = `status-indicator ${isOn ? 'status-on' : 'status-off'}`;
         }
@@ -333,6 +350,23 @@
     // Replace socket.emit with SSE
     let eventSource = null;
     
+    function updateAllIndicatorsConnectionState() {
+        // Get all status indicators
+        const allIndicators = document.querySelectorAll('.status-indicator, .interlock-indicator');
+        
+        // Apply appropriate classes based on server connection state
+        allIndicators.forEach(indicator => {
+            if (!serverConnected) {
+                indicator.className = indicator.classList.contains('interlock-indicator') 
+                    ? 'interlock-indicator server-disconnected' 
+                    : 'status-indicator server-disconnected';
+            } else {
+                // The regular update functions will restore the proper state
+                // on the next cycle, so we don't need to do anything here
+            }
+        });
+    }
+    
     function setupEventSource() {
         // Close existing event source if any
         if (eventSource) {
@@ -345,20 +379,28 @@
         // Set up event handlers
         eventSource.onopen = function() {
             console.log('SSE connection established');
+            serverConnected = true;
+            connectionStatus.textContent = "Connected";
+            connectionStatus.style.color = 'green';
+            updateAllIndicatorsConnectionState();
         };
         
         eventSource.onmessage = function(event) {
             try {
                 const data = JSON.parse(event.data);
                 
-                // Check if it's a heartbeat message (can be ignored)
-                if (data.heartbeat) {
+                // Check if it's a server heartbeat message (can be ignored)
+                if (data.server_heartbeat) {
+                    // Just use this as confirmation the connection is alive
+                    serverConnected = true;
                     return;
                 }
                 
                 // Handle connected status
                 if (data.connected === true) {
                     console.log('Connected to server');
+                    serverConnected = true;
+                    updateAllIndicatorsConnectionState();
                     return;
                 }
                 
@@ -371,6 +413,10 @@
         
         eventSource.onerror = function(event) {
             console.error('SSE Error:', event);
+            serverConnected = false;
+            connectionStatus.textContent = "Connection Error";
+            connectionStatus.style.color = 'red';
+            updateAllIndicatorsConnectionState();
             // Try to reconnect after a delay
             setTimeout(function() {
                 setupEventSource();
@@ -509,7 +555,7 @@
                     topNameValue.textContent = pvs.top_name || 'N/A';
 
                     // Update status indicators (heartbeat, TCS, GDS, etc.)
-                    updateStatusIndicator('heartbeatIndicator', pvs.heartbeat === 1, 'heartbeat');
+                    updateIndicator('heartbeatIndicator', pvs.heartbeat === 1, 'heartbeat');
                     updateStatusIndicator('tcsConnectionIndicator', pvs.tcs_connection === 'CONNECTED');
                     updateStatusIndicator('gdsStatusIndicator', pvs.gmp_status === 'CONNECTED');
                     updateStatusIndicator('sdsuStateIndicator', pvs.sdsu_state === 'INITIALIZED');
@@ -699,6 +745,46 @@
             return String(mjdValue);
         }
     }
+
+    function updateObsProgress(rdout, progress) {
+        console.log('Updating progress:', rdout, progress);
+        const progressBar = document.getElementById('obsProgressBar');
+        const progressText = document.getElementById('obsProgressText');
+        const startIntegrationBtn = document.getElementById('startIntegrationBtn');
+        
+        // Check if this is a new readout (progress less than previous progress)
+        if (progress < parseFloat(progressBar.getAttribute('aria-valuenow'))) {
+            // This is a new readout, reset the progress bar instantly
+            progressBar.style.transition = 'none';
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', 0);
+            progressText.textContent = '0%';
+            
+            // Force a reflow to ensure the changes take effect immediately
+            void progressBar.offsetWidth;
+            
+            // Re-enable transition for future updates
+            progressBar.style.transition = 'width 0.5s ease-in-out';
+        }
+        
+        if (rdout <= 0) {
+            progress = 0;
+            startIntegrationBtn.textContent = 'Start Integration';
+            startIntegrationBtn.classList.remove('btn-danger');
+            startIntegrationBtn.classList.add('btn-primary');
+            startIntegrationBtn.disabled = false;
+        } else {
+            startIntegrationBtn.textContent = 'Abort';
+            startIntegrationBtn.classList.remove('btn-primary');
+            startIntegrationBtn.classList.add('btn-danger');
+            startIntegrationBtn.disabled = false;
+        }
+        
+        // Update progress bar
+        progressBar.style.width = `${progress}%`;
+        progressBar.setAttribute('aria-valuenow', progress);
+        progressText.textContent = `${Math.round(progress)}%`;
+    }
 </script>
 
 <style>
@@ -744,9 +830,11 @@
     .heartbeat-on {
         background-color: green;
         border-color: green;
+        animation: heartbeat 1s infinite;
     }
     .heartbeat-off {
         background-color: white;
+        border-color: gray;
     }
     .nav-tabs {
         display: flex;
@@ -827,8 +915,8 @@
         animation: heartbeat 1s infinite;
     }
     .heartbeat-off {
-        background-color: red;
-        border-color: red;
+        background-color: white;
+        border-color: gray;
     }
     .interlock-indicator {
         width: 20px;
@@ -1165,6 +1253,11 @@
     #startIntegrationBtn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+    }
+
+    .server-disconnected {
+        background-color: white;
+        border-color: gray;
     }
 </style>
 

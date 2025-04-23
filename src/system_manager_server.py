@@ -541,7 +541,8 @@ def sse():
                     yield f"data: {message}\n\n"
                 except Empty:
                     # Queue.Empty exception - send a heartbeat
-                    yield f"data: {json.dumps({'heartbeat': int(time.time())})}\n\n"
+                    # Use 'server_heartbeat' instead of 'heartbeat' to distinguish from PV value
+                    yield f"data: {json.dumps({'server_heartbeat': int(time.time())})}\n\n"
                 except Exception as e:
                     # Log other errors but try to keep the connection
                     logger.error(f"Error in SSE stream for {client_id}: {str(e)}")
