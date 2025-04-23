@@ -18,7 +18,7 @@ import json
 import caproto
 from epics import caput, caget
 from astropy.io import fits
-from queue import Queue, Full as QueueFull
+from queue import Queue, Full as QueueFull, Empty
 import subprocess
 import markdown2
 import paramiko
@@ -158,29 +158,95 @@ class PVSubscriptionManager:
         
         # Special handling for log messages
         if pv_name.endswith(':log_message'):
-            # Add to log_messages queue like before
+            # Store the log message in the server's log queue
             log_entry = {"status": "connected", "value": value}
             log_messages.append(log_entry)
             logger.debug(f"Added log entry: {log_entry}")
             
             # For log messages, send in the format expected by the frontend
-            with clients_lock:
-                log_update = json.dumps({"value": value})
-                for client_queue in clients:
-                    try:
-                        client_queue.put_nowait(log_update)
-                    except QueueFull:
-                        pass  # Skip slow clients
+            # No need to broadcast here since we'll return logs via get_log_messages
+            # self.broadcast_to_clients({"value": value}) - Remove this line to avoid duplicates
+            
+            # Instead, broadcast the log_message field name with the value
+            # This allows the client to handle it specifically as a log message
+            self.broadcast_to_clients({"log_message": value})
         else:
-            # Normal handling for other PVs
+            # Normal handling for other PVs - broadcast just the field update
+            short_name = pv_name.split(':')[-1]  # Extract just the final part of the PV name
+            self.broadcast_to_clients({short_name: value})
+            
+    def broadcast_to_clients(self, data):
+        """Broadcast data to all connected clients"""
+        # Skip if there are no clients
+        with clients_lock:
+            if not clients:
+                return
+        
+        try:
+            # Create the message outside of any locks
+            # Convert NumPy types before JSON serialization
+            sanitized_data = self._sanitize_for_json(data)
+            
+            try:
+                message = json.dumps(sanitized_data)
+            except TypeError as e:
+                logger.error(f"JSON serialization error with data: {sanitized_data}")
+                logger.error(f"Error: {str(e)}")
+                return
+            
+            # Get a copy of clients under the lock
             with clients_lock:
-                short_name = pv_name.split(':')[-1]  # Extract just the final part of the PV name
-                update_msg = json.dumps({short_name: value})
-                for client_queue in clients:
-                    try:
-                        client_queue.put_nowait(update_msg)
-                    except QueueFull:
-                        pass  # Skip slow clients
+                client_queues = list(clients)
+            
+            # Track failed clients for cleanup
+            failed_clients = []
+            
+            # Send to each client without holding the lock
+            for client_queue in client_queues:
+                try:
+                    client_queue.put_nowait(message)
+                except QueueFull:
+                    # Skip slow clients but don't remove them
+                    logger.debug(f"Skipping slow client, queue full")
+                except Exception as e:
+                    # Mark client for removal on persistent errors
+                    logger.error(f"Error sending to client: {str(e)}")
+                    failed_clients.append(client_queue)
+            
+            # Clean up any failed clients
+            if failed_clients:
+                with clients_lock:
+                    for failed in failed_clients:
+                        if failed in clients:
+                            clients.remove(failed)
+                    logger.info(f"Removed {len(failed_clients)} failed clients. Remaining: {len(clients)}")
+                            
+            if len(client_queues) > 0:
+                logger.debug(f"Broadcast to {len(client_queues)} clients")
+        except Exception as e:
+            # Catch any other errors to prevent broadcast issues from crashing the application
+            logger.error(f"Error in broadcast: {str(e)}")
+            
+    def _sanitize_for_json(self, data):
+        """Sanitize data for JSON serialization by converting NumPy types to Python native types"""
+        if isinstance(data, dict):
+            return {k: self._sanitize_for_json(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._sanitize_for_json(item) for item in data]
+        elif hasattr(data, 'dtype'):
+            # Handle NumPy scalars
+            return data.item()
+        elif isinstance(data, (np.integer, np.floating, np.bool_)):
+            # Handle NumPy types
+            return data.item()
+        elif isinstance(data, bytes):
+            # Handle bytes
+            try:
+                return data.decode('utf-8').strip('\x00')
+            except UnicodeDecodeError:
+                return str(data)
+        else:
+            return data
 
     def subscribe_to_pv(self, pv_name):
         """Subscribe to a PV if not already subscribed"""
@@ -449,27 +515,61 @@ def view_fits_header(filename):
 @app.route('/sse')
 def sse():
     def event_stream():
+        # Generate a simple client ID that doesn't rely on request object
+        client_id = f"client-{hash(time.time())}"
+        logger.info(f"Client connected: {client_id}")
+        
         # Use a queue with maximum size to prevent memory issues
         client_queue = Queue(maxsize=100)
         
-        with clients_lock:
-            clients.add(client_queue)
-        
+        # Register this client
         try:
+            with clients_lock:
+                clients.add(client_queue)
+                client_count = len(clients)
+            
+            logger.info(f"Client {client_id} registered. Total clients: {client_count}")
+            
+            # Send an initial update with the connection status
+            yield f"data: {json.dumps({'connected': True})}\n\n"
+            
+            # Keep streaming updates
             while True:
                 try:
                     # Use a timeout to prevent completely blocking
                     message = client_queue.get(timeout=30)
                     yield f"data: {message}\n\n"
+                except Empty:
+                    # Queue.Empty exception - send a heartbeat
+                    yield f"data: {json.dumps({'heartbeat': int(time.time())})}\n\n"
                 except Exception as e:
+                    # Log other errors but try to keep the connection
+                    logger.error(f"Error in SSE stream for {client_id}: {str(e)}")
                     # Send an empty update to keep connection alive
                     yield f"data: {{}}\n\n"
+                    time.sleep(1)  # Brief pause to prevent tight loop on error
+        except GeneratorExit:
+            # Client disconnected
+            logger.info(f"Client disconnected: {client_id}")
+        except Exception as e:
+            # Log any other unexpected errors
+            logger.error(f"Unexpected error in SSE for {client_id}: {str(e)}")
         finally:
-            with clients_lock:
-                if client_queue in clients:
-                    clients.remove(client_queue)
+            # Make sure we clean up on disconnect
+            try:
+                with clients_lock:
+                    if client_queue in clients:
+                        clients.remove(client_queue)
+                        client_count = len(clients)
+                    logger.info(f"Client {client_id} unregistered. Remaining clients: {client_count}")
+            except Exception as e:
+                logger.error(f"Error cleaning up client {client_id}: {str(e)}")
 
-    return Response(event_stream(), content_type='text/event-stream')
+    # Set proper headers for SSE
+    response = Response(event_stream(), content_type='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Accel-Buffering'] = 'no'  # Disable buffering for Nginx
+    return response
 
 @app.route('/start_integration', methods=['POST'])
 def start_integration():
@@ -560,11 +660,29 @@ def get_file_log():
     log_dir = config[config_mode].get('LOG_DIR', '/readout_data/logs')
     log_file = os.path.join(log_dir, 'irdc.log')
     try:
+        if not os.path.exists(log_file):
+            return jsonify({"status": "error", "message": "Log file not found"}), 404
+            
+        # Get file size
+        file_size = os.path.getsize(log_file)
+        
+        # If file is too large, only read the last 500KB
+        max_size = 500 * 1024  # 500KB
+        
         with open(log_file, 'r') as f:
-            return f.read()
+            if file_size > max_size:
+                # Seek to end - max_size
+                f.seek(file_size - max_size)
+                # Skip partial line
+                f.readline()
+                content = f.read()
+            else:
+                content = f.read()
+                
+        return jsonify({"status": "success", "content": content})
     except Exception as e:
         logger.error(f"Error reading log file: {str(e)}")
-        return "Error reading log file", 500
+        return jsonify({"status": "error", "message": f"Error reading log file: {str(e)}"}), 500
 
 @app.route('/engineering')
 def engineering():
@@ -796,9 +914,22 @@ def preview_latest_fits():
             response.headers['Expires'] = '-1'
             return response
 
+# Add a simple request rate limiter
+pv_cache = {}
+pv_cache_time = 0
+PV_CACHE_TTL = 0.2  # 200ms throttling
+
 @app.route('/get_all_pvs')
 def get_all_pvs():
-    """Get all PV values from the PV manager"""
+    """Get all PV values from the PV manager with throttling"""
+    global pv_cache, pv_cache_time
+    
+    current_time = time.time()
+    
+    # Return cached data if it's fresh enough
+    if current_time - pv_cache_time < PV_CACHE_TTL and pv_cache:
+        return jsonify(pv_cache)
+        
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
     all_pv_data = pv_manager.get_all_values()
     
@@ -901,6 +1032,18 @@ def get_all_pvs():
             formatted_values['detector_bias'] = "N/A"
             formatted_values['bias_mode'] = "UNKNOWN"
     
+    # Special handling for NTP time - just pass the raw value with no processing
+    ntp_pv = f'{top_name}:ntp_time'
+    if ntp_pv in all_pv_data and all_pv_data[ntp_pv]:
+        if all_pv_data[ntp_pv].get('value') is not None:
+            # Just pass the raw value directly
+            formatted_values['ntp_time'] = all_pv_data[ntp_pv]['value']
+        else:
+            # Use a default of 0 if no value is available
+            formatted_values['ntp_time'] = 0
+    else:
+        formatted_values['ntp_time'] = 0
+    
     # Ensure readout progress is correctly calculated
     if 'rdout' in formatted_values and 'obs_progress' in formatted_values:
         rdout = formatted_values['rdout']
@@ -935,10 +1078,13 @@ def get_all_pvs():
     for key, default_value in default_fields.items():
         if key not in formatted_values:
             formatted_values[key] = default_value
+
+    # Prepare and cache response
+    response = {"status": "success", "pvs": formatted_values}
+    pv_cache = response
+    pv_cache_time = current_time
             
-    logger.debug(f"Formatted PV values count: {len(formatted_values)}")
-    
-    return jsonify({"status": "success", "pvs": formatted_values})
+    return jsonify(response)
 
 # Start the preview generation thread
 def preview_thread_function():

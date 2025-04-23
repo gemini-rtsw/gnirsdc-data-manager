@@ -165,6 +165,9 @@
 </div>
 
 <script>
+    // Initialize global variables
+    let lastStatus = {};  // Initialize lastStatus to prevent reference errors
+
     // Move the updateHostname function definition to the top
     function updateHostname() {
         fetch('/get_hostname')
@@ -215,25 +218,108 @@
                     updateTextContent('detectorBiasValue', value);
                     break;
                 case 'ntp_time':
-                    updateTextContent('ntpTimeValue', value);
+                    updateTextContent('ntpTimeValue', formatMJD(value));
                     break;
                 // Add more cases for other PVs as needed
             }
         }
     }
 
-    function updateIndicator(elementId, value, type) {
+    // Update the processUpdates function to handle log_message specifically
+    function processUpdates(data) {
+        // Process each key-value pair in the data
+        for (const key in data) {
+            const value = data[key];
+            
+            // Check if this is a log message
+            if (key === 'log_message') {
+                // This is a log message from the SSE feed
+                addLogMessage(value);
+                continue;  // Skip the rest of the processing for log messages
+            }
+            
+            // Handle different PV updates based on key
+            switch (key) {
+                case 'heartbeat':
+                    updateIndicator('heartbeatIndicator', value === 1, 'heartbeat');
+                    break;
+                case 'tcs_connection':
+                    updateIndicator('tcsConnectionIndicator', value === 'CONNECTED', 'status');
+                    break;
+                case 'gmp_status':
+                    updateIndicator('gdsStatusIndicator', value === 'CONNECTED', 'status');
+                    break;
+                case 'sdsu_state':
+                    updateIndicator('sdsuStateIndicator', value === 'INITIALIZED', 'status');
+                    break;
+                case 'interlock_override':
+                    updateIndicator('interlockIndicator', value === 0, 'interlock');
+                    break;
+                case 'temperature':
+                    updateTextContent('temperatureValue', value ? (typeof value.toFixed === 'function' ? value.toFixed(2) + ' K' : value + ' K') : 'N/A');
+                    break;
+                case 'detector_bias':
+                    updateTextContent('detectorBiasValue', value);
+                    break;
+                case 'ntp_time':
+                    updateTextContent('ntpTimeValue', formatMJD(value));
+                    break;
+                case 'file_name':
+                    updateTextContent('fileName', value);
+                    break;
+                case 'fowler_num':
+                    updateTextContent('fowlerNum', value);
+                    break;
+                case 'digital_avgs':
+                    updateTextContent('digitalAvgs', value);
+                    break;
+                case 'integ_time':
+                    updateTextContent('integTime', value);
+                    break;
+                case 'coadds':
+                    updateTextContent('coadds', value);
+                    break;
+                case 'sequence':
+                    updateTextContent('sequence', value);
+                    break;
+                case 'top_name':
+                    updateTextContent('topNameValue', value);
+                    break;
+                case 'value':
+                    // This is the old format for log messages - deprecated but handle for backward compatibility
+                    addLogMessage(value);
+                    break;
+            }
+        }
+    }
+    
+    function addLogMessage(logValue) {
+        const logMessages = document.getElementById('logMessages');
+        if (!logMessages) return;
+        
+        // Just append the raw message without adding a timestamp
+        logMessages.value += logValue + "\n";
+        
+        // Auto-scroll to bottom
+        logMessages.scrollTop = logMessages.scrollHeight;
+    }
+
+    function updateStatusIndicator(elementId, isConnected, type = 'status') {
         const indicator = document.getElementById(elementId);
         if (!indicator) return;
+        
+        indicator.className = `status-indicator ${isConnected ? (type === 'heartbeat' ? 'heartbeat-on' : 'status-on') : (type === 'heartbeat' ? 'heartbeat-off' : 'status-off')}`;
+    }
 
-        let className = type + '-indicator';
-        if (value) {
-            className += ' ' + type + '-on';
+    function updateIndicator(elementId, isOn, type = 'status') {
+        const indicator = document.getElementById(elementId);
+        if (!indicator) return;
+        
+        if (type === 'interlock') {
+            indicator.className = `interlock-indicator ${isOn ? 'interlock-on' : 'interlock-off'}`;
+            indicator.title = `Temperature Interlock: ${isOn ? 'ON' : 'OFF'}`;
         } else {
-            className += ' ' + type + '-off';
-        }
-        if (indicator.className !== className) {
-            indicator.className = className;
+            indicator.className = `status-indicator ${isOn ? 'status-on' : 'status-off'}`;
         }
     }
 
@@ -244,8 +330,56 @@
         }
     }
 
-    // Request initial PV values
-    socket.emit('get_initial_pvs');
+    // Replace socket.emit with SSE
+    let eventSource = null;
+    
+    function setupEventSource() {
+        // Close existing event source if any
+        if (eventSource) {
+            eventSource.close();
+        }
+        
+        // Create a new event source
+        eventSource = new EventSource('/sse');
+        
+        // Set up event handlers
+        eventSource.onopen = function() {
+            console.log('SSE connection established');
+        };
+        
+        eventSource.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                
+                // Check if it's a heartbeat message (can be ignored)
+                if (data.heartbeat) {
+                    return;
+                }
+                
+                // Handle connected status
+                if (data.connected === true) {
+                    console.log('Connected to server');
+                    return;
+                }
+                
+                // Process PV updates
+                processUpdates(data);
+            } catch (e) {
+                console.error('Error processing SSE message:', e);
+            }
+        };
+        
+        eventSource.onerror = function(event) {
+            console.error('SSE Error:', event);
+            // Try to reconnect after a delay
+            setTimeout(function() {
+                setupEventSource();
+            }, 3000);
+        };
+    }
+    
+    // Initialize SSE connection
+    setupEventSource();
 
     function showLoadingIndicator(message) {
         const loadingIndicator = document.getElementById('loadingIndicator');
@@ -348,49 +482,134 @@
             });
     }
 
-    function refreshStatusIndicators() {
+    // Consolidate updateAllPVs and refreshStatusIndicators into a single function
+    // to reduce duplicate API calls
+    let lastAllPVsUpdate = 0;
+    let pvUpdateInProgress = false;
+    
+    function updateAllPVs() {
+        const now = Date.now();
+        // Don't make a new request if one is already in progress or if we've updated recently
+        if (pvUpdateInProgress || (now - lastAllPVsUpdate < 250)) {
+            return;
+        }
+        
+        pvUpdateInProgress = true;
+        
         fetch('/get_all_pvs')
             .then(response => response.json())
             .then(data => {
+                pvUpdateInProgress = false;
+                lastAllPVsUpdate = Date.now();
+                
                 if (data.status === 'success') {
                     const pvs = data.pvs;
                     
-                    // Update heartbeat indicator
-                    heartbeatIndicator.className = pvs.heartbeat !== null ? (pvs.heartbeat === 1 ? 'status-indicator heartbeat-on' : 'status-indicator heartbeat-off') : 'status-indicator';
+                    // Update top name
+                    topNameValue.textContent = pvs.top_name || 'N/A';
 
-                    // Update TCS Connection indicator
-                    tcsConnectionIndicator.className = pvs.tcs_connection !== null ? (pvs.tcs_connection === 'CONNECTED' ? 'status-indicator status-on' : 'status-indicator status-off') : 'status-indicator';
-
-                    // Update GDS status indicator
-                    gdsStatusIndicator.className = pvs.gmp_status !== null ? (pvs.gmp_status === 'CONNECTED' ? 'status-indicator status-on' : 'status-indicator status-off') : 'status-indicator';
-
-                    // Update SDSU State indicator
-                    sdsuStateIndicator.className = pvs.sdsu_state !== null ? (pvs.sdsu_state === 'INITIALIZED' ? 'status-indicator status-on' : 'status-indicator status-off') : 'status-indicator';
-
+                    // Update status indicators (heartbeat, TCS, GDS, etc.)
+                    updateStatusIndicator('heartbeatIndicator', pvs.heartbeat === 1, 'heartbeat');
+                    updateStatusIndicator('tcsConnectionIndicator', pvs.tcs_connection === 'CONNECTED');
+                    updateStatusIndicator('gdsStatusIndicator', pvs.gmp_status === 'CONNECTED');
+                    updateStatusIndicator('sdsuStateIndicator', pvs.sdsu_state === 'INITIALIZED');
+                    
                     // Update interlock indicator
-                    interlockIndicator.className = pvs.interlock_override !== null ? (pvs.interlock_override === 0 ? 'interlock-indicator interlock-on' : 'interlock-indicator interlock-off') : 'interlock-indicator';
-                } else {
-                    // If there's an error, set all indicators to the disconnected state
-                    heartbeatIndicator.className = 'status-indicator';
-                    tcsConnectionIndicator.className = 'status-indicator';
-                    gdsStatusIndicator.className = 'status-indicator';
-                    sdsuStateIndicator.className = 'status-indicator';
-                    interlockIndicator.className = 'interlock-indicator';
+                    updateIndicator('interlockIndicator', pvs.interlock_override === 0, 'interlock');
+                    
+                    // Update temperature
+                    temperatureValue.textContent = pvs.temperature ? 
+                        (typeof pvs.temperature.toFixed === 'function' ? 
+                            `${pvs.temperature.toFixed(2)} K` : `${pvs.temperature} K`) : 'N/A';
+
+                    // Update Apply C Value indicator
+                    let applyCValue = pvs.apply_c_value;
+                    const applyCValueIndicator = document.getElementById('applyCValueIndicator');
+                    
+                    // Convert number to string if necessary
+                    if (typeof applyCValue === 'number') {
+                        switch (applyCValue) {
+                            case 0: applyCValue = 'IDLE'; break;
+                            case 1: applyCValue = 'PAUSED'; break; 
+                            case 2: applyCValue = 'BUSY'; break;    
+                            case 3: applyCValue = 'ERR'; break;
+                            default: applyCValue = `UNKNOWN (${applyCValue})`;
+                        }
+                    }
+
+                    applyCValueIndicator.textContent = applyCValue;
+
+                    switch (applyCValue) {
+                        case 'IDLE':
+                            applyCValueIndicator.style.color = 'green';
+                            break;
+                        case 'BUSY':
+                        case 'PAUSED':
+                            applyCValueIndicator.style.color = 'orange';
+                            break;
+                        case 'ERR':
+                        default:
+                            applyCValueIndicator.style.color = 'red';
+                    }
+
+                    // Update detector bias and form fields
+                    detectorBiasValue.textContent = pvs.detector_bias || 'N/A';
+                    
+                    // Set bias mode dropdown based on bias_mode value
+                    if (pvs.bias_mode && !userEditing) {
+                        const modeLower = pvs.bias_mode.toLowerCase();
+                        let biasOption = 'DEEP';
+                        if (modeLower.includes('shallow')) {
+                            biasOption = 'SHALLOW';
+                        }
+                        biasMode.value = biasOption;
+                    }
+
+                    // Update form fields if user is not currently editing them
+                    if (!userEditing) {
+                        fowlerNumInput.value = pvs.fowler_num || "";
+                        digitalAvgsInput.value = pvs.digital_avgs || "";
+                        integTimeInput.value = pvs.integ_time || "";
+                        fileNameInput.value = pvs.file_name || "";
+                        coaddsInput.value = pvs.coadds || "";
+                        sequenceInput.value = pvs.sequence || "";
+                    }
+
+                    // Update integration/observation progress
+                    updateObsProgress(pvs.rdout, pvs.obs_progress);
+
+                    // Update NTP time - DIRECT APPROACH
+                    if (pvs.ntp_time !== undefined) {
+                        ntpTimeValue.textContent = formatMJD(pvs.ntp_time);
+                    } else {
+                        ntpTimeValue.textContent = 'N/A';
+                    }
+                    
+                    sdsuStateIndicator.title = `SDSU Controller: ${pvs.sdsu_state}`;
                 }
             })
             .catch(error => {
+                pvUpdateInProgress = false;
                 console.error('Error fetching PVs:', error);
-                // If there's an error, set all indicators to the disconnected state
-                heartbeatIndicator.className = 'status-indicator';
-                tcsConnectionIndicator.className = 'status-indicator';
-                gdsStatusIndicator.className = 'status-indicator';
-                sdsuStateIndicator.className = 'status-indicator';
-                interlockIndicator.className = 'interlock-indicator';
+                // Only log every few seconds to avoid flooding console
+                if (Math.random() < 0.1) {  // Only log about 10% of errors
+                    console.warn('Reducing PV update errors logging rate');
+                }
             });
     }
-
-    // Refresh status indicators every second
-    setInterval(refreshStatusIndicators, 100);
+    
+    // Remove the refreshStatusIndicators function since we've consolidated it into updateAllPVs
+    
+    // Use a more reasonable update interval and use requestAnimationFrame for better performance
+    function scheduleNextUpdate() {
+        updateAllPVs();
+        setTimeout(() => {
+            requestAnimationFrame(scheduleNextUpdate);
+        }, 500);  // Update every 500ms instead of 100ms
+    }
+    
+    // Start the update cycle
+    scheduleNextUpdate();
 
     function updateHostname() {
         fetch('/get_hostname')
@@ -440,6 +659,45 @@
             .catch(error => {
                 console.error('Error:', error);
             });
+    }
+
+    // Convert MJD to human-readable date and time
+    function formatMJD(mjdValue) {
+        if (mjdValue === null || mjdValue === undefined) {
+            return 'N/A';
+        }
+        
+        try {
+            // Convert to number
+            const mjd = Number(mjdValue);
+            
+            if (isNaN(mjd)) {
+                return String(mjdValue);
+            }
+            
+            // MJD 0 = November 17, 1858
+            const jdRef = 2400000.5;
+            const jd = mjd + jdRef;
+            
+            // Convert JD to Date
+            const daysSince1970 = jd - 2440587.5;
+            const date = new Date(daysSince1970 * 86400000);
+            
+            // Format as day month year time
+            const options = { 
+                day: '2-digit',
+                month: 'short', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            
+            return date.toLocaleString(undefined, options);
+        } catch (e) {
+            console.error('Error converting MJD to date:', e);
+            return String(mjdValue);
+        }
     }
 </script>
 
@@ -547,20 +805,51 @@
         justify-self: start;
         margin-left: 10px;
     }
-    .status-indicator,
+    .status-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+    }
+    .status-on {
+        background-color: green;
+        border-color: green;
+    }
+    .status-off {
+        background-color: red;
+        border-color: red;
+    }
+    .heartbeat-on {
+        background-color: green;
+        border-color: green;
+        animation: heartbeat 1s infinite;
+    }
+    .heartbeat-off {
+        background-color: red;
+        border-color: red;
+    }
     .interlock-indicator {
         width: 20px;
         height: 20px;
         border-radius: 50%;
         display: inline-block;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
     }
-    .status-on,
     .interlock-on {
         background-color: green;
+        border-color: green;
     }
-    .status-off,
     .interlock-off {
         background-color: red;
+        border-color: red;
+    }
+    @keyframes heartbeat {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
     }
     #applyCValueIndicator {
         font-weight: normal;
@@ -948,15 +1237,29 @@
 
     function updateFileLog() {
         fetch('/get_file_log')
-            .then(response => response.text())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 const wasScrolledToBottom = !isUserScrolled;
-                fileLogMessagesTextarea.value = data;
-                if (wasScrolledToBottom) {
-                    fileLogMessagesTextarea.scrollTop = fileLogMessagesTextarea.scrollHeight;
+                
+                if (data.status === 'success' && data.content) {
+                    fileLogMessagesTextarea.value = data.content;
+                    if (wasScrolledToBottom) {
+                        fileLogMessagesTextarea.scrollTop = fileLogMessagesTextarea.scrollHeight;
+                    }
+                } else if (data.status === 'error') {
+                    console.warn('File log error:', data.message);
+                    fileLogMessagesTextarea.value = `Log not available: ${data.message}`;
                 }
             })
-            .catch(error => console.error('Error fetching file log:', error));
+            .catch(error => {
+                console.error('Error fetching file log:', error);
+                fileLogMessagesTextarea.value = 'Error loading log file. It may be unavailable.';
+            });
     }
 
     function updateObsProgress(rdout, progress) {
@@ -999,130 +1302,6 @@
         progressText.textContent = `${Math.round(progress)}%`;
     }
 
-    function updateAllPVs() {
-        fetch('/get_all_pvs')
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    const pvs = data.pvs;
-                    
-                    // Update top name
-                    topNameValue.textContent = pvs.top_name || 'N/A';
-
-                    // Update heartbeat indicator
-                    if (pvs.heartbeat === 1) {
-                        heartbeatIndicator.classList.add('heartbeat-on');
-                        heartbeatIndicator.classList.remove('heartbeat-off');
-                    } else {
-                        heartbeatIndicator.classList.add('heartbeat-off');
-                        heartbeatIndicator.classList.remove('heartbeat-on');
-                    }
-
-                    // Update TCS Connection indicator
-                    updateStatusIndicator('tcsConnectionIndicator', pvs.tcs_connection === 'CONNECTED');
-
-                    // Update GDS status indicator
-                    updateStatusIndicator('gdsStatusIndicator', pvs.gmp_status === 'CONNECTED');
-
-                    // Update temperature
-                    temperatureValue.textContent = pvs.temperature ? `${pvs.temperature.toFixed(2)} K` : 'N/A';
-
-                    // Update interlock override indicator
-                    if (pvs.interlock_override === 0) {
-                        interlockIndicator.classList.add('interlock-on');
-                        interlockIndicator.classList.remove('interlock-off');
-                        interlockIndicator.title = 'Temperature Interlock: ON';
-                    } else {
-                        interlockIndicator.classList.add('interlock-off');
-                        interlockIndicator.classList.remove('interlock-on');
-                        interlockIndicator.title = 'Temperature Interlock: OFF';
-                    }
-
-                    // Update Apply C Value indicator
-                    let applyCValue = pvs.apply_c_value;
-                    const applyCValueIndicator = document.getElementById('applyCValueIndicator');
-                    
-                    // Convert number to string if necessary
-                    if (typeof applyCValue === 'number') {
-                        switch (applyCValue) {
-                            case 0: applyCValue = 'IDLE'; break;
-                            case 1: applyCValue = 'PAUSED'; break; 
-                            case 2: applyCValue = 'BUSY'; break;    
-                            case 3: applyCValue = 'ERR'; break;
-                            default: applyCValue = `UNKNOWN (${applyCValue})`;
-                        }
-                    }
-
-                    applyCValueIndicator.textContent = applyCValue;
-
-                    switch (applyCValue) {
-                        case 'IDLE':
-                            applyCValueIndicator.style.color = 'green';
-                            break;
-                        case 'BUSY':
-                        case 'PAUSED':
-                            applyCValueIndicator.style.color = 'orange';
-                            break;
-                        case 'ERR':
-                        default:
-                            applyCValueIndicator.style.color = 'red';
-                    }
-
-                    // Update detector bias voltage and mode
-                    detectorBiasValue.textContent = pvs.detector_bias || 'N/A';
-                    biasMode.value = pvs.bias_mode || 'UNKNOWN';
-
-                    // Update SDSU State indicator
-                    updateStatusIndicator('sdsuStateIndicator', pvs.sdsu_state === 'INITIALIZED');
-                    sdsuStateIndicator.title = `SDSU Controller: ${pvs.sdsu_state}`;
-
-                    // Update NTP Time
-                    const ntpTimeMJD = pvs.ntp_time;
-                    if (ntpTimeMJD) {
-                        const date = mjdToDate(ntpTimeMJD);
-                        ntpTimeValue.textContent = formatDateUTC(date);
-                    } else {
-                        ntpTimeValue.textContent = 'N/A';
-                    }
-
-                    // Update form inputs only if values have changed and user is not editing
-                    if (!userEditing) {
-                        if (pvs.fowler_num !== previousPVs.fowler_num) {
-                            fowlerNumInput.value = pvs.fowler_num;
-                        }
-                        if (pvs.digital_avgs !== previousPVs.digital_avgs) {
-                            digitalAvgsInput.value = pvs.digital_avgs;
-                        }
-                        if (pvs.integ_time !== previousPVs.integ_time) {
-                            integTimeInput.value = pvs.integ_time;
-                        }
-                        if (pvs.file_name !== previousPVs.file_name) {
-                            fileNameInput.value = pvs.file_name;
-                        }
-                        if (pvs.coadds !== previousPVs.coadds) {
-                            coaddsInput.value = pvs.coadds;
-                        }
-                        if (pvs.sequence !== previousPVs.sequence) {
-                            sequenceInput.value = pvs.sequence;
-                        }
-                    }
-
-                    // Update previous PV values
-                    previousPVs = {...pvs};
-
-                    // Update observation progress and button state
-                    if (pvs.rdout !== undefined && pvs.obs_progress !== undefined) {
-                        updateObsProgress(pvs.rdout, pvs.obs_progress);
-                    }
-                } else {
-                    console.error('Error fetching PVs:', data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching PVs:', error);
-            });
-    }
-
     function updateStatusIndicator(elementId, isConnected) {
         const indicator = document.getElementById(elementId);
         if (isConnected) {
@@ -1136,14 +1315,43 @@
         indicator.style.display = 'inline-block';
     }
 
-    // Convert MJD to JavaScript Date object
-    function mjdToDate(mjd) {
-        return new Date((mjd - 40587) * 86400000);
-    }
-
-    // Format Date object to a readable UTC string with 24-hour clock
-    function formatDateUTC(date) {
-        return date.toUTCString().replace(/GMT/, 'UTC');
+    // Convert MJD to human-readable date and time
+    function formatMJD(mjdValue) {
+        if (mjdValue === null || mjdValue === undefined) {
+            return 'N/A';
+        }
+        
+        try {
+            // Convert to number
+            const mjd = Number(mjdValue);
+            
+            if (isNaN(mjd)) {
+                return String(mjdValue);
+            }
+            
+            // MJD 0 = November 17, 1858
+            const jdRef = 2400000.5;
+            const jd = mjd + jdRef;
+            
+            // Convert JD to Date
+            const daysSince1970 = jd - 2440587.5;
+            const date = new Date(daysSince1970 * 86400000);
+            
+            // Format as day month year time
+            const options = { 
+                day: '2-digit',
+                month: 'short', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            
+            return date.toLocaleString(undefined, options);
+        } catch (e) {
+            console.error('Error converting MJD to date:', e);
+            return String(mjdValue);
+        }
     }
 
     // Initial load of log messages
@@ -1229,9 +1437,6 @@
             console.error('Error:', error);
         });
     });
-
-    // Call updateAllPVs every second
-    setInterval(updateAllPVs, 100);
 
     // Add event listeners to track when user is editing
     [fowlerNumInput, digitalAvgsInput, integTimeInput, fileNameInput, coaddsInput, sequenceInput].forEach(input => {
