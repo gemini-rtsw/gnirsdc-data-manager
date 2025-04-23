@@ -36,6 +36,7 @@ import time
 import os
 from flask import current_app
 from collections import deque  # Import deque for more efficient log message handling
+from datetime import datetime, timedelta
 
 
 # Set up logging
@@ -77,7 +78,6 @@ log_messages = deque(maxlen=1000)  # Use deque with fixed maxlen instead of list
 MAX_LOG_MESSAGES = 1000  # Keep this for reference
 clients = set()
 clients_lock = threading.Lock()
-active_subscription = None  # Track the active subscription
 
 # SSH configuration
 SSH_HOST = 'localhost'  # Since we're using --network=host, localhost refers to the host machine
@@ -103,66 +103,181 @@ def run_ssh_command(command):
         logger.error(f"Error executing SSH command: {str(e)}")
         raise
 
-def pv_handler(sub, response):
-    value = response.data[0]
-    if isinstance(value, bytes):
-        value = value.decode('utf-8')
-    
-    logger.debug(f"Raw PV value received: {value}")
-    
-    log_entry = {"status": "connected", "value": value}
-    log_messages.append(log_entry)
-    
-    # Create the message outside the lock
-    message = json.dumps({"value": value})
-    
-    # Copy the client queues while holding the lock briefly
-    with clients_lock:
-        client_queues = list(clients)
-    
-    # Process each queue without holding the lock
-    for queue in client_queues:
-        try:
-            queue.put_nowait(message)
-        except QueueFull:
-            pass  # Skip slow clients
+# Define a central PV subscription manager
+class PVSubscriptionManager:
+    def __init__(self, ctx):
+        self.ctx = ctx
+        self.subscriptions = {}
+        self.latest_values = {}
+        self.subscription_lock = threading.Lock()
+        self.clients = set()
+        self.clients_lock = threading.Lock()
 
-def setup_all_subscriptions():
-    global active_subscription
-    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-    
-    # Close previous subscription if it exists
-    if active_subscription is not None:
-        try:
-            active_subscription.clear()
-            active_subscription = None
-        except Exception as e:
-            logger.error(f"Error clearing existing subscription: {str(e)}")
-    
-    # Just subscribe to the log message PV as before
-    pv_name = f"{top_name}:log_message"
-    logger.info(f"Subscribing to PV: {pv_name}")
-    
-    try:
-        pv, = ctx.get_pvs(pv_name)
-        sub = pv.subscribe(data_type='time')
-        sub.add_callback(pv_handler)
-        logger.info(f"Successfully subscribed to PV: {pv_name}")
-        return sub
-    except Exception as e:
-        logger.error(f"Error subscribing to PV {pv_name}: {str(e)}")
-        return None
+    def handle_subscription(self, sub, response):
+        pv_name = sub.pv.name
+        value = response.data[0]
+        
+        # Store metadata from the response for later use
+        metadata = {
+            'type': response.data_type,
+            'count': response.data_count
+        }
+        
+        if hasattr(response, 'metadata'):
+            if hasattr(response.metadata, 'enum_strings'):
+                metadata['enum_strings'] = response.metadata.enum_strings
+            if hasattr(response.metadata, 'precision'):
+                metadata['precision'] = response.metadata.precision
+            if hasattr(response.metadata, 'units'):
+                metadata['units'] = response.metadata.units
+        
+        # Handle string values properly
+        if isinstance(value, bytes):
+            try:
+                value = value.decode('utf-8').strip('\x00')
+            except UnicodeDecodeError:
+                pass  # Keep as bytes if it can't be decoded
+                
+        # Handle enum/string values from the metadata if available
+        if 'enum_strings' in metadata and metadata['enum_strings'] and isinstance(value, (int, np.integer)):
+            try:
+                enum_strings = metadata['enum_strings']
+                if 0 <= value < len(enum_strings):
+                    value = enum_strings[value].decode('utf-8') if isinstance(enum_strings[value], bytes) else enum_strings[value]
+            except Exception as e:
+                logger.error(f"Error converting enum value for {pv_name}: {str(e)}")
+            
+        logger.debug(f"PV update: {pv_name} = {value} (type: {metadata.get('type')})")
+        
+        with self.subscription_lock:
+            # Store both value and metadata
+            self.latest_values[pv_name] = {
+                'value': value,
+                'metadata': metadata
+            }
+        
+        # Special handling for log messages
+        if pv_name.endswith(':log_message'):
+            # Add to log_messages queue like before
+            log_entry = {"status": "connected", "value": value}
+            log_messages.append(log_entry)
+            logger.debug(f"Added log entry: {log_entry}")
+            
+            # For log messages, send in the format expected by the frontend
+            with clients_lock:
+                log_update = json.dumps({"value": value})
+                for client_queue in clients:
+                    try:
+                        client_queue.put_nowait(log_update)
+                    except QueueFull:
+                        pass  # Skip slow clients
+        else:
+            # Normal handling for other PVs
+            with clients_lock:
+                short_name = pv_name.split(':')[-1]  # Extract just the final part of the PV name
+                update_msg = json.dumps({short_name: value})
+                for client_queue in clients:
+                    try:
+                        client_queue.put_nowait(update_msg)
+                    except QueueFull:
+                        pass  # Skip slow clients
 
-def run_subscription_system():
-    global active_subscription
-    
-    # Subscribe to the log message PV
-    active_subscription = setup_all_subscriptions()
-    
-    # Keep the thread alive
-    while True:
-        time.sleep(1)
+    def subscribe_to_pv(self, pv_name):
+        """Subscribe to a PV if not already subscribed"""
+        with self.subscription_lock:
+            if pv_name in self.subscriptions:
+                return self.subscriptions[pv_name]
+            
+            try:
+                pv, = self.ctx.get_pvs(pv_name)
+                sub = pv.subscribe(data_type='time')
+                sub.add_callback(self.handle_subscription)
+                self.subscriptions[pv_name] = sub
+                logger.info(f"Subscribed to PV: {pv_name}")
+                return sub
+            except Exception as e:
+                logger.error(f"Error subscribing to PV {pv_name}: {str(e)}")
+                return None
 
+    def subscribe_to_multiple_pvs(self, pv_names):
+        """Subscribe to multiple PVs at once"""
+        results = []
+        for pv_name in pv_names:
+            sub = self.subscribe_to_pv(pv_name)
+            results.append(sub)
+        return results
+
+    def get_latest_value(self, pv_name):
+        """Get the latest value for a PV"""
+        with self.subscription_lock:
+            pv_data = self.latest_values.get(pv_name)
+            if pv_data:
+                return pv_data['value']
+            return None
+            
+    def get_pv_metadata(self, pv_name):
+        """Get metadata for a PV"""
+        with self.subscription_lock:
+            pv_data = self.latest_values.get(pv_name)
+            if pv_data and 'metadata' in pv_data:
+                return pv_data['metadata']
+            return None
+
+    def get_all_values(self):
+        """Get all current PV values"""
+        with self.subscription_lock:
+            return {pv_name: data for pv_name, data in self.latest_values.items()}
+
+    def clear_all_subscriptions(self):
+        """Clear all current subscriptions"""
+        with self.subscription_lock:
+            for pv_name, sub in list(self.subscriptions.items()):
+                try:
+                    sub.clear()
+                    logger.info(f"Cleared subscription for PV: {pv_name}")
+                except Exception as e:
+                    logger.error(f"Error clearing subscription for {pv_name}: {str(e)}")
+            self.subscriptions.clear()
+    
+    def setup_core_subscriptions(self, top_name):
+        """Set up subscriptions for core PVs"""
+        core_pvs = [
+            f'{top_name}:log_message',
+            f'{top_name}:heartbeat',
+            f'{top_name}:tcs_connection',
+            f'{top_name}:dc:lnrNum',
+            f'{top_name}:dc:digitalAvgs',
+            f'{top_name}:dc:integTime.VAL',
+            f'{top_name}:dc:observe.A',
+            f'{top_name}:dc:temperature',
+            f'{top_name}:dc:disable_interlock',
+            f'{top_name}:dc:applyC.VAL',
+            f'{top_name}:gmp_status',
+            f'{top_name}:dc:arSetup.H',
+            f'{top_name}:dc:sdsuState',
+            f'{top_name}:dc:coadds.VAL',
+            f'{top_name}:dc:sequence',
+            f'{top_name}:ntp_time',
+            f'{top_name}:sad:dc:rdout',
+            f'{top_name}:sad:dc:obsProgress'
+        ]
+        return self.subscribe_to_multiple_pvs(core_pvs)
+
+    def check_subscription_health(self):
+        """Check if any subscriptions need to be reconnected"""
+        with self.subscription_lock:
+            for pv_name, sub in list(self.subscriptions.items()):
+                if not sub.circuit_ready:
+                    logger.warning(f"Subscription to {pv_name} disconnected, reconnecting")
+                    # Remove old subscription
+                    self.subscriptions.pop(pv_name, None)
+                    # Try to resubscribe
+                    self.subscribe_to_pv(pv_name)
+
+# Create a global instance
+pv_manager = PVSubscriptionManager(ctx)
+
+# Restore the routes that were accidentally removed
 @app.route('/')
 def index():
     return redirect(url_for('monitoring'))
@@ -222,8 +337,6 @@ def save():
     with open(config_path, 'w') as configfile:
         config.write(configfile)
     return redirect(url_for('index'))
-
-from datetime import datetime, timedelta
 
 @app.route('/fits')
 def fits_files():
@@ -331,98 +444,6 @@ def view_fits_header(filename):
         return render_template('fits_header.html', filename=filename, header_text=header_text)
     else:
         return "FITS file not found", 404
-
-# Define a central PV subscription manager
-class PVSubscriptionManager:
-    def __init__(self, ctx):
-        self.ctx = ctx
-        self.subscriptions = {}
-        self.latest_values = {}
-        self.subscription_lock = threading.Lock()
-
-    def handle_subscription(self, sub, response):
-        pv_name = sub.pv.name
-        value = response.data[0]
-        if isinstance(value, bytes):
-            try:
-                value = value.decode('utf-8')
-            except UnicodeDecodeError:
-                pass  # Keep as bytes if it can't be decoded
-            
-        logger.debug(f"PV update: {pv_name} = {value}")
-        
-        with self.subscription_lock:
-            self.latest_values[pv_name] = value
-        
-        # Special handling for log messages
-        if pv_name.endswith(':log_message'):
-            # Add to log_messages queue like before
-            log_entry = {"status": "connected", "value": value}
-            log_messages.append(log_entry)
-            logger.debug(f"Added log entry: {log_entry}")
-            
-            # For log messages, send in the format expected by the frontend
-            with clients_lock:
-                log_update = json.dumps({"value": value})
-                for client_queue in clients:
-                    try:
-                        client_queue.put_nowait(log_update)
-                    except QueueFull:
-                        pass  # Skip slow clients
-        else:
-            # Normal handling for other PVs
-            with clients_lock:
-                short_name = pv_name.split(':')[-1]  # Extract just the final part of the PV name
-                update_msg = json.dumps({short_name: value})
-                for client_queue in clients:
-                    try:
-                        client_queue.put_nowait(update_msg)
-                    except QueueFull:
-                        pass  # Skip slow clients
-
-    def subscribe_to_pv(self, pv_name):
-        """Subscribe to a PV if not already subscribed"""
-        with self.subscription_lock:
-            if pv_name in self.subscriptions:
-                return self.subscriptions[pv_name]
-            
-            try:
-                pv, = self.ctx.get_pvs(pv_name)
-                sub = pv.subscribe(data_type='time')
-                sub.add_callback(self.handle_subscription)
-                self.subscriptions[pv_name] = sub
-                logger.info(f"Subscribed to PV: {pv_name}")
-                return sub
-            except Exception as e:
-                logger.error(f"Error subscribing to PV {pv_name}: {str(e)}")
-                return None
-
-    def subscribe_to_multiple_pvs(self, pv_names):
-        """Subscribe to multiple PVs at once"""
-        results = []
-        for pv_name in pv_names:
-            sub = self.subscribe_to_pv(pv_name)
-            results.append(sub)
-        return results
-
-    def get_latest_value(self, pv_name):
-        """Get the latest value for a PV"""
-        with self.subscription_lock:
-            return self.latest_values.get(pv_name)
-
-    def check_subscription_health(self):
-        """Check if any subscriptions need to be reconnected"""
-        with self.subscription_lock:
-            for pv_name, sub in list(self.subscriptions.items()):
-                if not sub.circuit_ready:
-                    logger.warning(f"Subscription to {pv_name} disconnected, reconnecting")
-                    # Remove old subscription
-                    self.subscriptions.pop(pv_name, None)
-                    # Try to resubscribe
-                    self.subscribe_to_pv(pv_name)
-
-# Create a global instance
-pv_manager = PVSubscriptionManager(ctx)
 
 # Modify the SSE route to use non-blocking queue
 @app.route('/sse')
@@ -548,17 +569,19 @@ def get_file_log():
 @app.route('/engineering')
 def engineering():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-    interlock_status = caget(f'{top_name}:dc:disable_interlock')
+    interlock_pv = f'{top_name}:dc:disable_interlock'
+    interlock_status = pv_manager.get_latest_value(interlock_pv)
     return render_template('engineering.html', interlock_status=interlock_status)
 
 
 @app.route('/toggle_interlock', methods=['POST'])
 def toggle_interlock():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    interlock_pv = f'{top_name}:dc:disable_interlock'
     try:
-        current_status = caget(f'{top_name}:dc:disable_interlock')
+        current_status = pv_manager.get_latest_value(interlock_pv)
         new_status = not current_status
-        caput(f'{top_name}:dc:disable_interlock', int(new_status), wait=True)
+        caput(interlock_pv, int(new_status), wait=True)
         return jsonify({"status": "success", "new_interlock_status": new_status})
     except Exception as e:
         logger.error(f"Error toggling interlock: {str(e)}")
@@ -612,11 +635,14 @@ def start_controller():
         # Set the appropriate top name based on mode
         if mode in ['debug', 'full_debug']:
             config[config_mode]['DEFAULT_PREFIX'] = 'tgnirs'
-            setup_all_subscriptions()
         else:
             # Reset to default from config file
             config.read(config_path)
-            setup_all_subscriptions()
+        
+        # Clear existing subscriptions and set up new ones with the updated top name
+        top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+        pv_manager.clear_all_subscriptions()
+        pv_manager.setup_core_subscriptions(top_name)
         
         if mode == 'normal':
             command = '/usr/local/bin/dc-start.sh'
@@ -672,10 +698,7 @@ def readme():
     toc = html_content.toc_html
     return render_template('readme.html', active_tab='readme', content=html_content, toc=toc)
 
-
-
 last_preview_image = None
-last_pv_values = None
 preview_lock = threading.Lock()
 no_files_warning_logged = False
 no_preview_logged = False  # Add this flag
@@ -744,70 +767,6 @@ def update_preview_only():
     except Exception as e:
         current_app.logger.error(f"Error generating preview: {str(e)}")
 
-def update_pvs_only():
-    """Update PV values only"""
-    global last_pv_values
-    try:
-        # Get PV values (existing code)
-        top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-        try:
-            detector_bias_str = caget(f'{top_name}:dc:arSetup.H', as_string=True)
-            try:
-                detector_bias_v = float(detector_bias_str)
-                detector_bias_mv = detector_bias_v * 1000
-                detector_bias_display = f"{detector_bias_mv:.2f} mV"
-                bias_mode = "DEEP" if detector_bias_str == "0.6" else "SHALLOW"
-            except ValueError:
-                detector_bias_display = "N/A"
-                bias_mode = "UNKNOWN"
-
-            rdout = caget(f'{top_name}:sad:dc:rdout')
-            obs_progress = caget(f'{top_name}:sad:dc:obsProgress')
-
-            pvs = {
-                'top_name': top_name,
-                'heartbeat': caget(f'{top_name}:heartbeat'),
-                'tcs_connection': caget(f'{top_name}:tcs_connection'), 
-                'fowler_num': caget(f'{top_name}:dc:lnrNum'),
-                'digital_avgs': caget(f'{top_name}:dc:digitalAvgs'),
-                'integ_time': caget(f'{top_name}:dc:integTime.VAL'),
-                'file_name': caget(f'{top_name}:dc:observe.A'),
-                'temperature': caget(f'{top_name}:dc:temperature'),
-                'interlock_override': caget(f'{top_name}:dc:disable_interlock'),
-                'apply_c_value': caget(f'{top_name}:dc:applyC.VAL'),
-                'gmp_status': caget(f'{top_name}:gmp_status'),
-                'detector_bias': detector_bias_display,
-                'bias_mode': bias_mode,
-                'sdsu_state': caget(f'{top_name}:dc:sdsuState', as_string=True),
-                'coadds': caget(f'{top_name}:dc:coadds.VAL'),
-                'sequence': caget(f'{top_name}:dc:sequence'),
-                'ntp_time': caget(f'{top_name}:ntp_time'),
-                'rdout': rdout,
-                'obs_progress': obs_progress if rdout != 0 else 0,
-            }
-            
-            with preview_lock:
-                last_pv_values = pvs
-                
-        except Exception as e:
-            current_app.logger.error(f"Error getting PV values: {str(e)}")
-    except Exception as e:
-        current_app.logger.error(f"Error in PV update: {str(e)}")
-
-def preview_thread_function():
-    """Thread function for preview updates"""
-    while True:
-        with app.app_context():
-            update_preview_only()
-        time.sleep(1.0)  # Update preview every 1 second
-
-def pv_thread_function():
-    """Thread function for PV updates"""
-    while True:
-        with app.app_context():
-            update_pvs_only()
-        time.sleep(0.1)  # Update PVs every 100ms
-
 @app.route('/preview')
 def preview():
     return render_template('preview.html', active_tab='preview')
@@ -839,19 +798,173 @@ def preview_latest_fits():
 
 @app.route('/get_all_pvs')
 def get_all_pvs():
-    global last_pv_values
-    with preview_lock:
-        if last_pv_values is None:
-            return jsonify({"status": "error", "message": "No PV data available"}), 404
-        return jsonify({"status": "success", "pvs": last_pv_values})
+    """Get all PV values from the PV manager"""
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    all_pv_data = pv_manager.get_all_values()
+    
+    # Define mapping from PVs to UI field names
+    pv_to_ui_map = {
+        f'{top_name}:dc:lnrNum': 'fowler_num',
+        f'{top_name}:dc:digitalAvgs': 'digital_avgs',
+        f'{top_name}:dc:integTime.VAL': 'integ_time',
+        f'{top_name}:dc:observe.A': 'file_name',
+        f'{top_name}:dc:temperature': 'temperature',
+        f'{top_name}:dc:disable_interlock': 'interlock_override',
+        f'{top_name}:dc:applyC.VAL': 'apply_c_value',
+        f'{top_name}:dc:sdsuState': 'sdsu_state',
+        f'{top_name}:dc:coadds.VAL': 'coadds',
+        f'{top_name}:dc:sequence': 'sequence',
+        f'{top_name}:sad:dc:rdout': 'rdout',
+        f'{top_name}:sad:dc:obsProgress': 'obs_progress',
+        f'{top_name}:heartbeat': 'heartbeat',
+        f'{top_name}:tcs_connection': 'tcs_connection',
+        f'{top_name}:gmp_status': 'gmp_status',
+        f'{top_name}:ntp_time': 'ntp_time'
+    }
+    
+    # Process values for display
+    formatted_values = {}
+    
+    # Add top_name explicitly
+    formatted_values['top_name'] = top_name
+    
+    # Process each PV using its metadata
+    for pv_name, pv_data in all_pv_data.items():
+        if not pv_data:
+            continue
+            
+        value = pv_data.get('value')
+        metadata = pv_data.get('metadata', {})
+        pv_type = metadata.get('type')
+        
+        if value is None:
+            continue
+            
+        # Get UI field name from mapping or extract from PV name
+        ui_field = pv_to_ui_map.get(pv_name)
+        if not ui_field:
+            # Use last part of PV name as fallback
+            if ':' in pv_name:
+                ui_field = pv_name.split(':')[-1]
+                # Clean up special characters in field names
+                ui_field = ui_field.replace('.', '_').replace('-', '_')
+            else:
+                ui_field = pv_name
+        
+        # Convert NumPy types to native Python types for JSON serialization
+        if hasattr(value, 'dtype'):
+            value = value.item()
+        
+        # Format value based on its type
+        if isinstance(value, bytes):
+            try:
+                value = value.decode('utf-8').strip('\x00')
+            except UnicodeDecodeError:
+                value = str(value)
+        
+        # Convert strings to correct types based on metadata
+        if pv_type == ChannelType.DOUBLE or pv_type == ChannelType.FLOAT:
+            # Apply precision if available
+            if 'precision' in metadata:
+                try:
+                    precision = metadata['precision']
+                    if isinstance(value, (int, float)):
+                        value = round(value, precision)
+                except (TypeError, ValueError):
+                    pass
+                
+        # String values should be cleaned up
+        elif pv_type == ChannelType.STRING:
+            if value is not None:
+                value = str(value).strip()
+            
+        # Special handling for sdsuState - also add sdsu_state alias
+        if ui_field == 'sdsu_state' or ui_field == 'sdsuState':
+            formatted_values['sdsu_state'] = value 
+            
+        # Store the value
+        formatted_values[ui_field] = value
+        
+    # Special handling for calculated values
+    bias_pv = f'{top_name}:dc:arSetup.H'
+    if bias_pv in all_pv_data and all_pv_data[bias_pv]:
+        detector_bias_str = all_pv_data[bias_pv]['value']
+        try:
+            if isinstance(detector_bias_str, str):
+                detector_bias_v = float(detector_bias_str)
+            else:
+                detector_bias_v = float(detector_bias_str)
+            detector_bias_mv = detector_bias_v * 1000
+            formatted_values['detector_bias'] = f"{detector_bias_mv:.2f} mV"
+            formatted_values['bias_mode'] = "DEEP" if detector_bias_str == "0.6" else "SHALLOW"
+        except (ValueError, TypeError):
+            formatted_values['detector_bias'] = "N/A"
+            formatted_values['bias_mode'] = "UNKNOWN"
+    
+    # Ensure readout progress is correctly calculated
+    if 'rdout' in formatted_values and 'obs_progress' in formatted_values:
+        rdout = formatted_values['rdout']
+        obs_progress = formatted_values['obs_progress']
+        
+        if rdout == 0:
+            formatted_values['obs_progress'] = 0
+    
+    # Add default values for missing fields to ensure UI can render properly
+    default_fields = {
+        'heartbeat': 0,
+        'tcs_connection': '',
+        'fowler_num': 1,
+        'digital_avgs': 1,
+        'integ_time': 0,
+        'file_name': '',
+        'temperature': 0,
+        'interlock_override': 0,
+        'apply_c_value': 0,
+        'gmp_status': '',
+        'detector_bias': 'N/A',
+        'bias_mode': 'UNKNOWN',
+        'sdsu_state': 'UNKNOWN',
+        'coadds': 1,
+        'sequence': 1,
+        'ntp_time': 0,
+        'rdout': 0,
+        'obs_progress': 0
+    }
+    
+    # Fill in any missing values with defaults
+    for key, default_value in default_fields.items():
+        if key not in formatted_values:
+            formatted_values[key] = default_value
+            
+    logger.debug(f"Formatted PV values count: {len(formatted_values)}")
+    
+    return jsonify({"status": "success", "pvs": formatted_values})
 
-# Replace the existing thread code with this
-# Start the background tasks
+# Start the preview generation thread
+def preview_thread_function():
+    """Thread function for preview updates"""
+    while True:
+        with app.app_context():
+            update_preview_only()
+        time.sleep(1.0)  # Update preview every 1 second
+
+# Health check thread to ensure PV subscriptions remain active
+def subscription_health_check():
+    """Thread function to periodically check subscription health"""
+    while True:
+        try:
+            pv_manager.check_subscription_health()
+        except Exception as e:
+            logger.error(f"Error in subscription health check: {str(e)}")
+        time.sleep(30)  # Check every 30 seconds
+
+# Start the subscription health check thread
+health_check_thread = threading.Thread(target=subscription_health_check, daemon=True)
+health_check_thread.start()
+
+# Start the preview thread
 preview_thread = threading.Thread(target=preview_thread_function, daemon=True)
 preview_thread.start()
-
-pv_thread = threading.Thread(target=pv_thread_function, daemon=True)
-pv_thread.start()
 
 @app.route('/get_hostname')
 def get_hostname():
@@ -1000,79 +1113,11 @@ def download_fits():
         download_name='fits_files.zip'
     )
 
-@lru_cache(maxsize=1)
-def get_cached_pvs():
-    # This function will cache its result for 0.1 seconds
-    return _get_all_pvs()
-
-def _get_all_pvs():
+def initialize_subscriptions():
+    """Initialize all PV subscriptions at startup"""
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-    try:
-        # Fetch all PVs at once using a single caget call
-        pv_names = [
-            f'{top_name}:heartbeat',
-            f'{top_name}:tcs_connection',
-            f'{top_name}:dc:lnrNum',
-            f'{top_name}:dc:digitalAvgs',
-            f'{top_name}:dc:integTime.VAL',
-            f'{top_name}:dc:observe.A',
-            f'{top_name}:dc:temperature',
-            f'{top_name}:dc:disable_interlock',
-            f'{top_name}:dc:applyC.VAL',
-            f'{top_name}:gmp_status',
-            f'{top_name}:dc:arSetup.H',
-            f'{top_name}:dc:sdsuState',
-            f'{top_name}:dc:coadds.VAL',
-            f'{top_name}:dc:sequence',
-            f'{top_name}:ntp_time',
-            f'{top_name}:sad:dc:rdout',
-            f'{top_name}:sad:dc:obsProgress'
-        ]
-        values = caget(pv_names)
-
-        # Process the values and create the pvs dictionary
-        pvs = {
-            'heartbeat': values[0],
-            'tcs_connection': values[1],
-            'fowler_num': values[2],
-            'digital_avgs': values[3],
-            'integ_time': values[4],
-            'file_name': values[5],
-            'temperature': values[6],
-            'interlock_override': values[7],
-            'apply_c_value': values[8],
-            'gmp_status': values[9],
-            'detector_bias': values[10],
-            'sdsu_state': values[11],
-            'coadds': values[12],
-            'sequence': values[13],
-            'ntp_time': values[14],
-            'rdout': values[15],
-            'obs_progress': values[16] if values[15] != 0 else 0,
-        }
-
-        return pvs
-    except Exception as e:
-        logger.error(f"Error getting PV values: {str(e)}")
-        return None
-
-last_sent_pvs = {}
-
-def send_pv_updates():
-    global last_sent_pvs
-    while True:
-        current_pvs = get_cached_pvs()
-        if current_pvs:
-            updates = {}
-            for key, value in current_pvs.items():
-                if key not in last_sent_pvs or last_sent_pvs[key] != value:
-                    updates[key] = value
-            if updates:
-                with clients_lock:
-                    for client_queue in clients:
-                        client_queue.put(json.dumps(updates))
-                last_sent_pvs.update(updates)
-        time.sleep(0.1)  # Sleep for 100ms to achieve 10 updates per second
+    logger.info(f"Setting up core PV subscriptions with prefix: {top_name}")
+    pv_manager.setup_core_subscriptions(top_name)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")
@@ -1089,9 +1134,8 @@ if __name__ == "__main__":
         debug_mode = False
         logger.info("Running in production mode")
 
-    logger.info("Starting PV subscription system")
-    subscription_thread = threading.Thread(target=run_subscription_system, daemon=True)
-    subscription_thread.start()
+    # Initialize subscriptions at startup
+    initialize_subscriptions()
 
     logger.info(f"Starting Flask application on port {args.port}")
     app.run(host='0.0.0.0', port=args.port, debug=debug_mode)
