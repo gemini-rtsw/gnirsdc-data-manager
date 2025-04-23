@@ -643,15 +643,13 @@
                 }
             });
     }
-    
-    // Remove the refreshStatusIndicators function since we've consolidated it into updateAllPVs
-    
+        
     // Use a more reasonable update interval and use requestAnimationFrame for better performance
     function scheduleNextUpdate() {
         updateAllPVs();
         setTimeout(() => {
             requestAnimationFrame(scheduleNextUpdate);
-        }, 500);  // Update every 500ms instead of 100ms
+        }, 1000);  // Update every 1000ms
     }
     
     // Start the update cycle
@@ -830,7 +828,6 @@
     .heartbeat-on {
         background-color: green;
         border-color: green;
-        animation: heartbeat 1s infinite;
     }
     .heartbeat-off {
         background-color: white;
@@ -909,15 +906,14 @@
         background-color: red;
         border-color: red;
     }
-    .heartbeat-on {
+/*    .heartbeat-on {
         background-color: green;
         border-color: green;
-        animation: heartbeat 1s infinite;
     }
     .heartbeat-off {
         background-color: white;
         border-color: gray;
-    }
+    }*/
     .interlock-indicator {
         width: 20px;
         height: 20px;
