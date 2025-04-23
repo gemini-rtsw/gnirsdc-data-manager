@@ -554,14 +554,55 @@
                     // Update top name
                     topNameValue.textContent = pvs.top_name || 'N/A';
 
-                    // Update status indicators (heartbeat, TCS, GDS, etc.)
-                    updateIndicator('heartbeatIndicator', pvs.heartbeat === 1, 'heartbeat');
-                    updateStatusIndicator('tcsConnectionIndicator', pvs.tcs_connection === 'CONNECTED');
-                    updateStatusIndicator('gdsStatusIndicator', pvs.gmp_status === 'CONNECTED');
-                    updateStatusIndicator('sdsuStateIndicator', pvs.sdsu_state === 'INITIALIZED');
+                    // Get connection status for key indicators
+                    const connectionStatus = pvs.connection_status || {};
                     
-                    // Update interlock indicator
-                    updateIndicator('interlockIndicator', pvs.interlock_override === 0, 'interlock');
+                    // Update status indicators (heartbeat, TCS, GDS, etc.)
+                    if (connectionStatus.heartbeat) {
+                        updateIndicator('heartbeatIndicator', pvs.heartbeat === 1, 'heartbeat');
+                    } else {
+                        // If PV is disconnected, show as disconnected
+                        const indicator = document.getElementById('heartbeatIndicator');
+                        if (indicator) {
+                            indicator.className = 'status-indicator server-disconnected';
+                        }
+                    }
+                    
+                    if (connectionStatus.tcs_connection) {
+                        updateIndicator('tcsConnectionIndicator', pvs.tcs_connection === 'CONNECTED', 'status');
+                    } else {
+                        const indicator = document.getElementById('tcsConnectionIndicator');
+                        if (indicator) {
+                            indicator.className = 'status-indicator server-disconnected';
+                        }
+                    }
+                    
+                    if (connectionStatus.gmp_status) {
+                        updateIndicator('gdsStatusIndicator', pvs.gmp_status === 'CONNECTED', 'status');
+                    } else {
+                        const indicator = document.getElementById('gdsStatusIndicator');
+                        if (indicator) {
+                            indicator.className = 'status-indicator server-disconnected';
+                        }
+                    }
+                    
+                    if (connectionStatus.sdsu_state) {
+                        updateIndicator('sdsuStateIndicator', pvs.sdsu_state === 'INITIALIZED', 'status');
+                    } else {
+                        const indicator = document.getElementById('sdsuStateIndicator');
+                        if (indicator) {
+                            indicator.className = 'status-indicator server-disconnected';
+                        }
+                    }
+                    
+                    if (connectionStatus.interlock_override) {
+                        updateIndicator('interlockIndicator', pvs.interlock_override === 0, 'interlock');
+                    } else {
+                        const indicator = document.getElementById('interlockIndicator');
+                        if (indicator) {
+                            indicator.className = 'interlock-indicator server-disconnected';
+                        }
+                    }
                     
                     // Update temperature
                     temperatureValue.textContent = pvs.temperature ? 

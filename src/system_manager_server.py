@@ -333,7 +333,7 @@ class PVSubscriptionManager:
         """Check if any subscriptions need to be reconnected"""
         with self.subscription_lock:
             for pv_name, sub in list(self.subscriptions.items()):
-                if not sub.circuit_ready:
+                if not sub.pv.connected:
                     logger.warning(f"Subscription to {pv_name} disconnected, reconnecting")
                     # Remove old subscription
                     self.subscriptions.pop(pv_name, None)
@@ -954,11 +954,40 @@ def get_all_pvs():
         f'{top_name}:ntp_time': 'ntp_time'
     }
     
+    # Track connection status for key status indicators
+    connection_status = {}
+    
+    # Check connection status for key status indicators
+    key_status_pvs = [
+        f'{top_name}:heartbeat',
+        f'{top_name}:tcs_connection',
+        f'{top_name}:gmp_status',
+        f'{top_name}:dc:sdsuState',
+        f'{top_name}:dc:disable_interlock'
+    ]
+    
+    # Check if each key PV is connected
+    for pv_name in key_status_pvs:
+        if pv_name in pv_manager.subscriptions:
+            sub = pv_manager.subscriptions[pv_name]
+            connection_status[pv_name] = sub.pv.connected
+        else:
+            connection_status[pv_name] = False
+    
     # Process values for display
     formatted_values = {}
     
     # Add top_name explicitly
     formatted_values['top_name'] = top_name
+    
+    # Add connection status for key status indicators
+    formatted_values['connection_status'] = {
+        'heartbeat': connection_status.get(f'{top_name}:heartbeat', False),
+        'tcs_connection': connection_status.get(f'{top_name}:tcs_connection', False),
+        'gmp_status': connection_status.get(f'{top_name}:gmp_status', False),
+        'sdsu_state': connection_status.get(f'{top_name}:dc:sdsuState', False),
+        'interlock_override': connection_status.get(f'{top_name}:dc:disable_interlock', False)
+    }
     
     # Process each PV using its metadata
     for pv_name, pv_data in all_pv_data.items():
