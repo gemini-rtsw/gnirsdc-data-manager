@@ -55,6 +55,11 @@
             <span class="status-label">NTP Time (MJD):</span>
             <span id="ntpTimeValue" class="status-value"></span>
         </div>
+
+        <div class="status-container">
+            <span class="status-label">Firmware Checksum:</span>
+            <span id="firmChecksumValue" class="status-value"></span>
+        </div>
     </div>
     
     <div class="section-separator"></div>
@@ -300,11 +305,11 @@
         const logMessages = document.getElementById('logMessages');
         if (!logMessages) return;
         
-        // Just append the raw message without adding a timestamp
-        logMessages.value += logValue + "\n";
+        // Prepend the raw message at the beginning
+        logMessages.value = logValue + "\n" + logMessages.value;
         
-        // Auto-scroll to bottom
-        logMessages.scrollTop = logMessages.scrollHeight;
+        // No need to auto-scroll as new messages appear at the top
+        logMessages.scrollTop = 0;
     }
 
     function updateStatusIndicator(elementId, isConnected, type = 'status') {
@@ -656,7 +661,7 @@
                     if (!userEditing) {
                         fowlerNumInput.value = pvs.fowler_num || "";
                         digitalAvgsInput.value = pvs.digital_avgs || "";
-                        integTimeInput.value = pvs.integ_time || "";
+                        integTimeInput.value = pvs.integ_time !== undefined ? pvs.integ_time : "";
                         fileNameInput.value = pvs.file_name || "";
                         coaddsInput.value = pvs.coadds || "";
                         sequenceInput.value = pvs.sequence || "";
@@ -670,6 +675,12 @@
                         ntpTimeValue.textContent = formatMJD(pvs.ntp_time);
                     } else {
                         ntpTimeValue.textContent = 'N/A';
+                    }
+                    
+                    // Update firmware checksum
+                    const firmChecksumElement = document.getElementById('firmChecksumValue');
+                    if (firmChecksumElement) {
+                        firmChecksumElement.textContent = pvs.firm_checksum || 'N/A';
                     }
                     
                     sdsuStateIndicator.title = `SDSU Controller: ${pvs.sdsu_state}`;

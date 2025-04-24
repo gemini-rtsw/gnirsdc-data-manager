@@ -14,6 +14,7 @@ from typing import Any, Union
 from multiprocessing import Process, Queue
 
 import time
+import hashlib
 
 from tcs_monitor import TCSMonitor
 
@@ -157,7 +158,12 @@ class InitSDSUCAD(GnirsCAD):
 
             firmware_full_path = os.path.join(os.getcwd(), "firmware/AladdinIII_SDSU_Firmware.lod")
 
-            print(f"LOD Path: {firmware_full_path}")
+            # Calculate a fresh firmware checksum each time
+            firmChecksum = calculate_firmware_checksum(firmware_full_path)
+            await self.p.firmChecksum.write(firmChecksum)
+            print(f"Firmware Checksum: {firmChecksum}")
+            
+            print(f"LOD Path: {firmware_full_path}")    
             # Normalize the path to resolve any symbolic links, ".." or "." etc.
             firmware_full_path = os.path.normpath(firmware_full_path)
 
@@ -170,8 +176,10 @@ class InitSDSUCAD(GnirsCAD):
 
             if result:
                 if self.controller.init():
-                    await self.logMessage("SDSU Initialization successful")
-                    await self.MESS.write("SDSU Initialization successful")
+                    await self.logMessage("SDSU Init successful")
+                    await self.logMessage("Firm: " + self.p.firmChecksum.value)
+                    await self.MESS.write("SDSU Init success sum: " + self.p.firmChecksum.value)
+                    await self.MESS.write("Firm: " + self.p.firmChecksum.value)
                     await self.p.sdsuState.write("INITIALIZED")
                     return True
                     
@@ -733,7 +741,14 @@ class GnirsCADCARController(PVGroup):
 
 
     dataLabel       = pvproperty(value='datalabel', dtype=caproto.ChannelType.STRING, name="dc:dataLabel", doc = "Data Label") 
+    firmChecksum    = pvproperty(value='firmchecksum', dtype=caproto.ChannelType.STRING, name="dc:firmChecksum", doc = "Firmware Checksum") 
 
+    @firmChecksum.startup
+    async def firmChecksum(self, instance, async_lib):
+        # Calculate the checksum on startup
+        firmware_path = os.path.join(os.getcwd(), "firmware/AladdinIII_SDSU_Firmware.lod")
+        checksum = calculate_firmware_checksum(firmware_path)
+        await instance.write(checksum)
 
     detectorTemp1   = pvproperty(value=0.0, dtype=caproto.ChannelType.DOUBLE, name="dc:detectorTemp1", doc = "Detector Temperature 1")
     detectorTemp2   = pvproperty(value=0.0, dtype=caproto.ChannelType.DOUBLE, name="dc:detectorTemp2", doc = "Detector Temperature 2")
@@ -785,5 +800,23 @@ class GnirsCADCARController(PVGroup):
 
         #await self.labelTimeStamp.write(0) # turn off time stamps - seqexec will handle the name
         await self.dataLabel.write(value)
+
+
+def calculate_firmware_checksum(firmware_path):
+    """Calculate the MD5 checksum of the firmware file."""
+    try:
+        if not os.path.exists(firmware_path):
+            print(f"Firmware file not found at {firmware_path}")
+            return "file_not_found"
+        
+        with open(firmware_path, 'rb') as f:
+            content = f.read()
+            # Using MD5 to match Linux md5sum command
+            md5sum = hashlib.md5(content).hexdigest()
+        print(f"Calculated firmware checksum: {md5sum}")
+        return md5sum
+    except Exception as e:
+        print(f"Error calculating firmware checksum: {str(e)}")
+        return "checksum_error"
 
 

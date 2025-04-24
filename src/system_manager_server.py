@@ -325,7 +325,8 @@ class PVSubscriptionManager:
             f'{top_name}:dc:sequence',
             f'{top_name}:ntp_time',
             f'{top_name}:sad:dc:rdout',
-            f'{top_name}:sad:dc:obsProgress'
+            f'{top_name}:sad:dc:obsProgress',
+            f'{top_name}:dc:firmChecksum'
         ]
         return self.subscribe_to_multiple_pvs(core_pvs)
 
@@ -967,7 +968,8 @@ def get_all_pvs():
         f'{top_name}:heartbeat': 'heartbeat',
         f'{top_name}:tcs_connection': 'tcs_connection',
         f'{top_name}:gmp_status': 'gmp_status',
-        f'{top_name}:ntp_time': 'ntp_time'
+        f'{top_name}:ntp_time': 'ntp_time',
+        f'{top_name}:dc:firmChecksum': 'firm_checksum'
     }
     
     # Track connection status for key status indicators
@@ -1104,7 +1106,7 @@ def get_all_pvs():
         'tcs_connection': '',
         'fowler_num': 1,
         'digital_avgs': 1,
-        'integ_time': 0,
+        'integ_time': 1.0,
         'file_name': '',
         'temperature': 0,
         'interlock_override': 0,
@@ -1117,7 +1119,8 @@ def get_all_pvs():
         'sequence': 1,
         'ntp_time': 0,
         'rdout': 0,
-        'obs_progress': 0
+        'obs_progress': 0,
+        'firm_checksum': 'N/A'
     }
     
     # Fill in any missing values with defaults
