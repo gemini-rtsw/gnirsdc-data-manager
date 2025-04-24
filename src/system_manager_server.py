@@ -110,8 +110,6 @@ class PVSubscriptionManager:
         self.subscriptions = {}
         self.latest_values = {}
         self.subscription_lock = threading.Lock()
-        self.clients = set()
-        self.clients_lock = threading.Lock()
 
     def handle_subscription(self, sub, response):
         pv_name = sub.pv.name
