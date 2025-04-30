@@ -38,10 +38,17 @@ from flask import current_app
 from collections import deque  # Import deque for more efficient log message handling
 from datetime import datetime, timedelta
 
-
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
+
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+logging.getLogger('caproto').setLevel(logging.WARNING)
+logging.getLogger('caproto.ch').setLevel(logging.WARNING)
+logging.getLogger('caproto.circ').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+logging.getLogger('asyncio').setLevel(logging.WARNING)
+logging.getLogger('PIL').setLevel(logging.WARNING)
 
 class AlignedCasePreservingConfigParser(configparser.ConfigParser):
     def __init__(self, *args, **kwargs):
