@@ -43,6 +43,16 @@ class Lakeshore325:
             else:
                 self.logger.irdc_debug(f"Temperature controller is not connected: {self.ip} {self.port}")
                 return None
+        except (socket.timeout, socket.error) as e:
+            self.logger.irdc_debug(f"Connection error: {e}")
+            # Close socket on network errors
+            if self.sock:
+                try:
+                    self.sock.close()
+                except:
+                    pass
+                self.sock = None
+            return None
         except Exception as e:
             self.logger.irdc_debug(f"Failed to send command: {e}")
             return None
@@ -54,8 +64,11 @@ class Lakeshore325:
     def read_temperature(self):
         response = self.send_command(b'KRDG? 0\n')
         try:
+            if response is None:
+                self.logger.irdc_debug("Connection failed or error occurred, returning -999")
+                return -999
             temperature_value = float(response)
             return temperature_value
-        except ValueError:
+        except (ValueError, TypeError):
             self.logger.irdc_debug(f"Failed to convert response to float: {response}")
-            return None
+            return -999

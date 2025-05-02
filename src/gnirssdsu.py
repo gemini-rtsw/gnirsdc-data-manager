@@ -152,9 +152,17 @@ class InitSDSUCAD(GnirsCAD):
                         return True
                         '''
                      # deallocate controller just in case this is an additional init
-            self.controller = None
 
-            await self.logMessage("SDSU Initializing")
+            if (self.p.interlocked()):
+
+                await self.logMessage(f"Detector not at temperature")
+                await self.MESS.write("Detector not at temperature")
+
+                return False
+            else:
+                self.controller = None
+
+                await self.logMessage("SDSU Initializing")
 
             firmware_full_path = os.path.join(os.getcwd(), "firmware/AladdinIII_SDSU_Firmware.lod")
 
@@ -203,6 +211,10 @@ class PowerOnCAD(GnirsCAD):
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
             return False
+        elif (self.p.interlocked()):
+            await self.logMessage(f"Detector not at temperature")
+            await self.MESS.write("Detector not at temperature")
+            return False
         else:
             try:
                 self.controller.powerOn()
@@ -222,6 +234,10 @@ class PowerOffCAD(GnirsCAD):
         if self.controller is None:
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
+            return False
+        elif (self.p.interlocked()):
+            await self.logMessage(f"Detector not at temperature")
+            await self.MESS.write("Detector not at temperature")
             return False
         else:
             try:
@@ -275,7 +291,7 @@ class ObserveCAD(GnirsCAD):
             await self.MESS.write("Controller not initialized")
 
             return False
-        elif (self.p.temperature.value > INTERLOCK_TEMP and self.p.disable_interlock.value <= 0):
+        elif (self.p.interlocked()):
 
             await self.logMessage(f"Detector not at temperature")
             await self.MESS.write("Detector not at temperature")
@@ -668,7 +684,7 @@ class GnirsCADCARController(PVGroup):
 
 
     #-------------- Temp Monitor -------------------
-    temperature = pvproperty(value=300.0, read_only=True, dtype=caproto.ChannelType.DOUBLE, name="dc:temperature")
+    temperature = pvproperty(value=-999.0, read_only=True, dtype=caproto.ChannelType.DOUBLE, name="dc:temperature")
 
     @temperature.startup
     async def temperature(self, instance, async_lib):
@@ -697,6 +713,12 @@ class GnirsCADCARController(PVGroup):
             print(f"Error reading status: {e}")
 
     disable_interlock  = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="dc:disable_interlock")    
+
+    def interlocked(self): 
+        if ((self.temperature.value > INTERLOCK_TEMP or self.temperature.value == -999) and self.disable_interlock.value <= 0):
+            return True
+        else:
+            return False
 
     #-------------- Temp Monitor -------------------
 
