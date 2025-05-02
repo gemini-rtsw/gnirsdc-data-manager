@@ -36,6 +36,10 @@ class Lakeshore325:
 
     def send_command(self, command):
         try:
+            if not self.sock:
+                # Attempt to reconnect if socket is closed
+                self.connect()
+                
             if self.sock:
                 self.sock.sendall(command)
                 response = self.sock.recv(1024).strip()
