@@ -384,6 +384,8 @@
 
     // Replace socket.emit with SSE
     let eventSource = null;
+    let reconnectAttempt = 0;
+    let reconnectTimeout = null;
     
     function updateAllIndicatorsConnectionState() {
         // Get all status indicators
@@ -403,9 +405,16 @@
     }
     
     function setupEventSource() {
+        // Clear any pending reconnection attempt
+        if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+            reconnectTimeout = null;
+        }
+        
         // Close existing event source if any
         if (eventSource) {
             eventSource.close();
+            eventSource = null;
         }
         
         // Create a new event source
@@ -415,8 +424,12 @@
         eventSource.onopen = function() {
             console.log('SSE connection established');
             serverConnected = true;
-            connectionStatus.textContent = "Connected";
-            connectionStatus.style.color = 'green';
+            reconnectAttempt = 0; // Reset reconnect attempt counter on successful connection
+            const connectionStatus = document.getElementById('connectionStatus');
+            if (connectionStatus) {
+                connectionStatus.textContent = "Connected";
+                connectionStatus.style.color = 'green';
+            }
             updateAllIndicatorsConnectionState();
         };
         
@@ -452,15 +465,39 @@
         };
         
         eventSource.onerror = function(event) {
-            console.error('SSE Error:', event);
+            // Only log the first few errors to prevent console spam
+            if (reconnectAttempt < 3) {
+                console.error('SSE Error:', event);
+            }
+            
+            // Mark as disconnected
             serverConnected = false;
-            connectionStatus.textContent = "Connection Error";
-            connectionStatus.style.color = 'red';
+            const connectionStatus = document.getElementById('connectionStatus');
+            if (connectionStatus) {
+                connectionStatus.textContent = "Connection Error";
+                connectionStatus.style.color = 'red';
+            }
             updateAllIndicatorsConnectionState();
-            // Try to reconnect after a delay
-            setTimeout(function() {
+            
+            // Close the current EventSource
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            
+            // Implement exponential backoff for reconnection attempts
+            const backoffTime = Math.min(1000 * Math.pow(1.5, reconnectAttempt), 30000);
+            reconnectAttempt++;
+            
+            // Only log occasional reconnect attempts to reduce console spam
+            if (reconnectAttempt % 5 === 0) {
+                console.log(`SSE reconnect attempt ${reconnectAttempt}, waiting ${backoffTime}ms`);
+            }
+            
+            // Try to reconnect after delay
+            reconnectTimeout = setTimeout(function() {
                 setupEventSource();
-            }, 3000);
+            }, backoffTime);
         };
     }
     
@@ -926,6 +963,47 @@
                     button.disabled = false;  // Re-enable button on error
                 });
         }
+    });
+
+    // Add tab functionality
+    document.querySelectorAll('.nav-link').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.querySelectorAll('.nav-link').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show', 'active'));
+            tab.classList.add('active');
+            document.querySelector(tab.getAttribute('data-bs-target')).classList.add('show', 'active');
+        });
+    });
+
+    // Remove the duplicate SSE setup code
+    function setupSSE() {
+        // This function is now deprecated, using setupEventSource instead
+        console.warn('setupSSE is deprecated, using setupEventSource instead');
+    }
+
+    // Update file log every 5 seconds
+    setInterval(updateFileLog, 500);
+
+    // Call setupEventSource initially
+    setupEventSource();
+
+    // Updated event listener for the integration parameters form
+    document.getElementById('integrationParamsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch('/set_integration_params', {
+            method: 'POST',
+            body: new FormData(this),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status !== 'success') {
+                console.error('Error:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
     });
 </script>
 
@@ -1558,26 +1636,6 @@
 
     // Update file log every 5 seconds
     setInterval(updateFileLog, 500);
-
-    // Set up SSE for real-time updates
-    function setupSSE() {
-        const eventSource = new EventSource('/sse');
-        eventSource.onmessage = function(event) {
-            const updates = JSON.parse(event.data);
-            updateLogMessages(updates);
-//            updateAllPVs();  // Call this to update all status indicators
-        };
-        eventSource.onerror = function(error) {
-            console.error('SSE Error:', error);
-            connectionStatus.textContent = "Connection Error";
-            connectionStatus.style.color = 'red';
-            // Attempt to reconnect after a short delay
-            setTimeout(setupSSE, 5000);
-        };
-    }
-
-    // Call setupSSE initially
-    setupSSE();
 
     // Updated event listener for the integration parameters form
     document.getElementById('integrationParamsForm').addEventListener('submit', function(e) {
