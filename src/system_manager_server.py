@@ -186,6 +186,11 @@ class PVSubscriptionManager:
         with clients_lock:
             if not clients:
                 return
+            clients_count = len(clients)
+        
+        # Only print debug for obsProgress updates
+        if 'obsProgress' in data:
+            print(f"Broadcasting to {clients_count} clients: {data}")
         
         try:
             # Create the message outside of any locks
@@ -213,6 +218,8 @@ class PVSubscriptionManager:
                 except QueueFull:
                     # Skip slow clients but don't remove them
                     logger.debug(f"Skipping slow client, queue full")
+                    if 'obsProgress' in data:
+                        print(f"Client queue full, skipping update")
                 except Exception as e:
                     # Mark client for removal on persistent errors
                     logger.error(f"Error sending to client: {str(e)}")
@@ -226,11 +233,14 @@ class PVSubscriptionManager:
                             clients.remove(failed)
                     logger.info(f"Removed {len(failed_clients)} failed clients. Remaining: {len(clients)}")
                             
-            if len(client_queues) > 0:
+            if len(client_queues) > 0 and 'obsProgress' in data:
                 logger.debug(f"Broadcast to {len(client_queues)} clients")
+                print(f"Successfully broadcast to {len(client_queues)} clients")
         except Exception as e:
             # Catch any other errors to prevent broadcast issues from crashing the application
             logger.error(f"Error in broadcast: {str(e)}")
+            if 'obsProgress' in data:
+                print(f"Error in broadcast: {str(e)}")
             
     def _sanitize_for_json(self, data):
         """Sanitize data for JSON serialization by converting NumPy types to Python native types"""
@@ -1359,4 +1369,5 @@ if __name__ == "__main__":
     initialize_subscriptions()
 
     logger.info(f"Starting Flask application on port {args.port}")
-    app.run(host='0.0.0.0', port=args.port, debug=debug_mode)
+    # Enable threaded mode to handle multiple concurrent requests
+    app.run(host='0.0.0.0', port=args.port, debug=debug_mode, threaded=True)

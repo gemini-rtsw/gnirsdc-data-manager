@@ -238,6 +238,36 @@
         for (const key in data) {
             const value = data[key];
             
+            // Debug ALL PV updates for investigation
+            console.log('🔎 SSE update for key:', key, 'value:', value);
+            
+            // Add debug log for obsProgress handling
+            if (key === 'obsProgress') {
+                console.log('🔍 processUpdates handling obsProgress:', value);
+                // Store in lastStatus and update the UI immediately
+                lastStatus.obsProgress = value;
+                console.log('🔧 FIX: Storing in lastStatus and updating UI directly');
+                updateObsProgress(lastStatus.rdout || 0, value);
+            }
+            
+            // Handle rdout updates properly
+            if (key === 'rdout') {
+                console.log('🔄 Received rdout update via SSE:', value);
+                // Store the value in lastStatus for later use
+                lastStatus.rdout = value;
+                
+                // Use explicit numeric comparison as rdout should be a number
+                if (typeof value === 'number' || !isNaN(parseInt(value))) {
+                    const numericRdout = parseInt(value);
+                    
+                    // Also update UI if we have an obsProgress value stored
+                    if (lastStatus.obsProgress !== undefined) {
+                        console.log('🔄 Updating UI with new rdout and existing obsProgress');
+                        updateObsProgress(numericRdout, lastStatus.obsProgress);
+                    }
+                }
+            }
+            
             // Check if this is a log message
             if (key === 'log_message') {
                 // This is a log message from the SSE feed
@@ -248,7 +278,7 @@
             // Handle different PV updates based on key
             switch (key) {
                 case 'heartbeat':
-                    console.log('Heartbeat update received:', value, typeof value);
+                    // Remove verbose logging for heartbeat
                     updateIndicator('heartbeatIndicator', value === 1, 'heartbeat');
                     break;
                 case 'tcs_connection':
@@ -393,6 +423,11 @@
         eventSource.onmessage = function(event) {
             try {
                 const data = JSON.parse(event.data);
+                
+                // Only log obsProgress, remove other noisy logs
+                if (data.obsProgress !== undefined) {
+                    console.log('👉 SSE received obsProgress:', data.obsProgress);
+                }
                 
                 // Check if it's a server heartbeat message (can be ignored)
                 if (data.server_heartbeat) {
@@ -556,6 +591,25 @@
                 if (data.status === 'success') {
                     const pvs = data.pvs;
                     
+                    // If we get a rdout value, store it properly
+                    if (pvs.rdout !== undefined) {
+                        // Convert to number and store in lastStatus
+                        const numericRdout = parseInt(pvs.rdout);
+                        console.log('🔄 updateAllPVs got rdout:', numericRdout);
+                        lastStatus.rdout = numericRdout;
+                    }
+                    
+                    // Add debug log for obsProgress updates
+                    if (pvs.obs_progress !== undefined) {
+                        console.log('🔄 updateAllPVs got obsProgress:', pvs.obs_progress);
+                        lastStatus.obsProgress = pvs.obs_progress;
+                    }
+                    
+                    // Update integration/observation progress with the latest values
+                    if (lastStatus.rdout !== undefined || pvs.rdout !== undefined) {
+                        updateObsProgress(lastStatus.rdout || pvs.rdout || 0, lastStatus.obsProgress || pvs.obs_progress || 0);
+                    }
+                    
                     // Update top name
                     topNameValue.textContent = pvs.top_name || 'N/A';
 
@@ -666,9 +720,6 @@
                         coaddsInput.value = pvs.coadds || "";
                         sequenceInput.value = pvs.sequence || "";
                     }
-
-                    // Update integration/observation progress
-                    updateObsProgress(pvs.rdout, pvs.obs_progress);
 
                     // Update NTP time - DIRECT APPROACH
                     if (pvs.ntp_time !== undefined) {
@@ -797,13 +848,29 @@
     }
 
     function updateObsProgress(rdout, progress) {
-        console.log('Updating progress:', rdout, progress);
+        console.log('✅ updateObsProgress CALLED with rdout:', rdout, 'progress:', progress);
         const progressBar = document.getElementById('obsProgressBar');
         const progressText = document.getElementById('obsProgressText');
         const startIntegrationBtn = document.getElementById('startIntegrationBtn');
         
+        // Update button state based ONLY on rdout value from server
+        if (rdout > 0) {
+            // Integration is in progress - show Abort
+            startIntegrationBtn.textContent = 'Abort';
+            startIntegrationBtn.classList.remove('btn-primary');
+            startIntegrationBtn.classList.add('btn-danger');
+            startIntegrationBtn.disabled = false;
+        } else {
+            // No integration in progress - show Start Integration
+            startIntegrationBtn.textContent = 'Start Integration';
+            startIntegrationBtn.classList.remove('btn-danger');
+            startIntegrationBtn.classList.add('btn-primary');
+            startIntegrationBtn.disabled = false;
+        }
+        
         // Check if this is a new readout (progress less than previous progress)
         if (progress < parseFloat(progressBar.getAttribute('aria-valuenow'))) {
+            console.log('New readout detected, resetting progress bar');
             // This is a new readout, reset the progress bar instantly
             progressBar.style.transition = 'none';
             progressBar.style.width = '0%';
@@ -817,24 +884,49 @@
             progressBar.style.transition = 'width 0.5s ease-in-out';
         }
         
-        if (rdout <= 0) {
-            progress = 0;
-            startIntegrationBtn.textContent = 'Start Integration';
-            startIntegrationBtn.classList.remove('btn-danger');
-            startIntegrationBtn.classList.add('btn-primary');
-            startIntegrationBtn.disabled = false;
-        } else {
-            startIntegrationBtn.textContent = 'Abort';
-            startIntegrationBtn.classList.remove('btn-primary');
-            startIntegrationBtn.classList.add('btn-danger');
-            startIntegrationBtn.disabled = false;
-        }
-        
         // Update progress bar
+        console.log('✅ Setting progress bar width to', progress + '%');
         progressBar.style.width = `${progress}%`;
         progressBar.setAttribute('aria-valuenow', progress);
         progressText.textContent = `${Math.round(progress)}%`;
     }
+
+    // Update the event listener for the Start Integration / Abort button
+    document.getElementById('startIntegrationBtn').addEventListener('click', function() {
+        const button = this;
+        button.disabled = true;  // Disable button to prevent multiple clicks
+        console.log('🔘 Button clicked: ' + button.textContent);
+
+        if (button.textContent === 'Start Integration') {
+            fetch('/start_integration', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status !== 'success') {
+                        console.error('Error:', data.message);
+                        button.disabled = false;  // Re-enable button on error
+                    }
+                    // Don't change button state here - wait for rdout update from server
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    button.disabled = false;  // Re-enable button on error
+                });
+        } else if (button.textContent === 'Abort') {
+            fetch('/abort_integration', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status !== 'success') {
+                        console.error('Error:', data.message);
+                    }
+                    // Don't change button state here - wait for rdout update from server
+                    button.disabled = false; // But re-enable the button regardless
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    button.disabled = false;  // Re-enable button on error
+                });
+        }
+    });
 </script>
 
 <style>
@@ -1403,46 +1495,6 @@
             });
     }
 
-    function updateObsProgress(rdout, progress) {
-        console.log('Updating progress:', rdout, progress);
-        const progressBar = document.getElementById('obsProgressBar');
-        const progressText = document.getElementById('obsProgressText');
-        const startIntegrationBtn = document.getElementById('startIntegrationBtn');
-        
-        // Check if this is a new readout (progress less than previous progress)
-        if (progress < parseFloat(progressBar.getAttribute('aria-valuenow'))) {
-            // This is a new readout, reset the progress bar instantly
-            progressBar.style.transition = 'none';
-            progressBar.style.width = '0%';
-            progressBar.setAttribute('aria-valuenow', 0);
-            progressText.textContent = '0%';
-            
-            // Force a reflow to ensure the changes take effect immediately
-            void progressBar.offsetWidth;
-            
-            // Re-enable transition for future updates
-            progressBar.style.transition = 'width 0.5s ease-in-out';
-        }
-        
-        if (rdout <= 0) {
-            progress = 0;
-            startIntegrationBtn.textContent = 'Start Integration';
-            startIntegrationBtn.classList.remove('btn-danger');
-            startIntegrationBtn.classList.add('btn-primary');
-            startIntegrationBtn.disabled = false;
-        } else {
-            startIntegrationBtn.textContent = 'Abort';
-            startIntegrationBtn.classList.remove('btn-primary');
-            startIntegrationBtn.classList.add('btn-danger');
-            startIntegrationBtn.disabled = false;
-        }
-        
-        // Update progress bar
-        progressBar.style.width = `${progress}%`;
-        progressBar.setAttribute('aria-valuenow', progress);
-        progressText.textContent = `${Math.round(progress)}%`;
-    }
-
     function updateStatusIndicator(elementId, isConnected) {
         const indicator = document.getElementById(elementId);
         if (isConnected) {
@@ -1526,40 +1578,6 @@
 
     // Call setupSSE initially
     setupSSE();
-
-    // Update the event listener for the Start Integration / Abort button
-    document.getElementById('startIntegrationBtn').addEventListener('click', function() {
-        const button = this;
-        button.disabled = true;  // Disable button to prevent multiple clicks
-
-        if (button.textContent === 'Start Integration') {
-            fetch('/start_integration', {method: 'POST'})
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status !== 'success') {
-                        console.error('Error:', data.message);
-                        button.disabled = false;  // Re-enable button on error
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    button.disabled = false;  // Re-enable button on error
-                });
-        } else if (button.textContent === 'Abort') {
-            fetch('/abort_integration', {method: 'POST'})
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status !== 'success') {
-                        console.error('Error:', data.message);
-                    }
-                    // Button state will be reset by the next updateObsProgress call
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    button.disabled = false;  // Re-enable button on error
-                });
-        }
-    });
 
     // Updated event listener for the integration parameters form
     document.getElementById('integrationParamsForm').addEventListener('submit', function(e) {
