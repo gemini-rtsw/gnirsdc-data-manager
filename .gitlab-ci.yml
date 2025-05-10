@@ -70,82 +70,16 @@ pages:
   stage: pages
   image: pandoc/core:latest
   before_script:
-    - apt-get update && apt-get install -y nodejs npm
+    - apt-get update && apt-get install -y nodejs npm python3 python3-pip
     - npm install -g @mermaid-js/mermaid-cli
+    - chmod +x build-pages-local.sh
   script:
-    # Create directories
-    - mkdir -p public diagrams
+    # Run the build-pages-local.sh script to generate the site
+    - ./build-pages-local.sh
     
-    # Debug - show environment
-    - echo "PATH=$PATH"
-    - which mmdc || echo "mmdc not found in PATH"
-    - find / -name mmdc 2>/dev/null || echo "mmdc not found in filesystem"
-    - ls -la /usr/local/bin/ || echo "Can't list /usr/local/bin"
-    
-    # Debug - show content of README
-    - echo "First few lines of README.md:"
-    - head -n 20 README.md
-    
-    # Extract mermaid content and save to file
-    - echo "Extracting Mermaid content..."
-    - |
-      awk '/```mermaid/,/```/' README.md | sed '1d;$d' > diagrams/diagram.mmd || true
-    - echo "Contents of extracted mermaid file:"
-    - cat diagrams/diagram.mmd || echo "Failed to extract diagram"
-    
-    # Define a simple mermaid diagram directly if extraction fails
-    - |
-      if [ ! -s diagrams/diagram.mmd ]; then
-        echo "Creating fallback diagram..."
-        cat > diagrams/diagram.mmd << EOF
-        graph TD
-          TCS[TCS IOC] -->|EPICS data| A[Python EPICS IOC]
-          AG[AG IOC] -->|EPICS data| A
-          A --> B[Send header data]
-          B --> C[Pybind11 Library]
-          C --> D[Write raw data with header and readout]
-          D --> A
-          A --> E[Rebuild raw files into final FITS file]
-        EOF
-      fi
-    
-    # Generate SVG from diagram
-    - echo "Generating SVG..."
-    - npx --yes mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg || echo "Mermaid conversion failed"
-    
-    # If SVG generation failed, create a placeholder SVG
-    - |
-      if [ ! -f diagrams/diagram.svg ]; then
-        echo "Creating placeholder SVG..."
-        cat > diagrams/diagram.svg << EOF
-        <svg xmlns="http://www.w3.org/2000/svg" width="400" height="100">
-          <rect width="400" height="100" style="fill:rgb(240,240,240);stroke-width:1;stroke:rgb(0,0,0)" />
-          <text x="50" y="50" fill="black">Diagram could not be generated</text>
-        </svg>
-        EOF
-      fi
-    
-    # Create HTML from README
-    - echo "Converting to HTML..."
-    - |
-      sed '/```mermaid/,/```/c\![Mermaid Diagram](diagram.svg)' README.md > README.processed.md
-    - |
-      pandoc README.processed.md \
-        -f markdown+raw_html \
-        -t html5 \
-        --toc \
-        --toc-depth=3 \
-        --highlight-style pygments \
-        --number-sections \
-        --metadata title="Detector Controller Software" \
-        -o public/index.html
-    
-    # Copy assets to public
-    - cp diagrams/diagram.svg public/
-    
-    # Debug - verify outputs
-    - echo "Contents of public directory:"
-    - ls -la public/
+    # GitLab Pages expects output in 'public' directory, so rename if needed
+    - mkdir -p public
+    - cp -R local-public/* public/
   artifacts:
     paths:
       - public
