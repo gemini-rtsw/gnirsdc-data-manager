@@ -4,8 +4,21 @@ set -e
 echo "=== Building GitLab Pages locally ==="
 echo "This script will mimic the GitLab CI pipeline for building pages"
 
+# Detect if running in CI environment
+if [ -n "$CI" ]; then
+  echo "=== Running in CI environment ==="
+  # Set output directory to public if in CI
+  OUTPUT_DIR="public"
+  # Skip installing dependencies in CI as they should be installed in the before_script
+  SKIP_DEPS=true
+else
+  echo "=== Running in local environment ==="
+  OUTPUT_DIR="local-public"
+  SKIP_DEPS=false
+fi
+
 # Create output directory
-mkdir -p local-public diagrams
+mkdir -p $OUTPUT_DIR diagrams
 
 # First, extract the Mermaid diagram locally to avoid file path issues
 echo "=== Extracting Mermaid content locally ==="
@@ -28,14 +41,16 @@ if [ ! -s diagrams/diagram.mmd ]; then
 EOF
 fi
 
-# Install required dependencies
-echo "=== Installing dependencies ==="
-apt-get update -y || { echo "Failed to update package list, continuing..."; }
-apt-get install -y python3 python3-pip nodejs npm chromium inkscape || { echo "Failed to install some dependencies, continuing..."; }
-pip3 install markdown markdown-toc pymdown-extensions || { echo "Failed to install Python dependencies, continuing..."; }
+# Install required dependencies (skip if in CI)
+if [ "$SKIP_DEPS" = false ]; then
+  echo "=== Installing dependencies ==="
+  apt-get update -y || { echo "Failed to update package list, continuing..."; }
+  apt-get install -y python3 python3-pip nodejs npm chromium inkscape || { echo "Failed to install some dependencies, continuing..."; }
+  pip3 install markdown markdown-toc pymdown-extensions || { echo "Failed to install Python dependencies, continuing..."; }
 
-echo "=== Installing Mermaid CLI ==="
-npm install -g @mermaid-js/mermaid-cli || { echo "Failed to install Mermaid CLI, continuing..."; }
+  echo "=== Installing Mermaid CLI ==="
+  npm install -g @mermaid-js/mermaid-cli || { echo "Failed to install Mermaid CLI, continuing..."; }
+fi
 
 # Create a Mermaid HTML file
 echo "=== Creating a simple HTML file with the Mermaid diagram ==="
@@ -264,7 +279,7 @@ TOC_HTML=$(cat toc.html)
 CONTENT_HTML=$(cat content.html)
 
 # Create the final HTML with ReadTheDocs-like styling
-cat > local-public/index.html << EOF
+cat > $OUTPUT_DIR/index.html << EOF
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -565,15 +580,15 @@ EOF
 
 # Copy the SVG to the output directory
 echo "=== Copying assets ==="
-cp diagrams/diagram.svg local-public/
+cp diagrams/diagram.svg $OUTPUT_DIR/
 
 echo "=== Verifying outputs ==="
-echo "Contents of local-public directory:"
-ls -la local-public/
+echo "Contents of $OUTPUT_DIR directory:"
+ls -la $OUTPUT_DIR/
 
 echo "=== Build complete ==="
-echo "You can view the generated site by opening local-public/index.html in your browser"
-echo "The mermaid diagram is available at local-public/diagram.svg" 
+echo "You can view the generated site by opening $OUTPUT_DIR/index.html in your browser"
+echo "The mermaid diagram is available at $OUTPUT_DIR/diagram.svg" 
 
 # Clean up temporary files
 echo "=== Cleaning up temporary files ==="

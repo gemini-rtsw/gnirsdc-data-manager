@@ -68,18 +68,15 @@ build_image:
 
 pages:
   stage: pages
-  image: pandoc/core:latest
+  image: python:3.9-slim
   before_script:
-    - apt-get update && apt-get install -y nodejs npm python3 python3-pip
+    - apt-get update && apt-get install -y nodejs npm
     - npm install -g @mermaid-js/mermaid-cli
+    - pip install markdown markdown-toc pymdown-extensions
     - chmod +x build-pages-local.sh
   script:
     # Run the build-pages-local.sh script to generate the site
     - ./build-pages-local.sh
-    
-    # GitLab Pages expects output in 'public' directory, so rename if needed
-    - mkdir -p public
-    - cp -R local-public/* public/
   artifacts:
     paths:
       - public
