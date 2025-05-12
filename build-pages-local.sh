@@ -82,7 +82,7 @@ echo "=== Attempting to generate the SVG diagram ==="
 # Method 1: Use Mermaid CLI if available
 if command -v mmdc &> /dev/null; then
   echo "Trying Mermaid CLI..."
-  mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg -b transparent || echo "Mermaid CLI failed, trying alternative method..."
+  mmdc -i diagrams/diagram.mmd -o diagrams/diagram.svg -b transparent --puppeteerConfig='{"args": ["--no-sandbox", "--disable-setuid-sandbox"]}' || echo "Mermaid CLI failed, trying alternative method..."
 fi
 
 # Method 2: Use Chrome/Chromium if available
