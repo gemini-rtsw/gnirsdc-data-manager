@@ -68,15 +68,13 @@ build_image:
 
 pages:
   stage: pages
-  image: python:3.9-slim
-  before_script:
-    - apt-get update && apt-get install -y nodejs npm libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2
-    - npm install -g @mermaid-js/mermaid-cli
-    - pip install markdown markdown-toc pymdown-extensions
-    - chmod +x build-pages-local.sh
+  image: docker:latest
+  services:
+    - docker:dind
   script:
-    # Run the build-pages-local.sh script to generate the site
-    - ./build-pages-local.sh
+    # Build and run the documentation builder in one step
+    - docker build -t docs-builder -f Dockerfile.docs .
+    - docker run --rm -v $(pwd):/docs docs-builder
   artifacts:
     paths:
       - public

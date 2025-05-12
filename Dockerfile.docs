@@ -1,0 +1,24 @@
+FROM node:18-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install mermaid-cli
+RUN npm install -g @mermaid-js/mermaid-cli
+
+# Install Python dependencies
+RUN pip3 install markdown markdown-toc pymdown-extensions
+
+# Set working directory
+WORKDIR /docs
+
+# Copy build script
+COPY build-docs.sh /usr/local/bin/build-docs.sh
+RUN chmod +x /usr/local/bin/build-docs.sh
+
+# Default command
+ENTRYPOINT ["build-docs.sh"] 
