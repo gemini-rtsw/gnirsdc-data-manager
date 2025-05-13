@@ -9,4 +9,5 @@ echo "=== Running documentation build ==="
 docker run --rm -v $(pwd):/docs docs-builder
 
 echo "=== Documentation build complete ==="
-echo "Generated files are in the ./public directory" 
+echo "Generated files are in the ./public directory"
+echo "View the documentation by opening ./public/index.html in your browser" 

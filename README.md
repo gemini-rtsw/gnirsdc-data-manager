@@ -912,3 +912,46 @@ scp gnirs.wcs gemvx@pisces:/gemini/GEM5/gnirs/DC/DC/data//gnirs_3_short.wcs
 R. Mason 20130424
 
 updated 2018 Nov 27 - astephens + MES
+
+## Build Architecture
+
+The GNIRS DC Data Manager build architecture involves several dependencies and components that are integrated during the Docker build process:
+
+```mermaid
+graph TD
+    A[gnirsdc-data-manager repo] --> B[Base Image: gnirsdc-base]
+    B --> C[System Dependencies]
+    C --> D[Python Dependencies]
+    D --> E[gnirsdc]
+    E --> F[pycadcar]
+    E --> G[gnirsdc-lib]
+    E --> H[giapi-gluecc]
+    
+    subgraph BR[Build Requirments]
+        F
+        G
+        H
+    end
+    
+    BR --> I[Final Image]
+    
+    classDef component fill:#f9f,stroke:#333,stroke-width:2px
+    classDef repo fill:#bbf,stroke:#333,stroke-width:2px
+    
+    class A,E,F,G repo
+    class B,C,D,H,I component
+```
+
+The build process follows these steps:
+
+1. Start with the base image `gnirsdc-base`
+2. Install system dependencies (git, python3-pip)
+3. Install Python packages (flask, caproto, numpy, etc.)
+4. Copy and install component repos in sequence:
+   - `pycadcar` → installed first
+   - `gnirsdc-lib` → depends on pycadcar
+   - `gnirsdc` → depends on both previous components
+5. Extract and configure `giapi-gluecc` from tar.gz file
+6. Set up necessary environment variables and libraries
+
+This architecture ensures that all dependencies are properly installed in the correct order for the GNIRS DC Data Manager to function.

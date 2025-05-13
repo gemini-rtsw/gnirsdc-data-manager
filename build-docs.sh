@@ -18,42 +18,94 @@ if [ ! -f README.md ]; then
   exit 1
 fi
 
-# Extract Mermaid diagram using the simplest possible approach
-echo "=== Extracting Mermaid diagram ==="
+# Extract Mermaid diagrams
+echo "=== Extracting Mermaid diagrams ==="
 
-# Directly extract content between ```mermaid and ```
+# Create a temporary directory for diagrams
+mkdir -p temp/diagrams
+
+# Create mermaid configuration file
+cat > temp/mermaid-config.json << EOF
+{
+  "theme": "default",
+  "flowchart": {
+    "htmlLabels": true,
+    "curve": "basis",
+    "rankSpacing": 40,
+    "nodeSpacing": 30,
+    "useMaxWidth": true
+  },
+  "themeVariables": {
+    "fontFamily": "Lato",
+    "fontSize": "14px"
+  }
+}
+EOF
+
+# Extract each Mermaid diagram into separate files
 echo "Extracting mermaid content from README.md"
-cat README.md | sed -n '/```mermaid/,/```/ p' | sed '1d;$d' > temp/diagram.mmd
+awk '
+  BEGIN { diagram_count = 0; in_diagram = 0; content = ""; }
+  /```mermaid/ { in_diagram = 1; content = ""; next; }
+  /```/ && in_diagram { 
+    in_diagram = 0; 
+    diagram_count++; 
+    print content > "temp/diagrams/diagram" diagram_count ".mmd";
+    next; 
+  }
+  in_diagram { content = content $0 "\n"; }
+  END { print "Found " diagram_count " diagram(s)"; }
+' README.md
 
 # Check if extraction worked
-if [ ! -s temp/diagram.mmd ]; then
-  echo "ERROR: Could not extract Mermaid diagram from README.md"
+diagram_count=$(ls temp/diagrams/*.mmd 2>/dev/null | wc -l)
+if [ "$diagram_count" -eq 0 ]; then
+  echo "ERROR: Could not extract any Mermaid diagrams from README.md"
   exit 1
 fi
 
-echo "Extracted diagram content:"
-cat temp/diagram.mmd
+echo "Extracted $diagram_count diagram(s)"
 
-echo "=== Generating SVG diagram ==="
-# Use mmdc command which has been configured with no-sandbox option
-mmdc -i temp/diagram.mmd -o $OUTPUT_DIR/diagram.svg -b transparent || {
-  echo "WARNING: Failed to generate SVG from Mermaid diagram, using placeholder"
-  # Create a simple SVG as a placeholder
-  cat > $OUTPUT_DIR/diagram.svg << EOF
+echo "=== Generating SVG diagrams ==="
+# Process each diagram file and generate SVG
+mkdir -p $OUTPUT_DIR/diagrams
+diagram_index=1
+for diagram_file in temp/diagrams/*.mmd; do
+  output_svg="$OUTPUT_DIR/diagrams/diagram${diagram_index}.svg"
+  echo "Generating SVG for diagram $diagram_index"
+  
+  # Use mmdc command to generate SVG
+  mmdc -i "$diagram_file" -o "$output_svg" -b transparent -c temp/mermaid-config.json || {
+    echo "WARNING: Failed to generate SVG for diagram $diagram_index, using placeholder"
+    # Create a simple SVG as a placeholder
+    cat > "$output_svg" << EOF
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">
   <rect width="200" height="100" fill="none" stroke="black" />
-  <text x="40" y="50" font-family="sans-serif">Diagram Placeholder</text>
+  <text x="40" y="50" font-family="sans-serif">Diagram $diagram_index Placeholder</text>
 </svg>
 EOF
-}
+  }
+  diagram_index=$((diagram_index + 1))
+done
 
-# Create processed markdown with diagram reference
+# Create processed markdown with diagram references
 echo "=== Processing README ==="
-# Make a copy of README and replace the Mermaid section with an image link
+# Make a copy of README and replace the Mermaid sections with image links
 awk '
-BEGIN { in_mermaid = 0; }
-/```mermaid/ { in_mermaid = 1; print "![Mermaid Diagram](diagram.svg)"; next; }
-/```/ && in_mermaid { in_mermaid = 0; next; }
+BEGIN { 
+  in_mermaid = 0; 
+  diagram_count = 0;
+}
+/```mermaid/ { 
+  in_mermaid = 1; 
+  diagram_count++; 
+  print "![Mermaid Diagram " diagram_count "](diagrams/diagram" diagram_count ".svg)"; 
+  next; 
+}
+/```/ && in_mermaid { 
+  in_mermaid = 0; 
+  next; 
+}
 !in_mermaid { print; }
 ' README.md > temp/README.processed.md
 
@@ -232,6 +284,15 @@ html_template = """<!DOCTYPE html>
     
     img {{ max-width: 100%; height: auto; }}
     
+    /* Control diagram sizes */
+    img.mermaid-diagram {{ 
+      max-width: 800px;
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 2rem auto;
+    }}
+    
     .container {{
       display: flex;
       min-height: 100vh;
@@ -345,6 +406,10 @@ python3 temp/convert.py || {
   echo "ERROR: Failed to generate HTML"
   exit 1
 }
+
+# Post-process the HTML to add class to diagram images
+echo "=== Post-processing HTML ==="
+sed -i 's|<img src="diagrams/diagram[0-9]\+.svg" alt="Mermaid Diagram [0-9]\+"|& class="mermaid-diagram"|g' temp/index.html
 
 # Copy generated files to output directory
 cp temp/index.html $OUTPUT_DIR/
