@@ -77,7 +77,6 @@
                 <option value="tdl">TDL</option>
                 <option value="start_controller">Start/Restart DC Software</option>
                 <option value="start_controller_debug">Start/Restart DC Software (Debug)</option>
-                <option value="start_controller_full_debug">Start/Restart DC Software (Full Debug)</option>
                 <option value="stop_controller">Stop Controller</option>
             </select>
             <button id="applyActionBtn" class="btn btn-primary" disabled>Apply</button>
@@ -1721,8 +1720,6 @@
             startController('normal');
         } else if (selectedAction === 'start_controller_debug') {
             startController('debug');
-        } else if (selectedAction === 'start_controller_full_debug') {
-            startController('full_debug');
         } else if (selectedAction === 'stop_controller') {
             stopController();
         }
