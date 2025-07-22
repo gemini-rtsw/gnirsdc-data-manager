@@ -783,24 +783,30 @@ def start_controller():
     try:
         mode = request.json.get('mode', 'normal')
         
-        # Set the appropriate top name based on mode
-        if mode in ['debug', 'full_debug']:
-            config[config_mode]['DEFAULT_PREFIX'] = 'tgnirs'
+        # Determine the config section based on mode
+        if mode == 'debug':
+            # Use DEBUG section from config
+            current_config_mode = 'DEBUG'
         else:
-            # Reset to default from config file
-            config.read(config_path)
+            # Use DEFAULT section from config
+            current_config_mode = 'DEFAULT'
+        
+        # Reload config to get the correct section
+        config.read(config_path)
+        
+        # Get the top name from the appropriate config section
+        top_name = config[current_config_mode].get('DEFAULT_PREFIX', 'nirs')
         
         # Clear existing subscriptions and set up new ones with the updated top name
-        top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
         pv_manager.clear_all_subscriptions()
         pv_manager.setup_core_subscriptions(top_name)
         
+        # Build command based on mode
         if mode == 'normal':
             command = '/usr/local/bin/dc-start.sh'
         elif mode == 'debug':
-            command = '/usr/local/bin/dc-start.sh --top tgnirs'
-        elif mode == 'full_debug':
-            command = '/usr/local/bin/dc-start.sh --top tgnirs --debug'
+            # Only pass --debug flag, top name comes from config
+            command = '/usr/local/bin/dc-start.sh --debug'
         else:
             raise ValueError(f"Invalid mode: {mode}")
         
@@ -814,7 +820,7 @@ def start_controller():
             "message": "Controller started successfully",
             "output": output,
             "error": error,
-            "top_name": config[config_mode]['DEFAULT_PREFIX']  # Return the current top name
+            "top_name": top_name
         })
     except Exception as e:
         logger.error(f"Error starting controller: {str(e)}")

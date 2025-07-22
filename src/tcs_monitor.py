@@ -9,17 +9,31 @@ import socket
 import struct
 from astropy.time import Time
 import subprocess
+import configparser
+import os
+import sys
 
-# Import custom log levels and DEBUG_MODE
+# Import custom log levels
 from logging_config import IRDC_DEBUG, IRDC_MAX_DEBUG
-from gnirsutil import DEBUG_MODE
 
 class TCSMonitor:
     def __init__(self):
-        # Determine the prefixes based on DEBUG_MODE
-        tcs_prefix = 'tc:' if DEBUG_MODE else 'tcs:'
-        ag_prefix = 'tag:' if DEBUG_MODE else 'ag:'
-        cc_prefix = 'tgnirs:' if DEBUG_MODE else 'nirs:'
+        # Load config to get prefixes
+        config = configparser.ConfigParser()
+        config_path = '../conf/gnirsdc/config.ini'
+        config.read(config_path)
+        
+        # Determine which config section to use based on DEBUG_MODE from config
+        debug_mode = config.getboolean('DEFAULT', 'DEBUG_MODE', fallback=False)
+        # Command line will override config
+        debug_mode = '--debug' in sys.argv or '-D' in sys.argv
+        
+        config_section = 'DEBUG' if debug_mode else 'DEFAULT'
+        
+        # Get the prefixes from config
+        tcs_prefix = config[config_section].get('TCS_PREFIX', 'tcs:')
+        ag_prefix = config[config_section].get('AG_PREFIX', 'ag:')
+        cc_prefix = config[config_section].get('CC_PREFIX', 'nirs:')
 
         self.tcs_pvs = [
             f'{tcs_prefix}sad:currentRA',         # 'track_ra'
@@ -58,7 +72,7 @@ class TCSMonitor:
     def initialize(self):
         self.monitor_thread = threading.Thread(target=self._monitor_pvs, daemon=True)
         self.monitor_thread.start()
-        self.logger.irdc_debug("TCS Monitor thread started.")
+        self.logger.log(IRDC_DEBUG, "TCS Monitor thread started.")
 
     def _monitor_pvs(self):
         for full_pv_name in self.tcs_pvs:
