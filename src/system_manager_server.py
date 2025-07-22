@@ -780,22 +780,21 @@ def apply_tdl():
 
 @app.route('/start_controller', methods=['POST'])
 def start_controller():
+    global config_mode  # Access the global config_mode variable
     try:
         mode = request.json.get('mode', 'normal')
         
-        # Determine the config section based on mode
+        # Update the global config_mode based on the requested mode
         if mode == 'debug':
-            # Use DEBUG section from config
-            current_config_mode = 'DEBUG'
+            config_mode = 'DEBUG'
         else:
-            # Use DEFAULT section from config
-            current_config_mode = 'DEFAULT'
+            config_mode = 'DEFAULT'
         
         # Reload config to get the correct section
         config.read(config_path)
         
         # Get the top name from the appropriate config section
-        top_name = config[current_config_mode].get('DEFAULT_PREFIX', 'nirs')
+        top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
         
         # Clear existing subscriptions and set up new ones with the updated top name
         pv_manager.clear_all_subscriptions()
