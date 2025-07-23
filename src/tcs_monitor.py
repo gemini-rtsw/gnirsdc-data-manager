@@ -9,31 +9,18 @@ import socket
 import struct
 from astropy.time import Time
 import subprocess
-import configparser
-import os
-import sys
 
-# Import custom log levels
+# Import custom log levels and use the shared config system
 from logging_config import IRDC_DEBUG, IRDC_MAX_DEBUG
+from gnirsutil import config, config_mode
 
 class TCSMonitor:
     def __init__(self):
-        # Load config to get prefixes
-        config = configparser.ConfigParser()
-        config_path = '../conf/gnirsdc/config.ini'
-        config.read(config_path)
-        
-        # Determine which config section to use based on DEBUG_MODE from config
-        debug_mode = config.getboolean('DEFAULT', 'DEBUG_MODE', fallback=False)
-        # Command line will override config
-        debug_mode = '--debug' in sys.argv or '-D' in sys.argv
-        
-        config_section = 'DEBUG' if debug_mode else 'DEFAULT'
-        
-        # Get the prefixes from config
-        tcs_prefix = config[config_section].get('TCS_PREFIX', 'tcs:')
-        ag_prefix = config[config_section].get('AG_PREFIX', 'ag:')
-        cc_prefix = config[config_section].get('CC_PREFIX', 'nirs:')
+        # Use the same config and config_mode as the rest of the system
+        # Get the prefixes from the current config section
+        tcs_prefix = config[config_mode].get('TCS_PREFIX', 'tcs:')
+        ag_prefix = config[config_mode].get('AG_PREFIX', 'ag:')
+        cc_prefix = config[config_mode].get('CC_PREFIX', 'nirs:')
 
         self.tcs_pvs = [
             f'{tcs_prefix}sad:currentRA',         # 'track_ra'
