@@ -334,8 +334,9 @@ class GnirsDataManagerIOC(PVGroup):
 
         def check_tcs_connection(loop):
             while True:
-                # Use 'tc:' instead of 'tcs:' if in debug mode
-                pv_name = "tc:heartbeat" if DEBUG_MODE else "tcs:heartbeat"
+                # Get TCS prefix from config
+                tcs_prefix = config[config_mode].get('TCS_PREFIX', 'tcs:')
+                pv_name = f"{tcs_prefix}heartbeat"
                 connected = checkCAConnection(pv_name, 1.0)
                 asyncio.run_coroutine_threadsafe(
                     self.update_tcs_connection(instance, connected), 
