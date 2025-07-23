@@ -324,7 +324,7 @@ class PVSubscriptionManager:
         """Set up subscriptions for core PVs"""
         core_pvs = [
             f'{top_name}:log_message',
-            f'{top_name}:heartbeat',
+            f'{top_name}:sad:dc:heartBeat',
             f'{top_name}:tcs_connection',
             f'{top_name}:dc:lnrNum',
             f'{top_name}:dc:digitalAvgs',
@@ -985,7 +985,7 @@ def get_all_pvs():
         f'{top_name}:dc:sequence': 'sequence',
         f'{top_name}:sad:dc:rdout': 'rdout',
         f'{top_name}:sad:dc:obsProgress': 'obs_progress',
-        f'{top_name}:heartbeat': 'heartbeat',
+        f'{top_name}:sad:dc:heartBeat': 'heartbeat',
         f'{top_name}:tcs_connection': 'tcs_connection',
         f'{top_name}:gmp_status': 'gmp_status',
         f'{top_name}:ntp_time': 'ntp_time',
@@ -997,7 +997,7 @@ def get_all_pvs():
     
     # Check connection status for key status indicators
     key_status_pvs = [
-        f'{top_name}:heartbeat',
+        f'{top_name}:sad:dc:heartBeat',
         f'{top_name}:tcs_connection',
         f'{top_name}:gmp_status',
         f'{top_name}:dc:sdsuState',
@@ -1020,7 +1020,7 @@ def get_all_pvs():
     
     # Add connection status for key status indicators
     formatted_values['connection_status'] = {
-        'heartbeat': connection_status.get(f'{top_name}:heartbeat', False),
+        'heartbeat': connection_status.get(f'{top_name}:sad:dc:heartBeat', False),
         'tcs_connection': connection_status.get(f'{top_name}:tcs_connection', False),
         'gmp_status': connection_status.get(f'{top_name}:gmp_status', False),
         'sdsu_state': connection_status.get(f'{top_name}:dc:sdsuState', False),

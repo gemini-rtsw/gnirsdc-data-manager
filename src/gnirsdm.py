@@ -313,7 +313,7 @@ class GnirsDataManagerIOC(PVGroup):
         await self.health.write(value)
 
 #-----------------------------------------------------------------------------
-    heartbeat = pvproperty(value=0, dtype=int)
+    heartbeat = pvproperty(value=0, dtype=int, name="sad:dc:heartBeat")
 
     @heartbeat.startup
     async def heartbeat(self, instance, async_lib):
