@@ -22,6 +22,7 @@ start_container() {
     output=$(docker run -d --network=host --privileged --name ${container_name} \
         -v /readout_data:/readout_data \
         -v /staging/perm:/staging/perm \
+        -v /readout_data/conf:/gnirsdc/conf \
         -v /etc/localtime:/etc/localtime:ro \
         -v /etc/timezone:/etc/timezone:ro \
         ${image_name} ${additional_args})
