@@ -27,8 +27,8 @@
         </div>
         
         <div class="status-container">
-            <span class="status-label">TCS Connection:</span>
-            <div id="tcsConnectionIndicator" class="status-indicator"></div>
+            <span class="status-label">Subsystem Connections:</span>
+            <div id="subsystemConnectionIndicator" class="status-indicator"></div>
         </div>
         
         <div class="status-container">
@@ -205,8 +205,8 @@
                     console.log('Heartbeat update received:', value, typeof value);
                     updateIndicator('heartbeatIndicator', value === 1, 'heartbeat');
                     break;
-                case 'tcs_connection':
-                    updateIndicator('tcsConnectionIndicator', value === 'CONNECTED', 'status');
+                case 'subsystem_connections':
+                    updateIndicator('subsystemConnectionIndicator', value === 'CONNECTED', 'status');
                     break;
                 case 'gmp_status':
                     updateIndicator('gdsStatusIndicator', value === 'CONNECTED', 'status');
@@ -280,8 +280,8 @@
                     // Remove verbose logging for heartbeat
                     updateIndicator('heartbeatIndicator', value === 1, 'heartbeat');
                     break;
-                case 'tcs_connection':
-                    updateIndicator('tcsConnectionIndicator', value === 'CONNECTED', 'status');
+                case 'subsystem_connections':
+                    updateIndicator('subsystemConnectionIndicator', value === 'CONNECTED', 'status');
                     break;
                 case 'gmp_status':
                     updateIndicator('gdsStatusIndicator', value === 'CONNECTED', 'status');
@@ -663,10 +663,10 @@
                         }
                     }
                     
-                    if (connectionStatus.tcs_connection) {
-                        updateIndicator('tcsConnectionIndicator', pvs.tcs_connection === 'CONNECTED', 'status');
+                    if (connectionStatus.subsystem_connections) {
+                        updateIndicator('subsystemConnectionIndicator', pvs.subsystem_connections === 'CONNECTED', 'status');
                     } else {
-                        const indicator = document.getElementById('tcsConnectionIndicator');
+                        const indicator = document.getElementById('subsystemConnectionIndicator');
                         if (indicator) {
                             indicator.className = 'status-indicator server-disconnected';
                         }
@@ -1482,7 +1482,7 @@
     const logMessagesTextarea = document.getElementById('logMessages');
     const connectionStatus = document.getElementById('connectionStatus');
     const heartbeatIndicator = document.getElementById('heartbeatIndicator');
-    const tcsConnectionIndicator = document.getElementById('tcsConnectionIndicator');
+    const subsystemConnectionIndicator = document.getElementById('subsystemConnectionIndicator');
     const fowlerNumInput = document.getElementById('fowlerNum');
     const digitalAvgsInput = document.getElementById('digitalAvgs');
     const integTimeInput = document.getElementById('integTime');

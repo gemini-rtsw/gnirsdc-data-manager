@@ -354,6 +354,13 @@ class GnirsDataManagerIOC(PVGroup):
             await self.set_health("GOOD")
 
 #-----------------------------------------------------------------------------
+    subsystem_connections = pvproperty(value="UNKNOWN", dtype=ChannelType.STRING, doc="Overall subsystem connection status")
+
+    @subsystem_connections.startup
+    async def subsystem_connections(self, instance, async_lib):
+        await instance.write("UNKNOWN")
+
+#-----------------------------------------------------------------------------
     log_message = pvproperty(value="", dtype=ChannelType.STRING, doc="Record the last log message")
     log_datetime = pvproperty(value="", dtype=ChannelType.STRING, doc="Record the last log date")
 
