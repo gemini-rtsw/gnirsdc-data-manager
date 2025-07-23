@@ -1,5 +1,5 @@
 import logging
-from epics import PV, caput
+from epics import PV
 import threading
 from typing import Dict, Any
 import time
@@ -40,18 +40,12 @@ class TCSMonitor:
         self.context: Dict[str, Any] = {}
         self.pv_objects: Dict[str, PV] = {}
         self.monitor_thread = None
-        self.connection_monitor_thread = None
         self.logger = logging.getLogger(__name__)
-        
-        # Get the status reporting PV name based on current config
-        top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-        self.status_pv = f'{top_name}:subsystem_connections'
 
         # Log the PV names at IRDC_DEBUG level
         self.logger.log(IRDC_DEBUG, "PVs to be monitored:")
         for pv in self.tcs_pvs:
             self.logger.log(IRDC_DEBUG, f"  {pv}")
-        self.logger.log(IRDC_DEBUG, f"Status reporting PV: {self.status_pv}")
 
     def _process_value(self, value: Any) -> str:
         if isinstance(value, (list, np.ndarray)):
@@ -65,11 +59,7 @@ class TCSMonitor:
     def initialize(self):
         self.monitor_thread = threading.Thread(target=self._monitor_pvs, daemon=True)
         self.monitor_thread.start()
-        
-        self.connection_monitor_thread = threading.Thread(target=self._monitor_connections, daemon=True)
-        self.connection_monitor_thread.start()
-        
-        self.logger.log(IRDC_DEBUG, "TCS Monitor threads started.")
+        self.logger.log(IRDC_DEBUG, "TCS Monitor thread started.")
 
     def _monitor_pvs(self):
         for full_pv_name in self.tcs_pvs:
@@ -85,43 +75,6 @@ class TCSMonitor:
                     pv_short_name = full_pv_name.split(':')[-1]
                     self.context[pv_short_name] = self._process_value(pv.value)
             time.sleep(1)  # Check connections every second
-    
-    def _monitor_connections(self):
-        """Monitor connection status of all TCS PVs and report overall status"""
-        while True:
-            try:
-                connected_count = 0
-                total_count = len(self.pv_objects)
-                
-                for full_pv_name, pv in self.pv_objects.items():
-                    if pv.connected:
-                        connected_count += 1
-                
-                # Calculate connection percentage
-                if total_count > 0:
-                    connection_percentage = (connected_count / total_count) * 100
-                    
-                    # Determine status string
-                    if connection_percentage >= 80:
-                        status = "CONNECTED"
-                    elif connection_percentage >= 50:
-                        status = "PARTIAL"
-                    else:
-                        status = "DISCONNECTED"
-                    
-                    # Update the status PV
-                    try:
-                        caput(self.status_pv, status, wait=False)
-                        self.logger.log(IRDC_DEBUG, f"Subsystem status: {status} ({connected_count}/{total_count} PVs connected)")
-                    except Exception as e:
-                        self.logger.error(f"Failed to update status PV {self.status_pv}: {str(e)}")
-                else:
-                    caput(self.status_pv, "NO_PVS", wait=False)
-                    
-            except Exception as e:
-                self.logger.error(f"Error in connection monitoring: {str(e)}")
-            
-            time.sleep(5)  # Update status every 5 seconds
 
     def get_ntp_time(self) -> str:
 

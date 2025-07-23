@@ -325,7 +325,7 @@ class PVSubscriptionManager:
         core_pvs = [
             f'{top_name}:log_message',
             f'{top_name}:heartbeat',
-            f'{top_name}:subsystem_connections',
+            f'{top_name}:tcs_connection',
             f'{top_name}:dc:lnrNum',
             f'{top_name}:dc:digitalAvgs',
             f'{top_name}:dc:integTime.VAL',
@@ -986,7 +986,7 @@ def get_all_pvs():
         f'{top_name}:sad:dc:rdout': 'rdout',
         f'{top_name}:sad:dc:obsProgress': 'obs_progress',
         f'{top_name}:heartbeat': 'heartbeat',
-        f'{top_name}:subsystem_connections': 'subsystem_connections',
+        f'{top_name}:tcs_connection': 'tcs_connection',
         f'{top_name}:gmp_status': 'gmp_status',
         f'{top_name}:ntp_time': 'ntp_time',
         f'{top_name}:dc:firmChecksum': 'firm_checksum'
@@ -998,7 +998,7 @@ def get_all_pvs():
     # Check connection status for key status indicators
     key_status_pvs = [
         f'{top_name}:heartbeat',
-        f'{top_name}:subsystem_connections',
+        f'{top_name}:tcs_connection',
         f'{top_name}:gmp_status',
         f'{top_name}:dc:sdsuState',
         f'{top_name}:dc:disable_interlock'
@@ -1021,7 +1021,7 @@ def get_all_pvs():
     # Add connection status for key status indicators
     formatted_values['connection_status'] = {
         'heartbeat': connection_status.get(f'{top_name}:heartbeat', False),
-        'subsystem_connections': connection_status.get(f'{top_name}:subsystem_connections', False),
+        'tcs_connection': connection_status.get(f'{top_name}:tcs_connection', False),
         'gmp_status': connection_status.get(f'{top_name}:gmp_status', False),
         'sdsu_state': connection_status.get(f'{top_name}:dc:sdsuState', False),
         'interlock_override': connection_status.get(f'{top_name}:dc:disable_interlock', False)
@@ -1123,7 +1123,7 @@ def get_all_pvs():
     # Add default values for missing fields to ensure UI can render properly
     default_fields = {
         'heartbeat': 0,
-        'subsystem_connections': 'UNKNOWN',
+        'tcs_connection': '',
         'fowler_num': 1,
         'digital_avgs': 1,
         'integ_time': 1.0,

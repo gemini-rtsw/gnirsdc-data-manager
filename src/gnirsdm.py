@@ -337,6 +337,7 @@ class GnirsDataManagerIOC(PVGroup):
                 # Get TCS prefix from config
                 tcs_prefix = config[config_mode].get('TCS_PREFIX', 'tcs:')
                 pv_name = f"{tcs_prefix}heartbeat"
+
                 connected = checkCAConnection(pv_name, 1.0)
                 asyncio.run_coroutine_threadsafe(
                     self.update_tcs_connection(instance, connected), 
@@ -353,13 +354,6 @@ class GnirsDataManagerIOC(PVGroup):
             await self.logMessage("TCS disconnected")
         else:
             await self.set_health("GOOD")
-
-#-----------------------------------------------------------------------------
-    subsystem_connections = pvproperty(value="UNKNOWN", dtype=ChannelType.STRING, doc="Overall subsystem connection status")
-
-    @subsystem_connections.startup
-    async def subsystem_connections(self, instance, async_lib):
-        await instance.write("UNKNOWN")
 
 #-----------------------------------------------------------------------------
     log_message = pvproperty(value="", dtype=ChannelType.STRING, doc="Record the last log message")
