@@ -117,6 +117,7 @@ class PVSubscriptionManager:
         self.subscriptions = {}
         self.latest_values = {}
         self.subscription_lock = threading.Lock()
+        self.pv_to_ui_map = {}  # Will be set externally
 
     def handle_subscription(self, sub, response):
         pv_name = sub.pv.name
@@ -176,9 +177,13 @@ class PVSubscriptionManager:
             # This allows the client to handle it specifically as a log message
             self.broadcast_to_clients({"log_message": value})
         else:
-            # Normal handling for other PVs - broadcast just the field update
-            short_name = pv_name.split(':')[-1]  # Extract just the final part of the PV name
-            self.broadcast_to_clients({short_name: value})
+            # Normal handling for other PVs - use proper PV-to-UI mapping
+            ui_field = self.pv_to_ui_map.get(pv_name)
+            if not ui_field:
+                # Fallback to extracting from PV name if not in mapping
+                ui_field = pv_name.split(':')[-1]
+            
+            self.broadcast_to_clients({ui_field: value})
             
     def broadcast_to_clients(self, data):
         """Broadcast data to all connected clients"""
@@ -798,7 +803,7 @@ def start_controller():
         
         # Clear existing subscriptions and set up new ones with the updated top name
         pv_manager.clear_all_subscriptions()
-        pv_manager.setup_core_subscriptions(top_name)
+        initialize_subscriptions()
         
         # Build command based on mode
         if mode == 'normal':
@@ -1332,6 +1337,28 @@ def initialize_subscriptions():
     """Initialize all PV subscriptions at startup"""
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
     logger.info(f"Setting up core PV subscriptions with prefix: {top_name}")
+    
+    # Set up the PV-to-UI mapping for consistent field names
+    pv_manager.pv_to_ui_map = {
+        f'{top_name}:dc:lnrNum': 'fowler_num',
+        f'{top_name}:dc:digitalAvgs': 'digital_avgs',
+        f'{top_name}:dc:integTime.VAL': 'integ_time',
+        f'{top_name}:dc:observe.A': 'file_name',
+        f'{top_name}:dc:temperature': 'temperature',
+        f'{top_name}:dc:disable_interlock': 'interlock_override',
+        f'{top_name}:dc:applyC.VAL': 'apply_c_value',
+        f'{top_name}:dc:sdsuState': 'sdsu_state',
+        f'{top_name}:dc:coadds.VAL': 'coadds',
+        f'{top_name}:dc:sequence': 'sequence',
+        f'{top_name}:sad:dc:rdout': 'rdout',
+        f'{top_name}:sad:dc:obsProgress': 'obs_progress',
+        f'{top_name}:sad:dc:heartBeat': 'heartbeat',
+        f'{top_name}:tcs_connection': 'tcs_connection',
+        f'{top_name}:gmp_status': 'gmp_status',
+        f'{top_name}:ntp_time': 'ntp_time',
+        f'{top_name}:dc:firmChecksum': 'firm_checksum'
+    }
+    
     pv_manager.setup_core_subscriptions(top_name)
 
 # Add this function at the global level, after the pv_manager is created
@@ -1350,10 +1377,8 @@ def reinitialize_connections():
     # Create a new manager
     pv_manager = PVSubscriptionManager(ctx)
     
-    # Initialize subscriptions just like at startup
-    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-    logger.info(f"Setting up core PV subscriptions with prefix: {top_name}")
-    pv_manager.setup_core_subscriptions(top_name)
+    # Initialize subscriptions just like at startup - use the same function
+    initialize_subscriptions()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")

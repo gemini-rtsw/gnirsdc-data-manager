@@ -322,7 +322,6 @@ class GnirsDataManagerIOC(PVGroup):
                 await instance.write(1)
             else:
                 await instance.write(0)
-            await instance.write(instance.value)
             await async_lib.library.sleep(0.5)
 
 #-----------------------------------------------------------------------------
