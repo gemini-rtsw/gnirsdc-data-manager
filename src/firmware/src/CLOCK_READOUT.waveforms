@@ -1,0 +1,401 @@
+; Video processor bit definitions
+
+;  Bit #3 = Move A/D data to FIFO   (high going edge)
+;  Bit #2 = A/D Convert       (low going edge to start conversion)
+;  Bit #1 = Reset Integrator     (=0 to reset)
+;  Bit #0 = Integrate      (=0 to integrate)
+
+; STARTS HERE THE READOUT OF 6DS
+DTW      EQU   $080000     ;  Tw Fast Sync Time (320ns + 40ns exec = 360ns)
+PAD_TIM  EQU   $0F0000     ;  Pixel PAD Time       (640ns)
+ADC_TIM  EQU   $0F0000     ;  Pixel PAD Time       (640ns)
+INT_TIM  EQU   $180000     ;  Pixel Sample Time    (1000ns)
+SXM_TIM  EQU   $8C0000     ;  Pixel Transmit Delay    (5640ns)NOT USED
+ADC_CNV EQU $040000     ;  ADC Sample Time         (100ns)
+STL_TIM  EQU   $000000     ;  A Generic Settling time (0ns)
+RST_TIM EQU $180000     ;  Reset Time reduced      (1000ns)
+STP_TIM  EQU   $000000     ;  Stop Reseting
+FIP_TIM EQU $080000     ;  $08 seems ok but have to test with signal as it's settling time of integrator stage
+RST_DLY EQU $000000     ;  Delay before resetting the integrator
+PIX_RTE EQU $000000     ;  Delay to adjust the pixel rate only for XDS not needed for XINT_XDS
+ADC_HLD  EQU   $0C0000     ;  Wait for ADC to setlle before moving to FIFO (Hold)   (480ns)
+RST_STL  EQU   $040000     ;  Wait after reset of Integrator before Integration (100ns)
+INT_STL  EQU   $080000     ;  Wait for Integrator output to settle before A2D (360ns)
+
+
+
+; Copy of the clocking bit definition for easy reference
+;  DC CLK2+DELAY+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+VROWON
+;  DC CLK3+DELAY+FSYNC+F1+F2
+
+
+
+FRAME_INIT
+   DC END_FRAME_INIT-FRAME_INIT-1
+   DC CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+   DC CLK2+DLY4+00000+S1+S2+SOE+0000+VRSTOFF+VRSTR+000000
+   DC CLK2+DLY4+00000+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+   DC CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+   DC CLK2+DLY2+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+   DC CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+END_FRAME_INIT
+
+
+CLOCK_ROW_1
+   DC END_CLOCK_ROW_1-CLOCK_ROW_1-1
+   DC CLK2+DLY1+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+000000
+   DC CLK3+DLY2+00000+F1+F2
+   DC CLK3+DLY1+FSYNC+F1+F2
+   DC CLK3+DLY2+FSYNC+00+F2
+   DC CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_ROW_1
+
+CLOCK_ROW_2
+   DC END_CLOCK_ROW_2-CLOCK_ROW_2-1
+   DC CLK2+DLY2+SSYNC+S1+00+000+RDES+VRSTOFF+VRSTR+000000
+   DC CLK3+DLY2+00000+F1+F2
+   DC CLK3+DLY1+FSYNC+F1+F2
+   DC CLK3+DLY2+FSYNC+00+F2
+   DC CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_ROW_2
+
+CLOCK_ROW_3
+   DC END_CLOCK_ROW_3-CLOCK_ROW_3-1
+   DC CLK2+DLY1+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+   DC CLK3+DLY2+00000+F1+F2
+   DC CLK3+DLY1+FSYNC+F1+F2
+   DC CLK3+DLY2+FSYNC+00+F2
+   DC CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_ROW_3
+
+CLOCK_ROW_4
+   DC END_CLOCK_ROW_4-CLOCK_ROW_4-1
+   DC CLK2+DLY2+SSYNC+00+S2+000+RDES+VRSTOFF+VRSTR+000000
+   DC CLK3+DLY2+00000+F1+F2
+   DC CLK3+DLY1+FSYNC+F1+F2
+   DC CLK3+DLY2+FSYNC+00+F2
+   DC CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_ROW_4
+
+
+
+
+CLOCK_COLUMN
+   DC END_CLOCK_COLUMN-CLOCK_COLUMN-1
+   DC CLK3+DLYA+FSYNC+F1+00
+   DC CLK3+DLYB+FSYNC+F1+F2
+   DC CLK3+DLYA+FSYNC+00+F2
+   DC CLK3+DLYB+FSYNC+F1+F2
+END_CLOCK_COLUMN
+
+
+
+
+
+
+RD_COL_PIPELINE_TEST
+        DC      END_RD_COL_PIPELINE_TEST-RD_COL_PIPELINE_TEST-1
+        DC      CLK3+000+FSYNC+F1+00                    ; Select Pixel 1                40ns
+        DC      VIDEO+PAD_TIM+%0111             ; Pad Delay -                   640ns
+        DC      VIDEO+ADC_TIM+%0111             ; Hold No Pixel         1000ns
+        DC      VIDEO+STL_TIM+%0101             ; Move No Pixel                 40ns
+        DC      VIDEO+$000000+%0101             ; Place for SXMIT               40ns
+        DC      VIDEO+SXM_TIM+%0101             ; Settling time             3880ns
+        DC      VIDEO+STP_TIM+%0111             ; Stop Reseting         40ns
+        DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 1         1000ns
+        DC      VIDEO+$000000+%0111             ; Stop Integration      40ns
+        DC      VIDEO+ADC_CNV+%0011             ; Start A/D cnv Pix 1   40ns
+        DC      CLK3+DTW+FSYNC+F1+F2                    ; Deselect Pixel 1              360ns
+        DC      CLK3+000+FSYNC+00+F2                    ; Select Pixel 2                40ns
+        DC      VIDEO+PAD_TIM+%0111             ; Pad Delay -           640ns
+        DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert      1000ns
+        DC      VIDEO+STL_TIM+%1101             ; Move A/D data FIFO    40ns
+        DC      SXMIT                           ; SXMIT the Previous    40ns
+        DC      VIDEO+SXM_TIM+%0101             ; Settling time             3880ns
+        DC      VIDEO+STP_TIM+%0111             ; Stop Reseting                 40ns
+        DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 3         1000ns
+        DC      VIDEO+$000000+%0111             ; Stop Integration      40ns
+        DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert     40ns
+        DC      CLK3+DTW+FSYNC+F1+F2                    ; Deselect Pixel 3              360ns
+END_RD_COL_PIPELINE_TEST
+
+; This code reads out most of the array, with full image transmission
+RD_COLS_TEST
+        DC      END_RD_COLS_TEST-RD_COLS_TEST-1 ;
+        DC      CLK3+000+FSYNC+F1+00                    ; Select Pixel 2 (40ns)
+        DC      VIDEO+PAD_TIM+%0111             ; Pad Delay - 40ns
+        DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert sig Pixel 1 (1us)
+        DC      VIDEO+STL_TIM+%1101             ; Move A/D data to FIFO Pixel 1 (40ns)
+        DC      SXMIT                                                   ; SXMIT the Previous Pixel 1 - X32 (40ns)
+        DC      VIDEO+SXM_TIM+%0101             ; Settling time (3880ns)
+        DC      VIDEO+STP_TIM+%0111             ; Stop Reseting
+        DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 2 (760ns)
+        DC      VIDEO+$000000+%0111             ; Stop Integration
+        DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert Pixel 2 (400ns)
+        DC      CLK3+DTW+FSYNC+F1+F2                    ; Deselect Pixel 1 (240ns)
+        DC      CLK3+000+FSYNC+00+F2                    ; Select Pixel 3 (40ns)
+        DC      VIDEO+PAD_TIM+%0111             ; Pad Delay - 40ns
+        DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert sig Pixel 2 (1us)
+        DC      VIDEO+STL_TIM+%1101             ; Move A/D data to FIFO Pixel 2 (40ns)
+        DC      SXMIT                           ; SXMIT the Previous Pixel 2 - X32 (40ns)
+        DC      VIDEO+SXM_TIM+%0101             ; Settling time (480ns)
+        DC      VIDEO+STP_TIM+%0111             ; Stop Reseting
+        DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 3 (760ns)
+        DC      VIDEO+$000000+%0111             ; Stop Integration
+        DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert Pixel 3 (400ns)
+        DC      CLK3+DTW+FSYNC+F1+F2            ; Deselect Pixel 3 (240ns)
+END_RD_COLS_TEST
+
+; This transmits the last pixels in each row, emptying the pipeline
+LAST_8INROW_TEST
+        DC      END_LAST_8INROW_TEST-LAST_8INROW_TEST-1
+        DC      CLK3+000+FSYNC+F1+00            ; Select Pixel 2 (40ns)
+        DC      VIDEO+PAD_TIM+%0111             ; Pad Delay - 40ns
+        DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert sig Pixel 1 (1us)
+        DC      VIDEO+STL_TIM+%1101             ; Move A/D data to FIFO Pixel 1 (40ns)
+        DC      SXMIT                           ; SXMIT the Previous Pixel 1 - X32 (40ns)
+        DC      VIDEO+SXM_TIM+%0101             ; Settling time (480ns)
+        DC      VIDEO+STP_TIM+%0111             ; Stop Reseting
+        DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 2 (760ns)
+        DC      VIDEO+$000000+%0111             ; Stop Integration
+        DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert Pixel 2 (40+40ns)
+        DC      CLK3+DTW+FSYNC+F1+F2            ; Deselect Pixel 1 (240ns)
+END_LAST_8INROW_TEST
+
+
+
+
+
+
+
+; Define CLOCK as a macro to produce in-line code to reduce execution time
+; Here we do INT and A2D 6 times successively
+RD_COL_MACRO1  MACRO
+   DC      VIDEO+RST_DLY+%0111             ; Wait 4 Reset Integrator    40ns
+   DC      VIDEO+RST_TIM+%0101             ; Reset Integrator           1000ns
+   DC      VIDEO+RST_STL+%0111             ; Stop Reset & wait          100ns
+   DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 1             1000ns
+   DC      VIDEO+INT_STL+%0111             ; Stop Integration & wait    360ns <----Leach March 5, 2020DC      VIDEO+ADC_CNV+%0011             ; Start A/D cnv Pix 1 Sample1      40ns
+   DC      VIDEO+ADC_CNV+%0011             ; A/D Conversion             100ns
+   DC      VIDEO+ADC_HLD+%0111             ; Hold A/D convert              480ns
+   DC      VIDEO+STL_TIM+%1111             ; Move A/D data FIFO         40ns
+;  DC      SXMIT                           ; SXMIT                      40ns
+   ENDM
+
+RD_COL_MACRO2  MACRO
+   DC      VIDEO+RST_DLY+%0111             ; Wait 4 Reset Integrator    40ns
+   DC      VIDEO+RST_TIM+%0101             ; Reset Integrator           1000ns
+   DC      VIDEO+RST_STL+%0111             ; Stop Reset & wait          100ns
+   DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 1             1000ns
+   DC      VIDEO+INT_STL+%0111             ; Stop Integration & wait    360ns <----Leach March 5, 2020DC      VIDEO+ADC_CNV+%0011             ; Start A/D cnv Pix 1 Sample1      40ns
+   DC      VIDEO+ADC_CNV+%0011             ; A/D Conversion             100ns
+   DC      VIDEO+ADC_HLD+%0111             ; Hold A/D convert              480ns
+   DC      VIDEO+STL_TIM+%1111             ; Move A/D data FIFO         40ns
+   DC      SXMIT                           ; SXMIT                   40ns
+   ENDM
+
+; This code initiates the pipeline for each row - no image transmission yet
+; Modified by L. Boucher for 6 Digital Samples
+
+
+RD_COL_PIPELINE1
+   DC END_RD_COL_PIPELINE1-RD_COL_PIPELINE1-1
+   DC      CLK3+$000000+FSYNC+F1+F2     ; trick to loop with rd_cols
+   DC      CLK3+$080000+FSYNC+F1+00     ;DTW 08 Select Pixel 1        40ns
+END_RD_COL_PIPELINE1
+
+
+RD_COLS1
+   DC END_RD_COLS1-RD_COLS1-1 ;
+   DC      CLK3+$000000+FSYNC+F1+F2     ; Deselect Pixel 2         360ns
+   DC      CLK3+$900000+FSYNC+F1+00     ;DTW 08 Select next Pixel           40ns
+END_RD_COLS1
+
+
+RD_COLS2
+   DC END_RD_COLS2-RD_COLS2-1 ;
+   DC      CLK3+$000000+FSYNC+F1+F2     ; Deselect Pixel 3         (240ns)
+   DC      CLK3+$900000+FSYNC+00+F2     ;DTW 08 Select Pixel 4        (40ns)
+END_RD_COLS2
+
+;RD_COL_PIPELINE1
+;   DC END_RD_COL_PIPELINE1-RD_COL_PIPELINE1-1
+;   DC      CLK3+000+FSYNC+F1+F2     ; trick to loop with rd_cols
+;   DC      CLK3+000+FSYNC+F1+00     ; Select Pixel 1        40ns
+;END_RD_COL_PIPELINE1
+;
+;
+;RD_COLS1
+;   DC END_RD_COLS1-RD_COLS1-1 ;
+;   DC      CLK3+DTW+FSYNC+F1+F2     ; Deselect Pixel 2         360ns
+;   DC      CLK3+000+FSYNC+F1+00     ; Select next Pixel           40ns
+;END_RD_COLS1
+;
+;
+;RD_COLS2
+;   DC END_RD_COLS2-RD_COLS2-1 ;
+;   DC      CLK3+DTW+FSYNC+F1+F2     ; Deselect Pixel 3         (240ns)
+;   DC      CLK3+000+FSYNC+00+F2     ; Select Pixel 4        (40ns)
+;END_RD_COLS2
+;
+;
+
+
+; This transmits the last pixels in each row, emptying the pipeline
+; Modified by L. Boucher for 6 Digital Samples
+;LAST_8INROW
+;   DC END_LAST_8INROW-LAST_8INROW-1
+;   DC      CLK3+DTW+FSYNC+F1+F2     ; Deselect Pixel        360ns
+;   DC      CLK3+000+FSYNC+F1+00     ; Select next Pixel           40ns
+;
+;   RD_COLS1 ; Macro
+;   RD_COLS1
+;   RD_COLS1
+;;   RD_COLS1
+;;   RD_COLS1
+;;   RD_COLS1
+;
+;END_LAST_8INROW
+;
+
+
+;RD_COLS_A
+;   DC END_RD_COLS_A-RD_COLS_A-1 ;
+;   DC      CLK3+DTW+FSYNC+F1+F2     ; Deselect Pixel 2         360ns
+;   DC      CLK3+000+FSYNC+F1+00     ; Select next Pixel           40ns
+;END_RD_COLS_A
+;
+;
+;RD_COLS_B
+;   DC END_RD_COLS_B-RD_COLS_B-1 ;
+;   DC      CLK3+DTW+FSYNC+F1+F2     ; Deselect Pixel 3         (240ns)
+;   DC      CLK3+000+FSYNC+00+F2     ; Select Pixel 4        (40ns)
+;END_RD_COLS_B
+
+
+SAMPLE_COL
+   DC END_SAMPLE_COL-SAMPLE_COL-1 ;
+
+
+;        DC      VIDEO+$000000+%0111             ; Wait 4 Reset Integrator    40ns
+        DC      VIDEO+$020000+%0101      ;SXM_TIM 8C       ; Settling time (3880ns)
+        DC      VIDEO+$000000+%0111      ;STP_TIM 00      ; Stop Reseting
+        DC      VIDEO+$180000+%0110      ;INT_TIM 18     ; Integrate Pixel 2 (760ns)
+        DC      VIDEO+$000000+%0111      ;00       ; Stop Integration
+        DC      VIDEO+$040000+%0011      ;ADC_CNV 04       ; Start A/D convert Pixel 2 (400ns)
+        DC      VIDEO+$0F0000+%0111      ;PAD_TIM 0F       ; Pad Delay - 40ns
+        DC      VIDEO+$0F0000+%0111      ;ADC_TIM 0F       ; Hold A/D convert sig Pixel 2 (1us)
+        DC      VIDEO+$000000+%1101      ;STL_TIM 00       ; Move A/D data to FIFO Pixel 2 (40ns)
+        DC      SXMIT                           ; SXMIT the Previous Pixel 2 - X32 (40ns)
+
+
+;  DC      VIDEO+RST_DLY+%0111             ; Wait 4 Reset Integrator    40ns
+;  DC      VIDEO+RST_TIM+%0101             ; Reset Integrator           1000ns
+;  DC      VIDEO+RST_STL+%0111             ; Stop Reset & wait          100ns
+;  DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 1             1000ns
+;  DC      VIDEO+INT_STL+%0111             ; Stop Integration & wait    360ns <----Leach March 5, 2020DC      VIDEO+ADC_CNV+%0011             ; Start A/D cnv Pix 1 Sample1      40ns
+;  DC      VIDEO+ADC_CNV+%0011             ; A/D Conversion             100ns
+;  DC      VIDEO+ADC_HLD+%0111             ; Hold A/D convert              480ns
+;  DC      VIDEO+STL_TIM+%1111             ; Move A/D data FIFO         40ns
+;  DC      SXMIT                           ; SXMIT                   40ns
+END_SAMPLE_COL
+
+
+
+
+
+
+; ENDS HERE THE REAOUDT OF THE 6DS
+
+
+
+
+
+
+; This code intiates the pipeline of pixels for each row
+RD_NTX_PIPELINE
+   DC END_RD_NTX_PIPELINE-RD_NTX_PIPELINE-1
+   DC      CLK3+000+FSYNC+F1+00     ; Select Pixel 1  40ns
+   DC      VIDEO+PAD_TIM+%0111             ; Pad Delay -    640ns
+   DC      VIDEO+ADC_TIM+%0111             ; Hold No Pixel         1000ns
+   DC      VIDEO+STL_TIM+%0101             ; Move No Pixel      400ns
+   DC      VIDEO+$000000+%0101             ; Place for SXMIT    40ns
+    DC      VIDEO+SXM_TIM+%0101             ; Settling time        3880ns
+   DC      VIDEO+STP_TIM+%0111             ; Stop Reseting          40ns
+    DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 1    1000ns
+    DC      VIDEO+$000000+%0111             ; Stop Integration       40ns
+   DC      VIDEO+ADC_CNV+%0011             ; Start A/D cnv Pix 1    40ns
+   DC      CLK3+DTW+FSYNC+F1+F2     ; Deselect Pixel 1   360ns
+   DC      CLK3+000+FSYNC+00+F2     ; Select Pixel 2   40ns
+   DC      VIDEO+PAD_TIM+%0111             ; Pad Delay -         640ns
+   DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert     1000ns
+   DC      VIDEO+STL_TIM+%1101             ; Move A/D data FIFO     40ns
+   DC      VIDEO+0000000+%0101             ; Settling time           40ns
+    DC      VIDEO+SXM_TIM+%0101             ; Settling time        3880ns
+   DC      VIDEO+STP_TIM+%0111             ; Stop Reseting      40ns
+    DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 3    1000ns
+    DC      VIDEO+$000000+%0111             ; Stop Integration       40ns
+   DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert      40ns
+   DC      CLK3+DTW+FSYNC+F1+F2     ; Deselect Pixel 3   360ns
+END_RD_NTX_PIPELINE
+
+RD_NTX
+   DC END_RD_NTX-RD_NTX-1
+   DC      CLK3+000+FSYNC+F1+00     ; Select Pixel 2 (40ns)
+   DC      VIDEO+PAD_TIM+%0111             ; Pad Delay - 40ns
+   DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert sig Pixel 1 (1us)
+   DC      VIDEO+STL_TIM+%1101             ; Move A/D data to FIFO Pixel 1 (40ns)
+   DC      VIDEO+0000000+%0101             ; Settling time           40ns
+    DC      VIDEO+SXM_TIM+%0101             ; Settling time (480ns)
+   DC      VIDEO+STP_TIM+%0111             ; Stop Reseting
+    DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 2 (760ns)
+    DC      VIDEO+$000000+%0111             ; Stop Integration
+   DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert Pixel 2 (400ns)
+   DC      CLK3+DTW+FSYNC+F1+F2     ; Deselect Pixel 1 (240ns)
+   DC      CLK3+000+FSYNC+00+F2     ; Select Pixel 3 (40ns)
+   DC      VIDEO+PAD_TIM+%0111             ; Pad Delay - 40ns
+   DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert sig Pixel 2 (1us)
+   DC      VIDEO+STL_TIM+%1101             ; Move A/D data to FIFO Pixel 2 (40ns)
+   DC      VIDEO+0000000+%0101             ; Settling time           40ns
+    DC      VIDEO+SXM_TIM+%0101             ; Settling time (480ns)
+   DC      VIDEO+STP_TIM+%0111             ; Stop Reseting
+    DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 3 (760ns)
+    DC      VIDEO+$000000+%0111             ; Stop Integration
+   DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert Pixel 3 (400ns)
+   DC      CLK3+DTW+FSYNC+F1+F2     ; Deselect Pixel 3 (240ns)
+END_RD_NTX
+
+LAST_NTX_8INROW
+   DC END_LAST_NTX_8INROW-LAST_NTX_8INROW
+   DC      CLK3+000+FSYNC+F1+00     ; Select Pixel 2 (40ns)
+   DC      VIDEO+PAD_TIM+%0111             ; Pad Delay - 40ns
+   DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert sig Pixel 1 (1us)
+   DC      VIDEO+STL_TIM+%1101             ; Move A/D data to FIFO Pixel 1 (40ns)
+   DC      VIDEO+0000000+%0101             ; Settling time           40ns
+    DC      VIDEO+SXM_TIM+%0101             ; Settling time (480ns)
+   DC      VIDEO+STP_TIM+%0111             ; Stop Reseting
+    DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 2 (760ns)
+    DC      VIDEO+$000000+%0111             ; Stop Integration
+   DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert Pixel 2 (40+40ns)
+   DC      CLK3+DTW+FSYNC+F1+F2     ; Deselect Pixel 1 (240ns)
+END_LAST_NTX_8INROW
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

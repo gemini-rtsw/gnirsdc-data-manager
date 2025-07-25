@@ -1,0 +1,23 @@
+	echo ""
+	echo "Assembling DSP code for GTC's CRC774 IR array"
+	echo ""
+#
+# DOWNLOAD selects application code to be loaded from EEPROM or 
+#   downloaded from the host over the fiber optic link
+#
+# DOWNLOAD = HOST or ROM
+
+DOWNLOAD=HOST
+WAVEFORM_FILE=AladdinIII.waveforms
+DST_FILE=optimized
+TOOLPATH="/home/lockhart/.wine/drive_c/PF/tools/DSP/CLAS563/BIN/"
+
+wine $TOOLPATH/asm56300 -b -ltim.ls -d DOWNLOAD $DOWNLOAD -d WAVEFORM_FILE "$WAVEFORM_FILE" tim.asm
+wine $TOOLPATH/dsplnk -btim.cld -v tim.cln 
+rm -f "$DST_FILE".lod
+wine $TOOLPATH/cldlod tim.cld > "$DST_FILE".lod
+rm tim.cln ; rm tim.cld
+
+	echo ""
+	echo "Created file 'tim.lod' for downloading over optical fiber"
+	echo ""
