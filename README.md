@@ -147,7 +147,6 @@ From a remote system
 
 ```
 ssh -X <irdc server> "irdc_dm_server.sh"
-```
 or 
 
 ```
@@ -351,58 +350,297 @@ This process ensures that the library is built consistently and that dependent p
 
 
 ## VSCode
+Work within the Dev Container for a consistent environment.
+- Prereqs: Docker, VSCode with Dev Containers extension.
+- Open the folder and use: Command Palette → "Dev Containers: Reopen in Container".
+- The container includes Python 3.9, EPICS tools, GIAPI glue (see `Dockerfile.dev`).
+- To update environment after base image changes: Command Palette → "Dev Containers: Rebuild Container".
+
 ## dev con
+Common developer workflows inside the VSCode Dev Container:
+- Start GMP server (host networking):
+  ```bash
+dc-start-gmp.sh
+  ```
+- Run the TCS simulator:
+  ```bash
+python3 test/tcs_simulator.py
+  ```
+- Start the Data Manager IOC (debug, test top):
+  ```bash
+python3 src/gnirsdm.py --debug --top tgnirs
+  ```
+- Launch the System Manager:
+  ```bash
+python3 src/system_manager_server.py --debug
+  ```
+- Verify PVs via System Manager Monitoring tab or EPICS tools (`caget`, `caput`).
+
 ## pip3.9 install . 
+Use to install local Python packages (notably `gnirsdc-lib`) into the container.
+- From the `gnirsdc-lib` checkout:
+  ```bash
+make clean all
+pip3.9 install .
+  ```
+- Validate:
+  ```bash
+python3 -c "import libgnirsioc; print('libgnirsioc OK')"
+  ```
+
 ### rm /usr/local/lib64/python3.9/site-packages/libgnirsioc.so 
+If `pip3.9 install .` doesn’t update the shared object (caching/path issues), remove and reinstall:
+```bash
+rm -f /usr/local/lib64/python3.9/site-packages/libgnirsioc.so
+pip3.9 install .
+```
+
 ### etc
+- If GIAPI libraries aren’t found, ensure `GIAPI_ROOT` and `LD_LIBRARY_PATH` are set. For ad‑hoc shells: `source giapi-glue-cc/defineGiapiglueEnv.sh`.
+- Ensure `EPICS_CA_ADDR_LIST` is reachable (configured in `conf/gnirsdc/config.ini`; applied by `gnirsdm.py` at startup).
+
 ## pipeline generated commit
+`gnirsdc-lib` CI builds `libgnirsioc.so`. When it changes, downstream images (this repo) are rebuilt so the IOC (`gnirssdsu.py`, `tcs_monitor.py`) pick up the new library. For local iteration, rebuild and `pip3.9 install .` as above and restart the IOC.
 
 # libgnirsioc python cmd line use
+Minimal sanity in dev container:
+```bash
+python3 - << 'PY'
+import libgnirsioc
+ctx = libgnirsioc.TCSContext()
+print('TCSContext:', ctx)
+PY
+```
+Full controller usage is via EPICS CADs in `gnirssdsu.py` (operate with System Manager or EPICS tools).
 
 # how do run debug modes
-## collect_dataset.py
+Quick flow (see Debug Setup for full details):
+- Start GMP: `dc-start-gmp.sh`
+- Start TCS simulator: `python3 test/tcs_simulator.py`
+- Start IOC: `python3 src/gnirsdm.py --debug --top tgnirs`
+- Start System Manager: `python3 src/system_manager_server.py --debug`
 
+## collect_dataset.py
+Drive a sequence of exposures for dataset collection.
+- Location: `test/collect_dataset.py` (expects top `tgnirs:`; change prefix if needed).
+- Requires `test/collect_config.txt` lines with fields:
+  - 0: LNRS (low-noise reads)
+  - 1: ADC digital averages
+  - 2: Sequence count (# exposures)
+  - 3: Drop readouts (UTR)
+  - 4: Well depth ("0.3" or "0.6")
+  - 5: Up-the-ramp mode (0 normal, 1 UTR)
+  - 6: Include engineering data (0/1)
+- Example:
+  ```
+16 16 3 0 0.6 0 0
+1 16 5 0 0.3 0 1
+  ```
+- Run:
+  ```bash
+python3 test/collect_dataset.py
+  ```
+Monitors `tgnirs:dc:applyC.VAL` to detect readout start/end; drives `dc:*`, `archive_fits`, `include_eng`.
 
 # run dm screen
+The DM screen offers an operator UI outside System Manager.
 ## linux
+- If you have X11 and network access to the IRDC server:
+```bash
+irdc_dm.sh
+```
+- Or via SSH with X forwarding:
+```bash
+ssh -X <irdc server> "irdc_dm_server.sh"
+# or
+ssh -X <irdc server>
+irdc_dm_server.sh
+```
 ## mac
-### export DISPLAY=host.docker.internal:0
-### ./irdc_dm_server.sh
+- Install XQuartz, allow network clients (Preferences → Security), then:
+```bash
+export DISPLAY=host.docker.internal:0
+./irdc_dm_server.sh
+```
 
 # debug mode in vscode
+Use the Dev Container steps above. `--debug` selects the `DEBUG` section of `conf/gnirsdc/config.ini`, using test EPICS tops (`tgnirs:`) and test TCS/AG prefixes.
 
 # gnirs-lib manual build
+Manual build of `gnirsdc-lib` for local iteration:
 ## /gnirsdc-lib
 ## make
+```bash
+make clean all
+```
 ## pip3.9 install .
+```bash
+pip3.9 install .
+python3 -c "import libgnirsioc; print('OK')"
+```
+Restart the IOC to load the new library.
 
 # git setup 
 ## [root@docker-desktop gnirsdc-lib]# git config --global user.name "Hawi Stecher"
 ## [root@docker-desktop gnirsdc-lib]# git config --global user.email "hawi.stecher@noirlab.edu"
+Use your own user.name/email inside the dev container when pushing.
 
 # dev container
 ## docker pull
+Pull the latest dev image:
+```bash
+docker pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev
+```
 ## rebuild
+In VSCode, use “Dev Containers: Rebuild Container” after pulls or dependency changes. If broken, try “Rebuild and Reopen in Container”.
 
+## GNIRS WCS Procedures
 
-Future notes:
-IRDC Documentation Notes
-Driver documentation
-Kernel version
-Repo
-Build
-Install
-troubleshooting
-DM Screen
-Repo
-Build
-Install
-Run
-Use
+The WCS files are stored in `/gemini/GEM5/gnirs/DC/DC/data/`, and they have names like "gnirs_3_short.wcs".
 
+Update this web page so that we can keep track of WCS changes: internal.gemini.edu/science/instruments/GNIRS/Systems_Reference/wcs/gnirsWCS.html
 
-for debug in vscode you must "tar -xvf giapi-gluecc_rocky8.tar.gz"
+The WCS depends on the hotspot, so if the hotspot is significantly off and there are huge offsets, gwcs may fail in very weird ways, and you may need to start with the single star method.
 
+Typically, we check the WCS for GNIRS short blue camera.
+
+### Using an "astrometric field"
+
+If you've doing the hotspot, IAA, checkouts already just skip to step 5.
+
+1. Choose a field with a bright star at the center and many Gaia/2MASS stars in the field
+2. Check that science fold values have been updated and are correct
+3. Slew to the astrometric field
+4. Do GNIRS hotspot and Refine the IAA if necessary
+5. Take an image
+6. Run gwcs to derive new WCS. If you've done the IAA checkouts, the output from giaa gives WCS offsets (WCS dX, WCS dY)
+7. If WCS is good within 1-2 arcseconds then don't do anything. otherwise continue with the rest of the steps
+8. Follow the 'Adjusting the WCS with shiftwcs.sh' and 'Using offsets with a single star below'
+9. Upload the WCS file if needed to `/gemini/GEM5/gnirs/DC/DC/data/`. Note the shiftwcs.sh script automatically makes a backup of the original WCS file, so you don't need to manually make a backup
+10. Reload the WCS file if needed (Mark/Start) using the initWcsCAD (DC-->Additional Screens-->initWcsCAD)
+11. Take another image and re-run gwcs to confirm the new WCS
+
+### Adjusting the WCS with shiftwcs.sh
+
+Log in to gemvx@pisces and run the shiftwcs.csh script using the offsets outputted by WCS. This script should be located in `/home/gemvx/bin/shiftwcs.sh`. Go to the directory where the NIRI wcs are stored and run this script. Note the script automatically backups the original copy of the WCS so you can revert back to it if needed.
+
+```
+shiftwcs.sh - shift an instrument WCS
+
+SYNOPSIS
+
+shiftwcs.sh [-p] wcsfile xshift yshift
+
+DESCRIPTION
+
+Make a backup of the supplied WCS file by appending it's last modification date, then shift the WCS file in X and Y. By default the supplied X and Y shifts are assumed to be in arcseconds. One may give offsets in pixels with the -p option. Note that shifts in arcseconds are in the TELESCOPE reference frame, and shifts in pixels are in the DETECTOR reference frame. For this reason it may be more intuitive to apply shifts in pixels, although shifts due to hotspot changes may be easier to apply in arcseconds.
+
+OPTIONS
+
+-p : Apply shifts in pixels instead of arcseconds
+```
+
+Reload the WCS file (Mark/Start) using the initWcsCAD (DC>Additional Screens)
+Take another image to confirm the new WCS (make sure the compass on the QuickLook Tool is correct)
+
+### Using offsets with a single star (when there are less than ~9 stars in the field)
+
+1. Choose a field with a single bright star
+2. Have the SOS center the star on the CR center while guiding
+3. Create an observation with ~10 offsets which move the star to the field extremes, starting and ending at (0,0)
+4. Record the instrument offsets (X,Y) from the TSD for each position (instrument offsets are NOT the P,Q offsets in the OT offset iterator!)
+5. Use IRAF imexam "r" to record the star position on each image (in pixels)
+6. Create a "raw" coordinate file with the image number, Instrument offsets and Image coordinates:
+
+```
+> cat gnirs.raw
+# N     Instrument      Image
+#       X       Y       X       Y
+232     2.66   7.08     511.00  512.51
+233     -5.37 15.05     878.21 145.36
+234     -5.30 -0.95     144.91 148.78
+235     10.63 15.12     878.95 876.40
+236     10.70 -0.88     145.26 879.84
+237     2.66   7.08     511.16 513.69
+```
+
+7. Create the wcs file by running this raw file through awk:
+```
+awk '$1>0 {printf "%6.2f %6.2f  %8.4f %8.4f\n", $4,$5,$2/1.61144,$3/1.61144}' gnirs.raw > gnirs.wcs
+```
+
+This will:
+- convert the Instrument offsets from arcseconds to millimeters by dividing by 1.61144
+- re-order the columns to be Image Coordinates (x,y) and Instrument Offsets (x,y)
+
+```
+> cat gnirs.wcs
+511.00 512.51    1.6507   4.3936
+878.21 145.36   -3.3324   9.3395
+144.91 148.78   -3.2890  -0.5895
+878.95 876.40    6.5966   9.3829
+145.26 879.84    6.6400  -0.5461
+511.16 513.69    1.6507   4.3936
+```
+
+8. Update the WCS file on pisces
+9. Make a backup of the old WCS file (if there isn't one already):
+```
+mv gnirs_3_short.wcs gnirs_3_short.wcs.date
+```
+10. Copy the new WCS file: (the syntax is p<port>f<camera><altair>.wcs)
+```
+scp gnirs.wcs gemvx@pisces:/gemini/GEM5/gnirs/DC/DC/data//gnirs_3_short.wcs
+```
+11. Reload the WCS file (Mark/Start) using the initWcsCAD (DC>Additional Screens)
+12. Take another image to confirm the new WCS (make sure the compass on the QuickLook Tool is correct)
+
+R. Mason 20130424
+
+updated 2018 Nov 27 - astephens + MES
+
+## Build Architecture
+
+The GNIRS DC Data Manager build architecture involves several dependencies and components that are integrated during the Docker build process:
+
+```mermaid
+graph TD
+    A[gnirsdc-data-manager repo] --> B[Base Image: gnirsdc-base]
+    B --> C[System Dependencies]
+    C --> D[Python Dependencies]
+    D --> E[gnirsdc]
+    E --> F[pycadcar]
+    E --> G[gnirsdc-lib]
+    E --> H[giapi-gluecc]
+    
+    subgraph BR[Build Requirments]
+        F
+        G
+        H
+    end
+    
+    BR --> I[Final Image]
+    
+    classDef component fill:#f9f,stroke:#333,stroke-width:2px
+    classDef repo fill:#bbf,stroke:#333,stroke-width:2px
+    
+    class A,E,F,G repo
+    class B,C,D,H,I component
+```
+
+The build process follows these steps:
+
+1. Start with the base image `gnirsdc-base`
+2. Install system dependencies (git, python3-pip)
+3. Install Python packages (flask, caproto, numpy, etc.)
+4. Copy and install component repos in sequence:
+   - `pycadcar` → installed first
+   - `gnirsdc-lib` → depends on pycadcar
+   - `gnirsdc` → depends on both previous components
+5. Extract and configure `giapi-gluecc` from tar.gz file
+6. Set up necessary environment variables and libraries
+
+This architecture ensures that all dependencies are properly installed in the correct order for the GNIRS DC Data Manager to function.
 
 
 # System Manager
