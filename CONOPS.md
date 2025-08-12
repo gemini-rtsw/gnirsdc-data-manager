@@ -21,6 +21,45 @@ This document describes normal operations and procedures for GNIRS Detector Cont
 - System Manager must be run as `telops`.
 - System Manager URL (default): `http://<irdc-host>:8080`
 
+### System Manager pages and controls
+Use these pages for all routine operations. Indicators and controls mirror EPICS PVs and automate host commands where needed.
+
+- Monitoring
+  - Status: Heartbeat, DC State, Epics Top, GDS (GMP) connection, TCS connection, Temperature, SDSU Initialized, Interlock state, Bias voltage, NTP Time, Firmware checksum.
+  - Actions:
+    - Initialize SDSU Controller → initializes the controller (Apply flow)
+    - Activate/Deactivate SDSU Voltages → power rails on/off
+    - Clear Errors → preset Apply to clear error state
+    - TDL → run TDL action
+    - Start/Restart DC Software (Normal/Debug) → starts services on the host
+    - Stop Controller → stops services
+  - Integration Parameters: Fowler, Digital Averages, Exposure Time, Coadds, Sequence, File Name, Bias (DEEP/SHALLOW)
+  - Run: Set Parameters, Start Integration / Abort
+  - Logs: live PV log and file log viewer
+
+- Engineering
+  - Toggle temperature interlock override (use only with authorization)
+  - Disk space (df -h) and directory sizes for `/readout_data/*` (du -sh)
+
+- FITS Files
+  - Browse recent FITS in `/readout_data/fits` and `/staging/perm`
+  - Filter by date; download filtered set as ZIP
+  - View FITS primary header for quick inspection
+
+- Preview Latest
+  - Live preview (PNG) of most recent FITS file in `/readout_data/fits`
+
+- Config Editor
+  - Edit `conf/gnirsdc/config.ini` (`DEFAULT` and `DEBUG` sections)
+  - Save preserves key casing and alignment
+  - Restart controller from Monitoring → Actions to apply changes
+
+- Logs
+  - List and view contents of files under `/readout_data/logs`
+
+- Help
+  - Renders repository `README.md` with a table of contents
+
 ### Normal operations
 
 #### 1) Start the System Manager
