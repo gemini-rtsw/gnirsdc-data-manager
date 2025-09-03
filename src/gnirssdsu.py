@@ -700,7 +700,7 @@ class GnirsCADCARController(PVGroup):
             return
 
     temperature_status  = pvproperty(value='0', dtype=caproto.ChannelType.STRING, name="dc:temperature_status")    
-    @temperature_status.scan(period=60)  # Scan every 60 seconds
+    @temperature_status.scan(period=5)  # Scan every 5 seconds (sped up from 60)
     async def temperature_status(self, instance, async_lib):
         try:
             status = self.lakeshore.check_status()
@@ -711,6 +711,14 @@ class GnirsCADCARController(PVGroup):
                 print("Status reading returned None")
         except Exception as e:
             print(f"Error reading status: {e}")
+
+    # Duplicate temperature channel as dc:C1Tmp - reads from existing temperature PV
+    c1_tmp = pvproperty(value=-999.0, read_only=True, dtype=caproto.ChannelType.DOUBLE, name="dc:C1Tmp")
+
+    @c1_tmp.scan(period=5)  # Scan every 5 second to copy temperature value
+    async def c1_tmp(self, instance, async_lib):
+        # Simply copy the value from the existing temperature PV
+        await instance.write(self.temperature.value)
 
     disable_interlock  = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="dc:disable_interlock")    
 

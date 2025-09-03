@@ -313,10 +313,12 @@ class GnirsDataManagerIOC(PVGroup):
         await self.health.write(value)
 
 #-----------------------------------------------------------------------------
-    dc_health = pvproperty(value="GOOD", dtype=ChannelType.STRING, name="dc:dcHealth")
+    dc_health = pvproperty(value="GOOD", dtype=ChannelType.STRING, name="dc:dcHealth", max_length=10)
 
     @dc_health.startup
     async def dc_health(self, instance, async_lib):
+        # Initialize with GOOD status
+        await instance.write("GOOD")
         # Start periodic health check
         while True:
             await self.update_dc_health()
