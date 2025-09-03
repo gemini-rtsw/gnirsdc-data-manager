@@ -313,16 +313,7 @@ class GnirsDataManagerIOC(PVGroup):
         await self.health.write(value)
 
 #-----------------------------------------------------------------------------
-    dc_health = pvproperty(value="GOOD", dtype=ChannelType.STRING, name="dc:dcHealth", max_length=10)
-
-    @dc_health.startup
-    async def dc_health(self, instance, async_lib):
-        # Initialize with GOOD status
-        await instance.write("GOOD")
-        # Start periodic health check
-        while True:
-            await self.update_dc_health()
-            await async_lib.library.sleep(2.0)  # Check every 2 seconds
+    dc_health = pvproperty(value='GOOD', dtype=ChannelType.STRING, name="dc:dcHealth")
 
     async def update_dc_health(self):
         """Update the dc:dcHealth channel based on all critical connections and systems"""
@@ -399,6 +390,12 @@ class GnirsDataManagerIOC(PVGroup):
                     self.update_tcs_connection(instance, connected), 
                     loop
                 )
+                # Also update the dc_health status every 2 seconds
+                if int(time.time()) % 2 == 0:
+                    asyncio.run_coroutine_threadsafe(
+                        self.update_dc_health(),
+                        loop
+                    )
                 time.sleep(1)  # check every second
 
         threading.Thread(target=check_tcs_connection, args=(loop,), daemon=True).start()

@@ -802,7 +802,6 @@ class GnirsCADCARController(PVGroup):
 
     dhsConnected   = pvproperty(value=1, dtype=caproto.ChannelType.LONG, name=  "sad:dc:dhsConnected", doc = "")
     minIntVAL      = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:minInt.VAL", doc = "")
-    C1Tmp          = pvproperty(value=0, dtype=caproto.ChannelType.DOUBLE, name="dc:C1Tmp", doc = "")
 
 
 
