@@ -6,11 +6,11 @@
     
     <div class="status-grid">
         <div class="status-container">
-            <span class="status-label">GNIRS DC Health:</span>
+            <span class="status-label">DC Heartbeat:</span>
             <div id="heartbeatIndicator" class="status-indicator"></div>
         </div>
 
-
+        
         <div class="status-container">
             <span class="status-label">GNIRS DC State:</span>
             <span id="applyCValueIndicator" class="status-value"></span>
@@ -217,6 +217,9 @@
                 case 'interlock_override':
                     updateIndicator('interlockIndicator', value === 0, 'interlock');
                     break;
+                case 'dc_health':
+                    updateIndicator('dcHealthIndicator', value === 'GOOD', 'status');
+                    break;
                 case 'temperature':
                     updateTextContent('temperatureValue', value ? value.toFixed(2) + ' K' : 'N/A');
                     break;
@@ -291,6 +294,9 @@
                     break;
                 case 'interlock_override':
                     updateIndicator('interlockIndicator', value === 0, 'interlock');
+                    break;
+                case 'dc_health':
+                    updateIndicator('dcHealthIndicator', value === 'GOOD', 'status');
                     break;
                 case 'temperature':
                     updateTextContent('temperatureValue', value ? (typeof value.toFixed === 'function' ? value.toFixed(2) + ' K' : value + ' K') : 'N/A');
@@ -696,6 +702,15 @@
                         const indicator = document.getElementById('interlockIndicator');
                         if (indicator) {
                             indicator.className = 'interlock-indicator server-disconnected';
+                        }
+                    }
+                    
+                    if (connectionStatus.dc_health) {
+                        updateIndicator('dcHealthIndicator', pvs.dc_health === 'GOOD', 'status');
+                    } else {
+                        const indicator = document.getElementById('dcHealthIndicator');
+                        if (indicator) {
+                            indicator.className = 'status-indicator server-disconnected';
                         }
                     }
                     

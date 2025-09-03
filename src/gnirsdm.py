@@ -313,6 +313,61 @@ class GnirsDataManagerIOC(PVGroup):
         await self.health.write(value)
 
 #-----------------------------------------------------------------------------
+    dc_health = pvproperty(value="GOOD", dtype=ChannelType.STRING, name="dc:dcHealth")
+
+    @dc_health.startup
+    async def dc_health(self, instance, async_lib):
+        # Start periodic health check
+        while True:
+            await self.update_dc_health()
+            await async_lib.library.sleep(2.0)  # Check every 2 seconds
+
+    async def update_dc_health(self):
+        """Update the dc:dcHealth channel based on all critical connections and systems"""
+        health_status = "GOOD"
+        issues = []
+
+        # Check TCS connection
+        if self.tcs_connection.value != "CONNECTED":
+            health_status = "BAD"
+            issues.append("TCS disconnected")
+
+        # Check GDS/GMP connection
+        if self.gmp_status.value != "CONNECTED":
+            health_status = "BAD"
+            issues.append("GDS disconnected")
+
+        # Check temperature interlock (only if not disabled)
+        try:
+            # Access the CAD interface to check interlock status
+            if hasattr(self, 'CADInterface') and hasattr(self.CADInterface, 'interlocked'):
+                # Only consider temperature a problem if interlock is active AND not disabled
+                if self.CADInterface.interlocked():
+                    # Check if interlock is disabled
+                    interlock_disabled = getattr(self.CADInterface, 'disable_interlock', None)
+                    if interlock_disabled and interlock_disabled.value > 0:
+                        # Interlock is disabled, so temperature is not a health issue
+                        pass
+                    else:
+                        health_status = "BAD"
+                        issues.append("Temperature interlock active")
+        except Exception as e:
+            # If we can't check interlock status, consider it a problem
+            health_status = "BAD"
+            issues.append("Cannot check temperature status")
+
+        # Write the health status
+        await self.dc_health.write(health_status)
+        
+        # Log status changes
+        if health_status != getattr(self, '_last_dc_health', "GOOD"):
+            if health_status == "BAD":
+                await self.logMessage(f"DC Health: BAD - {', '.join(issues)}")
+            else:
+                await self.logMessage("DC Health: GOOD - All systems operational")
+            self._last_dc_health = health_status
+
+#-----------------------------------------------------------------------------
     heartbeat = pvproperty(value=0, dtype=int, name="sad:dc:heartBeat")
 
     @heartbeat.startup
@@ -348,9 +403,10 @@ class GnirsDataManagerIOC(PVGroup):
 
     async def update_tcs_connection(self, instance, connected):
         await instance.write("CONNECTED" if connected else "DISCONNECTED")
+        # The dc_health channel will handle overall health status
+        # Keep the original health channel for backward compatibility
         if not connected:
             await self.set_health("BAD")
-            await self.logMessage("TCS disconnected")
         else:
             await self.set_health("GOOD")
 

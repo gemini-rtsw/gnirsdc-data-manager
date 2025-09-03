@@ -346,7 +346,8 @@ class PVSubscriptionManager:
             f'{top_name}:ntp_time',
             f'{top_name}:sad:dc:rdout',
             f'{top_name}:sad:dc:obsProgress',
-            f'{top_name}:dc:firmChecksum'
+            f'{top_name}:dc:firmChecksum',
+            f'{top_name}:dc:dcHealth'
         ]
         return self.subscribe_to_multiple_pvs(core_pvs)
 
@@ -994,7 +995,8 @@ def get_all_pvs():
         f'{top_name}:tcs_connection': 'tcs_connection',
         f'{top_name}:gmp_status': 'gmp_status',
         f'{top_name}:ntp_time': 'ntp_time',
-        f'{top_name}:dc:firmChecksum': 'firm_checksum'
+        f'{top_name}:dc:firmChecksum': 'firm_checksum',
+        f'{top_name}:dc:dcHealth': 'dc_health'
     }
     
     # Track connection status for key status indicators
@@ -1006,7 +1008,8 @@ def get_all_pvs():
         f'{top_name}:tcs_connection',
         f'{top_name}:gmp_status',
         f'{top_name}:dc:sdsuState',
-        f'{top_name}:dc:disable_interlock'
+        f'{top_name}:dc:disable_interlock',
+        f'{top_name}:dc:dcHealth'
     ]
     
     # Check if each key PV is connected
@@ -1029,7 +1032,8 @@ def get_all_pvs():
         'tcs_connection': connection_status.get(f'{top_name}:tcs_connection', False),
         'gmp_status': connection_status.get(f'{top_name}:gmp_status', False),
         'sdsu_state': connection_status.get(f'{top_name}:dc:sdsuState', False),
-        'interlock_override': connection_status.get(f'{top_name}:dc:disable_interlock', False)
+        'interlock_override': connection_status.get(f'{top_name}:dc:disable_interlock', False),
+        'dc_health': connection_status.get(f'{top_name}:dc:dcHealth', False)
     }
     
     # Process each PV using its metadata

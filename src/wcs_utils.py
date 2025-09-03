@@ -42,7 +42,8 @@ def load_all_files():
         'aognirs_1_long.wcs', 'aognirs_3_long.wcs', 'aognirs_5_long.wcs',
         'gnirs_1_long.wcs', 'gnirs_3_long.wcs', 'gnirs_5_long.wcs',
         'aognirs_1_short.wcs', 'aognirs_3_short.wcs', 'aognirs_5_short.wcs',
-        'gnirs_1_short.wcs', 'gnirs_3_short.wcs', 'gnirs_5_short.wcs'
+        'gnirs_1_short.wcs', 'gnirs_3_short.wcs', 'gnirs_5_short.wcs',
+        'gnirs_0_long.wcs', 'gnirs_0_short.wcs'
     ]
     base_dir = '../conf/wcs/'  
 
