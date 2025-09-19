@@ -41,6 +41,18 @@ class Lakeshore325:
                 self.connect()
                 
             if self.sock:
+                # Flush any buffered data before sending new command
+                self.sock.settimeout(0.1)  # Short timeout for flush
+                try:
+                    while True:
+                        data = self.sock.recv(1024)
+                        if not data:
+                            break
+                except socket.timeout:
+                    pass  # Expected when buffer is empty
+                finally:
+                    self.sock.settimeout(self.timeout)  # Restore original timeout
+                
                 self.sock.sendall(command)
                 response = self.sock.recv(1024).strip()
                 return response.decode('utf-8')
