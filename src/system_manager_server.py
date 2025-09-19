@@ -275,7 +275,8 @@ class PVSubscriptionManager:
                 return self.subscriptions[pv_name]
             
             try:
-                pv, = self.ctx.get_pvs(pv_name)
+                # Add timeout to prevent blocking indefinitely
+                pv, = self.ctx.get_pvs(pv_name, timeout=2.0)
                 sub = pv.subscribe(data_type='time')
                 sub.add_callback(self.handle_subscription)
                 self.subscriptions[pv_name] = sub
@@ -353,30 +354,58 @@ class PVSubscriptionManager:
 
     def check_subscription_health(self):
         """Check if any subscriptions need to be reconnected"""
-        disconnected_count = 0
-        total_count = len(self.subscriptions)
-        
-        # Count disconnected PVs
-        with self.subscription_lock:
-            for pv_name, sub in list(self.subscriptions.items()):
-                if not sub.pv.connected:
-                    disconnected_count += 1
-        
-        # If most PVs are disconnected, force complete reinit
-        if disconnected_count > 0 and disconnected_count / total_count > 0.5:
-            logger.warning(f"{disconnected_count}/{total_count} PVs disconnected. Forcing complete reconnection...")
-            reinitialize_connections()
-            return
-        
-        # Regular connection check for individual PVs
-        with self.subscription_lock:
-            for pv_name, sub in list(self.subscriptions.items()):
-                if not sub.pv.connected:
-                    logger.warning(f"Subscription to {pv_name} disconnected, reconnecting")
-                    # Remove old subscription
-                    self.subscriptions.pop(pv_name, None)
-                    # Try to resubscribe
+        try:
+            disconnected_count = 0
+            total_count = len(self.subscriptions)
+            
+            if total_count == 0:
+                return  # No subscriptions to check
+            
+            # Count disconnected PVs
+            disconnected_pvs = []
+            with self.subscription_lock:
+                for pv_name, sub in list(self.subscriptions.items()):
+                    try:
+                        if not sub.pv.connected:
+                            disconnected_count += 1
+                            disconnected_pvs.append(pv_name)
+                    except Exception as e:
+                        logger.error(f"Error checking connection status for {pv_name}: {str(e)}")
+                        disconnected_count += 1
+                        disconnected_pvs.append(pv_name)
+            
+            # If most PVs are disconnected, force complete reinit (but limit frequency)
+            if disconnected_count > 0 and disconnected_count / total_count > 0.5:
+                logger.warning(f"{disconnected_count}/{total_count} PVs disconnected. Scheduling reconnection...")
+                # Schedule reinit in a separate thread to avoid blocking
+                threading.Thread(target=self._safe_reinitialize_connections, daemon=True).start()
+                return
+            
+            # Regular connection check for individual PVs (limit to 3 per check to avoid blocking)
+            pvs_to_reconnect = disconnected_pvs[:3]  # Only try to reconnect 3 PVs per health check
+            for pv_name in pvs_to_reconnect:
+                try:
+                    logger.warning(f"Attempting to reconnect to {pv_name}")
+                    with self.subscription_lock:
+                        # Remove old subscription
+                        if pv_name in self.subscriptions:
+                            self.subscriptions.pop(pv_name, None)
+                    # Try to resubscribe (this now has a timeout)
                     self.subscribe_to_pv(pv_name)
+                except Exception as e:
+                    logger.error(f"Error reconnecting to {pv_name}: {str(e)}")
+                    
+        except Exception as e:
+            logger.error(f"Error in subscription health check: {str(e)}")
+            
+    def _safe_reinitialize_connections(self):
+        """Safely reinitialize connections in a separate thread"""
+        try:
+            logger.warning("Starting safe reconnection process...")
+            time.sleep(2)  # Brief delay to avoid rapid reconnection attempts
+            reinitialize_connections()
+        except Exception as e:
+            logger.error(f"Error in safe reinitialize: {str(e)}")
 
 # Create a global instance
 pv_manager = PVSubscriptionManager(ctx)
@@ -1180,7 +1209,7 @@ def subscription_health_check():
             pv_manager.check_subscription_health()
         except Exception as e:
             logger.error(f"Error in subscription health check: {str(e)}")
-        time.sleep(5)  # Check every 5 seconds
+        time.sleep(10)  # Check every 10 seconds (reduced frequency to avoid overwhelming)
 
 # Start the subscription health check thread
 health_check_thread = threading.Thread(target=subscription_health_check, daemon=True)
@@ -1350,19 +1379,32 @@ def reinitialize_connections():
     
     logger.warning("Reinitializing all EPICS connections from scratch")
     
-    # Clear existing subscriptions
-    pv_manager.clear_all_subscriptions()
-    
-    # Create a new context
-    ctx = Context()
-    
-    # Create a new manager
-    pv_manager = PVSubscriptionManager(ctx)
-    
-    # Initialize subscriptions just like at startup
-    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-    logger.info(f"Setting up core PV subscriptions with prefix: {top_name}")
-    pv_manager.setup_core_subscriptions(top_name)
+    try:
+        # Clear existing subscriptions
+        pv_manager.clear_all_subscriptions()
+        
+        # Create a new context
+        ctx = Context()
+        
+        # Create a new manager
+        pv_manager = PVSubscriptionManager(ctx)
+        
+        # Initialize subscriptions just like at startup
+        top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+        logger.info(f"Setting up core PV subscriptions with prefix: {top_name}")
+        pv_manager.setup_core_subscriptions(top_name)
+        logger.info("Connection reinitialization completed successfully")
+        
+    except Exception as e:
+        logger.error(f"Error during connection reinitialization: {str(e)}")
+        # If reinit fails, at least ensure we have a working pv_manager
+        if 'pv_manager' not in globals() or pv_manager is None:
+            try:
+                ctx = Context()
+                pv_manager = PVSubscriptionManager(ctx)
+                logger.info("Created minimal PV manager after failed reinit")
+            except Exception as fallback_e:
+                logger.error(f"Failed to create fallback PV manager: {str(fallback_e)}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the system manager server")
