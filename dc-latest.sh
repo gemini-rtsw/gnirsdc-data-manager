@@ -47,7 +47,6 @@ if [[ "$1" == "--help" ]]; then
 fi
 
 # Update tags for all images to 'latest'
-update_tag "${GNIRSDC_GM_IMAGE}" "latest"
 update_tag "${GMP_IMAGE}" "latest"
 update_tag "${GNIRSDC_IMAGE}" "latest"
 
