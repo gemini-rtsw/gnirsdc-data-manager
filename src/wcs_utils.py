@@ -107,6 +107,12 @@ def calculate_crpix_for_target(wcs, target_ra, target_dec, ra_offset=0.0, dec_of
     return new_crpix1, new_crpix2
 
 def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
+    # DEBUG: Print all TCS context values and their types
+    logger.log(PRINT, "=== TCS CONTEXT ===")
+    for key, value in tcs_context.items():
+        logger.log(PRINT, f"{key}: {value} (type: {type(value)})")
+    logger.log(PRINT, "========================")
+    
     # Extract and convert the TCS context information
     track_ra = Angle(tcs_context['track_ra'], unit=u.hourangle).deg
     track_dec = Angle(tcs_context['track_dec'], unit=u.deg).deg
