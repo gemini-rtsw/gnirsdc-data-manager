@@ -352,6 +352,13 @@ class GnirsDataManagerIOC(PVGroup):
         # Write the health status
         await self.dc_health.write(health_status)
         
+        # Update mirror channels
+        await self.sad_dc_health.write(health_status)
+        
+        # Update sad:dc:state - GOOD maps to RUNNING, everything else to BAD
+        state_value = "RUNNING" if health_status == "GOOD" else "BAD"
+        await self.sad_dc_state.write(state_value)
+        
         # Log status changes
         if health_status != getattr(self, '_last_dc_health', "GOOD"):
             if health_status == "BAD":
@@ -359,6 +366,12 @@ class GnirsDataManagerIOC(PVGroup):
             else:
                 await self.logMessage("DC Health: GOOD - All systems operational")
             self._last_dc_health = health_status
+
+#-----------------------------------------------------------------------------
+    sad_dc_health = pvproperty(value='GOOD', dtype=ChannelType.STRING, name="sad:dc:health.VAL", doc="Mirror of dc:dcHealth")
+
+#-----------------------------------------------------------------------------
+    sad_dc_state = pvproperty(value='RUNNING', dtype=ChannelType.STRING, name="sad:dc:state.VAL", doc="State based on dc:dcHealth - GOOD=RUNNING, others=BAD")
 
 #-----------------------------------------------------------------------------
     heartbeat = pvproperty(value=0, dtype=int, name="sad:dc:heartBeat")

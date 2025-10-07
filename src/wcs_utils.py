@@ -220,12 +220,9 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
 
     # Calculate CRPIX for target
     # Calculate the epoch difference for proper motion
-    if 'coord_epoch' in tcs_context and 'obs_epoch' in tcs_context:
-        dt = tcs_context['obs_epoch'] - tcs_context['coord_epoch']
-    else:
-        # Approximate from equinox and current time
-        curr_year = Time(obstime, format='mjd').decimalyear
-        dt = curr_year - track_equinox
+    # Use the observation time and parsed track equinox to calculate dt
+    curr_year = Time(obstime, format='mjd').decimalyear
+    dt = curr_year - track_equinox  
     
     logger.log(IRDC_DEBUG, f"Epoch difference for PM: {dt} years")
     
