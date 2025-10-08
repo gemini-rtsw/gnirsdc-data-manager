@@ -78,16 +78,16 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
                 'track_dec': tcs_dec,
                 'track_frame': tcs_frame,
                 'track_equinox': tcs_equinox,
-                'time': tcs_time,
+                'time': float(tcs_time),
                 'port': int(tcs_port),
                 'camera': tcs_camera,
                 'ao': tcs_ao,
-                'inst_pa': tcs_inst_pa,
-                'ra_offset': tcs_ra_offset,
-                'dec_offset': tcs_dec_offset,
-                'pm_ra': tcs_pm_ra,
-                'pm_dec': tcs_pm_dec,
-                'inst_iaa': tcs_inst_iaa
+                'inst_pa': float(tcs_inst_pa),
+                'ra_offset': float(tcs_ra_offset),
+                'dec_offset': float(tcs_dec_offset),
+                'pm_ra': float(tcs_pm_ra),
+                'pm_dec': float(tcs_pm_dec),
+                'inst_iaa': float(tcs_inst_iaa)
             }
         else:
             tcs_context = None
