@@ -252,7 +252,7 @@ def process_image(data, lnrs, ndavgs):
         subtracted = reshaped[lnrs:] - reshaped[:lnrs]
 
         # Flip the image vertically (top to bottom)
-        return np.flip(processor.unscramble(subtracted.mean(axis=0)), axis=0)
+        return np.flip(processor.unscramble(subtracted.mean(axis=0)), axis=0), processor, raw_reshaped
 
     else:
         processor = Processor(shift_delta=0, full_frame=True)
@@ -263,27 +263,27 @@ def process_image(data, lnrs, ndavgs):
         subtracted = averaged_samples[lnrs:] - averaged_samples[:lnrs]
 
         # Flip the image vertically (top to bottom)
-        return np.flip(processor.unscramble(subtracted.mean(axis=0)), axis=0)
+        return np.flip(processor.unscramble(subtracted.mean(axis=0)), axis=0), processor, raw_reshaped
     
 
-def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, include_eng):
+def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, include_eng, preprocessed=False):
     extname = 'ENG' if include_eng else 'SCI'
     ext_header['EXTNAME'] = extname
 
-    if ndavgs == 1:
-        processor = Processor(shift_delta=-8, full_frame=True)
-        raw_reshaped = data.reshape((lrns * 2, 512, 2048))
-        reshaped = raw_reshaped.astype(np.float32)
-        subtracted = reshaped[lrns:] - reshaped[:lrns]
+    if preprocessed:
+        primary_data = data
+    else:
+        primary_data, processor, raw_reshaped = process_image(data, lrns, ndavgs)
 
-        # Flip the processed data vertically (top to bottom)
-        primary_data = np.flip(processor.unscramble(subtracted.mean(axis=0)), axis=0)
-        # GNAAC Drops first and last row
-        if FORCE_DROP_ROWS:
-            primary_data = primary_data[1:-1, :]
-        hdulist.append(fits.ImageHDU(data=primary_data, header=ext_header))
+    # GNAAC Drops first and last row
+    if FORCE_DROP_ROWS:
+        primary_data = primary_data[1:-1, :]
 
-        if include_eng == True:
+    # Add the primary science/engineering extension
+    hdulist.append(fits.ImageHDU(data=primary_data, header=ext_header))
+
+    if include_eng and not preprocessed:
+        if ndavgs == 1:
             for fs_n in range(lrns * 2):
                 is_signal = fs_n >= lrns
                 read_type = 'S' if is_signal else 'R'
@@ -297,22 +297,7 @@ def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, inclu
                     eng_data = eng_data[1:-1, :]
                 hdulist.append(fits.ImageHDU(eng_data, ext_header))
 
-    else:
-        processor = Processor(shift_delta=0, full_frame=True)
-        raw_reshaped = data.reshape((lrns * 2, 512, 2048 * ndavgs))
-        reshaped = raw_reshaped.astype(np.float32)
-        averaged_samples = processor.ads_average(reshaped, ads_per_fowler=ndavgs)
-
-        subtracted = averaged_samples[lrns:] - averaged_samples[:lrns]
-
-        # Flip the processed data vertically (top to bottom)
-        primary_data = np.flip(processor.unscramble(subtracted.mean(axis=0)), axis=0)
-        # GNAAC Drops first and last row
-        if FORCE_DROP_ROWS:
-            primary_data = primary_data[1:-1, :]
-        hdulist.append(fits.ImageHDU(data=primary_data, header=ext_header))
-
-        if include_eng == True:
+        else:
             # Separate the samples
             basic_cols = np.arange(32, dtype=int)
             offsets = (np.arange(64) * (32 * ndavgs))[:,None]
@@ -360,9 +345,9 @@ def create_hdulist(header, raw_path, dc_commit = None, lib_commit = None):
 
     total_frames = lnrs * 2
     frame_rows = raw_rows // total_frames
-    raw_data = np.empty((raw_rows * raw_cols,), dtype=np.uint16)
+    raw_data = np.zeros((raw_rows * raw_cols,), dtype=np.uint16)
     loading = raw_data.reshape((total_frames, frame_rows * raw_cols))
-    coadd_data = np.empty((1024, 1024), dtype=np.float32)  # Initialize the array to store coadded data with full dimensions
+    coadd_data = np.zeros((1024, 1024), dtype=np.float32)  # Initialize the array to store coadded data with full dimensions
 
 
     try: 
@@ -371,25 +356,16 @@ def create_hdulist(header, raw_path, dc_commit = None, lib_commit = None):
                 for n in range(total_frames):
                     loading[n,:] = np.fromfile(f'{raw_path}-{coadd}.frame.{n}', dtype=np.uint16)
 
-                coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)
+                coadd_data += process_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs)[0]
 
-            # GNAAC Drops first and last row
-            if FORCE_DROP_ROWS:
-                coadd_data = coadd_data[1:-1, :]
-            hdulist.append(fits.ImageHDU(coadd_data, header = ext_header))
+            save_processed_image(coadd_data, lnrs, ndavgs, exptime, hdulist, ext_header, p_mode == 'SEP', preprocessed=True)
         else:
             for n in range(total_frames):
                 loading[n,:] = np.fromfile(f'{raw_path}-0.frame.{n}', dtype=np.uint16)
+
+            save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, ext_header, p_mode == 'SEP')
     except:
         raise RawDataNotFoundError(f"Raw Data Not Found {fname}: missing data, probably an aborted exposure")
-
-    save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, ext_header, p_mode == 'SEP')
-
-    # Print all headers in the HDU list to verify
-#    for i, hdu in enumerate(hdulist):
-#        print(f"Header of HDU {i}:")
-#        print(repr(hdu.header))
-#        print()
 
     return fname, hdulist
 
