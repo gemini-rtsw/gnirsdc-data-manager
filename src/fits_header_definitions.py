@@ -126,7 +126,7 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
     fits_header['DCVER2']    = (lib_commit, 'library git commit')
     fits_header['DCVER3']    = (dc_commit, 'DC git commit')
     fits_header['COADDS']   = (coadds, '# of coadded images')
-    fits_header['ARRAYID']   = ('SN7638228.1.2','ID # of array')
+    fits_header['ARRAYID']   = ('SN7638228.1.3','ID # of array')
     fits_header['ARRAYTYP']  = ('ALADDIN_III_1024','ALADDIN II or ALADDIN III')
     fits_header['CONID']     = ('ARC-III','Detector controller')
     fits_header['ROWS']     = (1024,'array rows')
