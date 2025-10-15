@@ -65,6 +65,16 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         tcs_pm_dec = pdu.get('TCS_PM_DEC', '')
         tcs_inst_iaa = pdu.get('TCS_INST_IAA', '')
 
+        # Calculate OBSEPOCH from TCS time (MJD) captured at observation
+        if tcs_time:
+            from astropy.time import Time
+            obs_time = Time(float(tcs_time), format='mjd', scale='tai')
+            obsepoch = obs_time.decimalyear
+        else:
+            # WARNING: Defaulting to J2000 - proper motion corrections will be invalid!
+            print("WARNING: TCS time not available. OBSEPOCH defaulting to 2000.0 - WCS and proper motion will be incorrect!")
+            obsepoch = 2000.0
+
         # Check if TCS context is missing
         tcs_context_missing = any(value == '' for value in [
             tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_time, 
@@ -114,6 +124,7 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
     fits_header['TIME-OBS'] = (utstart, 'Time of observation')
     fits_header['UTSTART']  = (utstart, 'UT at observation start')
     fits_header['UTEND']    = (utend, 'UT at observation end')
+    fits_header['OBSEPOCH'] = (obsepoch, 'Epoch of observation')
     fits_header['LNRS']     = (lnrs, '# of fowler samples')
     fits_header['NDAVGS']   = (ndavgs, '# of digital averages')
     fits_header['EXPTIME']  = (exptime, 'integration time (seconds)')
