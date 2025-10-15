@@ -157,8 +157,6 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
     print(f"Final readmode: {readmode}")
 
     extention_header = fits.Header({
-        'EXTNAME': 'SCI',
-        'EXTVER': 1,
         'DROINUM': 0,
         'LOWROW': 0,
         'LOWCOL': 0,

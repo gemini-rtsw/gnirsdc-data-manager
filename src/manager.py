@@ -267,9 +267,6 @@ def process_image(data, lnrs, ndavgs):
     
 
 def save_processed_image(data, lrns, ndavgs, exptime, hdulist, ext_header, include_eng, preprocessed=False):
-    extname = 'ENG' if include_eng else 'SCI'
-    ext_header['EXTNAME'] = extname
-
     if preprocessed:
         primary_data = data
     else:
