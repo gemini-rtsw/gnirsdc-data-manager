@@ -212,8 +212,7 @@ def calculate_wcs_params(pixel_coords, instrument_offsets, tcs_context):
  #       projection='TAN'
     )
 
-    # Set equinox and radesys
-    wcs.wcs.equinox = track_equinox
+    # Set radesys (EQUINOX is provided by GMP/SEQEXEC, not by WCS)
     wcs.wcs.radesys = track_frame.upper()
 
     # Log the CD matrix 
