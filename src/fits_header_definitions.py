@@ -65,14 +65,16 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         tcs_pm_dec = pdu.get('TCS_PM_DEC', '')
         tcs_inst_iaa = pdu.get('TCS_INST_IAA', '')
 
-        # Calculate OBSEPOCH from TCS time (MJD) captured at observation
-        if tcs_time:
+        # Calculate OBSEPOCH from UTSTART and DATEOBS
+        if dateobs and utstart:
             from astropy.time import Time
-            obs_time = Time(float(tcs_time), format='mjd', scale='tai')
+            # Combine date and time to create ISO format datetime string
+            datetime_str = f"{dateobs}T{utstart}"
+            obs_time = Time(datetime_str, format='isot', scale='utc')
             obsepoch = obs_time.decimalyear
         else:
             # WARNING: Defaulting to J2000 - proper motion corrections will be invalid!
-            print("WARNING: TCS time not available. OBSEPOCH defaulting to 2000.0 - WCS and proper motion will be incorrect!")
+            print("WARNING: DATEOBS or UTSTART not available. OBSEPOCH defaulting to 2000.0 - WCS and proper motion will be incorrect!")
             obsepoch = 2000.0
 
         # Check if TCS context is missing
