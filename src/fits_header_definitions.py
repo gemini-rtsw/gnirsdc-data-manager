@@ -54,7 +54,6 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         tcs_dec = pdu.get('TCS_DEC', '')
         tcs_frame = pdu.get('TCS_FRAME', '')
         tcs_equinox = pdu.get('TCS_EQUINOX', '')
-        tcs_time = pdu.get('TCS_TIME', '')
         tcs_port = pdu.get('TCS_PORT', '')
         tcs_camera = pdu.get('TCS_CAMERA', '')
         tcs_ao = pdu.get('TCS_AO', '')
@@ -65,21 +64,24 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         tcs_pm_dec = pdu.get('TCS_PM_DEC', '')
         tcs_inst_iaa = pdu.get('TCS_INST_IAA', '')
 
-        # Calculate OBSEPOCH from UTSTART and DATEOBS
+        # Calculate OBSEPOCH and TCS time (MJD) from UTSTART and DATEOBS
         if dateobs and utstart:
             from astropy.time import Time
             # Combine date and time to create ISO format datetime string
             datetime_str = f"{dateobs}T{utstart}"
             obs_time = Time(datetime_str, format='isot', scale='utc')
             obsepoch = obs_time.decimalyear
+            # Convert to MJD in TAI scale for TCS context (more accurate for observation start)
+            tcs_time_mjd = obs_time.tai.mjd
         else:
             # WARNING: Defaulting to J2000 - proper motion corrections will be invalid!
             print("WARNING: DATEOBS or UTSTART not available. OBSEPOCH defaulting to 2000.0 - WCS and proper motion will be incorrect!")
             obsepoch = 2000.0
+            tcs_time_mjd = ''
 
         # Check if TCS context is missing
         tcs_context_missing = any(value == '' for value in [
-            tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_time, 
+            tcs_ra, tcs_dec, tcs_frame, tcs_equinox, tcs_time_mjd, 
             tcs_port, tcs_camera, tcs_ao, tcs_inst_pa, tcs_ra_offset,
             tcs_dec_offset, tcs_pm_ra, tcs_pm_dec, tcs_inst_iaa
         ])
@@ -90,7 +92,7 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
                 'track_dec': tcs_dec,
                 'track_frame': tcs_frame,
                 'track_equinox': tcs_equinox,
-                'time': float(tcs_time),
+                'time': float(tcs_time_mjd),
                 'port': int(tcs_port),
                 'camera': tcs_camera,
                 'ao': tcs_ao,
