@@ -151,7 +151,21 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
     if not tcs_context_missing:
         wcs = process_wcs_data(tcs_port, tcs_camera, tcs_ao, tcs_context)
         
-        fits_header.update(wcs.to_header())
+        # Get WCS header keywords
+        wcs_header = wcs.to_header()
+        
+        # Remove PC and CDELT keywords (we want CD matrix format per Gemini standard)
+        for key in list(wcs_header.keys()):
+            if key.startswith('PC') or key.startswith('CDELT'):
+                del wcs_header[key]
+        
+        # Add CD matrix keywords explicitly (Gemini ICD-18 requirement)
+        wcs_header['CD1_1'] = (wcs.wcs.cd[0, 0], 'WCS matrix element 1 1')
+        wcs_header['CD1_2'] = (wcs.wcs.cd[0, 1], 'WCS matrix element 1 2')
+        wcs_header['CD2_1'] = (wcs.wcs.cd[1, 0], 'WCS matrix element 2 1')
+        wcs_header['CD2_2'] = (wcs.wcs.cd[1, 1], 'WCS matrix element 2 2')
+        
+        fits_header.update(wcs_header)
     else:
         print("Warning: WCS information not added due to missing TCS context.")
 
