@@ -158,9 +158,11 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         # Get WCS header keywords
         wcs_header = wcs.to_header()
         
-        # Remove PC and CDELT keywords (we want CD matrix format per Gemini standard)
+        # Remove PC, CDELT, and MJDREF keywords
+        # PC and CDELT: we want CD matrix format per Gemini standard
+        # MJDREF: we use MJD_OBS instead per Gemini convention
         for key in list(wcs_header.keys()):
-            if key.startswith('PC') or key.startswith('CDELT'):
+            if key.startswith('PC') or key.startswith('CDELT') or key == 'MJDREF':
                 del wcs_header[key]
         
         # Add CD matrix keywords explicitly (Gemini ICD-18 requirement)
@@ -168,6 +170,9 @@ def define_hdu_list(header, dc_commit = None, lib_commit = None):
         wcs_header['CD1_2'] = (wcs.wcs.cd[0, 1], 'WCS matrix element 1 2')
         wcs_header['CD2_1'] = (wcs.wcs.cd[1, 0], 'WCS matrix element 2 1')
         wcs_header['CD2_2'] = (wcs.wcs.cd[1, 1], 'WCS matrix element 2 2')
+        
+        # Add MJD_OBS keyword (MJD of observation start)
+        wcs_header['MJD_OBS'] = (tcs_time_mjd, 'MJD of start of obseration')
         
         fits_header.update(wcs_header)
     else:
