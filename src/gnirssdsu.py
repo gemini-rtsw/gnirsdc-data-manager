@@ -453,6 +453,8 @@ class ObserveCAD(GnirsCAD):
             single_readout_time = 0.2
 
         total_coadds = int(self.p.coaddsVAL.value)
+        if total_coadds <= 0:  # Guard against zero or negative coadds
+            total_coadds = 1
         total_time = single_readout_time * total_coadds
         start_time = time.time()
         
