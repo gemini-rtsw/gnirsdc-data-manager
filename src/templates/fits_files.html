@@ -117,17 +117,6 @@
         background-color: #f8f9fa;
         border-radius: 5px;
     }
-    .copied-msg {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background-color: #28a745;
-        color: white;
-        padding: 10px 20px;
-        border-radius: 5px;
-        display: none;
-        z-index: 1000;
-    }
 </style>
 
 <table>
@@ -151,7 +140,7 @@
         <td>
             <a href="{{ url_for('view_fits_header', filename=file.display_path) }}">Header</a> |
             <a href="{{ url_for('view_fits', filename=file.display_path) }}" class="btn btn-download" download="{{ file.display_path.split('/')[-1] }}">Save</a>
-            <button class="btn btn-ds9" onclick="copyDS9Command('{{ request.url_root }}fits/{{ file.display_path }}')" title="Copy DS9 command to clipboard">DS9</button>
+            <button class="btn btn-ds9" onclick="showDS9Command('{{ request.url_root }}fits/{{ file.display_path }}')" title="Show DS9 command">DS9</button>
         </td>
     </tr>
     {% endfor %}
@@ -189,34 +178,81 @@
 {% endif %}
 
 <div class="ds9-tip">
-    <strong>DS9 Usage:</strong> Click "DS9" to copy the command to your clipboard, then paste it in a terminal to open the file in DS9.
+    <strong>DS9 Usage:</strong> Click "DS9" to see the command, then copy and paste it in a terminal.
 </div>
 
-<div id="copied-msg" class="copied-msg">DS9 command copied!</div>
+<!-- DS9 Command Modal -->
+<div id="ds9-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeDS9Modal()">&times;</span>
+        <h3>DS9 Command</h3>
+        <p>Copy this command and run it in your terminal:</p>
+        <input type="text" id="ds9-cmd" readonly onclick="this.select()" style="width:100%; padding:10px; font-family:monospace; font-size:14px;">
+        <button onclick="selectAndCopy()" class="btn btn-primary" style="margin-top:10px;">Select All</button>
+    </div>
+</div>
+
+<style>
+    .modal {
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+        background-color: white;
+        margin: 15% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 80%;
+        max-width: 600px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .modal-close {
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #666;
+    }
+    .modal-close:hover {
+        color: #000;
+    }
+</style>
 
 <script>
-function copyDS9Command(url) {
+function showDS9Command(url) {
     const cmd = 'ds9 "' + url + '"';
-    navigator.clipboard.writeText(cmd).then(function() {
-        const msg = document.getElementById('copied-msg');
-        msg.style.display = 'block';
-        setTimeout(function() {
-            msg.style.display = 'none';
-        }, 2000);
-    }).catch(function(err) {
-        // Fallback for older browsers
-        const textarea = document.createElement('textarea');
-        textarea.value = cmd;
-        document.body.appendChild(textarea);
-        textarea.select();
+    document.getElementById('ds9-cmd').value = cmd;
+    document.getElementById('ds9-modal').style.display = 'block';
+    document.getElementById('ds9-cmd').select();
+}
+
+function closeDS9Modal() {
+    document.getElementById('ds9-modal').style.display = 'none';
+}
+
+function selectAndCopy() {
+    const input = document.getElementById('ds9-cmd');
+    input.select();
+    input.setSelectionRange(0, 99999); // For mobile
+    try {
         document.execCommand('copy');
-        document.body.removeChild(textarea);
-        const msg = document.getElementById('copied-msg');
-        msg.style.display = 'block';
-        setTimeout(function() {
-            msg.style.display = 'none';
-        }, 2000);
-    });
+        alert('Command copied to clipboard!');
+    } catch (err) {
+        // Command is already selected, user can Ctrl+C
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('ds9-modal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
 }
 </script>
 {% endblock %}
