@@ -449,7 +449,7 @@ def get_fits_header_info(file_path):
             header = hdul[0].header
             # Try common keyword variations for each value
             lnr = header.get('LNRS', header.get('LNR', header.get('FOWLER', 'N/A')))
-            adcs = header.get('AVGS', header.get('ADCS', header.get('DIGITALAVGS', header.get('DAVGS', 'N/A'))))
+            adcs = header.get('NDAVGS', header.get('AVGS', header.get('ADCS', header.get('DIGITALAVGS', 'N/A'))))
             coadds = header.get('COADDS', header.get('NCOADDS', header.get('NCOAVG', 'N/A')))
             return {'lnr': lnr, 'adcs': adcs, 'coadds': coadds}
     except Exception as e:
@@ -465,6 +465,10 @@ def fits_files():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     
+    # Pagination parameters
+    page = request.args.get('page', 1, type=int)
+    per_page = 25
+    
     all_files = []
     
     # Check and add files from staging directory if it exists
@@ -477,40 +481,57 @@ def fits_files():
         readout_files = [os.path.join('readout', f) for f in os.listdir(readout_dir) if f.endswith('.fits')]
         all_files.extend(readout_files)
     
-    # Create a list of dictionaries containing file information
-    files_info = []
+    # Sort files by modification time first (before reading headers for pagination efficiency)
+    # Get mtime for all files first
+    files_with_mtime = []
     for f in all_files:
         full_path = os.path.join(staging_dir if f.startswith('staging') else readout_dir, os.path.basename(f))
-        stat = os.stat(full_path)
-        file_mtime = datetime.fromtimestamp(stat.st_mtime)
-        
-        # Get FITS header info
-        header_info = get_fits_header_info(full_path)
-        
-        file_info = {
-            'display_path': f,
-            'full_path': full_path,
-            'size': stat.st_size,
-            'mtime': file_mtime,
-            'lnr': header_info['lnr'],
-            'adcs': header_info['adcs'],
-            'coadds': header_info['coadds']
-        }
-        
-        # Apply date filter if both start and end dates are provided
-        if start_date and end_date:
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            end = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)  # Include the entire end date
-            if start <= file_mtime < end:
-                files_info.append(file_info)
-        else:
-            files_info.append(file_info)
+        try:
+            stat = os.stat(full_path)
+            file_mtime = datetime.fromtimestamp(stat.st_mtime)
+            
+            # Apply date filter if both start and end dates are provided
+            if start_date and end_date:
+                start = datetime.strptime(start_date, '%Y-%m-%d')
+                end = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+                if not (start <= file_mtime < end):
+                    continue
+            
+            files_with_mtime.append({
+                'display_path': f,
+                'full_path': full_path,
+                'size': stat.st_size,
+                'mtime': file_mtime
+            })
+        except (OSError, IOError):
+            continue
     
-    # Sort files by modification time
-    files_info.sort(key=lambda x: x['mtime'], reverse=True)
+    # Sort by modification time (newest first)
+    files_with_mtime.sort(key=lambda x: x['mtime'], reverse=True)
+    
+    # Calculate pagination
+    total_files = len(files_with_mtime)
+    total_pages = (total_files + per_page - 1) // per_page
+    page = max(1, min(page, total_pages)) if total_pages > 0 else 1
+    
+    # Get only the files for the current page
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    page_files = files_with_mtime[start_idx:end_idx]
+    
+    # Now read FITS headers only for the files on this page
+    files_info = []
+    for f in page_files:
+        header_info = get_fits_header_info(f['full_path'])
+        f['lnr'] = header_info['lnr']
+        f['adcs'] = header_info['adcs']
+        f['coadds'] = header_info['coadds']
+        files_info.append(f)
     
     return render_template('fits_files.html', active_tab='fits', fits_files=files_info,
-                           start_date=start_date, end_date=end_date)
+                           start_date=start_date, end_date=end_date,
+                           page=page, total_pages=total_pages, total_files=total_files,
+                           per_page=per_page)
 
 @app.route('/fits/<path:filename>')
 def view_fits(filename):
