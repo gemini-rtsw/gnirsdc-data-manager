@@ -869,21 +869,40 @@ def update_preview_only():
     """Update the preview image only"""
     global last_preview_image, no_files_warning_logged, no_preview_logged
     try:
-        # Generate preview image
-        fits_dir = '/readout_data/fits'
-        os.makedirs(fits_dir, exist_ok=True)
-        files = [f for f in os.listdir(fits_dir) if os.path.isfile(os.path.join(fits_dir, f))]
+        # Generate preview image - check both directories for newest file
+        readout_dir = '/readout_data/fits'
+        staging_dir = '/staging/perm'
         
-        if not files:
+        os.makedirs(readout_dir, exist_ok=True)
+        
+        # Collect all FITS files from both directories with their full paths and mtimes
+        all_files = []
+        
+        # Check readout directory
+        if os.path.exists(readout_dir):
+            for f in os.listdir(readout_dir):
+                full_path = os.path.join(readout_dir, f)
+                if os.path.isfile(full_path) and f.endswith('.fits'):
+                    all_files.append((full_path, os.path.getmtime(full_path)))
+        
+        # Check staging directory
+        if os.path.exists(staging_dir):
+            for f in os.listdir(staging_dir):
+                full_path = os.path.join(staging_dir, f)
+                if os.path.isfile(full_path) and f.endswith('.fits'):
+                    all_files.append((full_path, os.path.getmtime(full_path)))
+        
+        if not all_files:
             if not no_files_warning_logged:
-                current_app.logger.warning("No files found in directory")
+                current_app.logger.warning("No FITS files found in readout or staging directories")
                 no_files_warning_logged = True
             preview_image = None
             latest_file = None
         else:
             no_files_warning_logged = False
-            latest_file = max(files, key=lambda f: os.path.getmtime(os.path.join(fits_dir, f)))
-            file_path = os.path.join(fits_dir, latest_file)
+            # Find the newest file across both directories
+            file_path, _ = max(all_files, key=lambda x: x[1])
+            latest_file = os.path.basename(file_path)
 
             try:
                 with fits.open(file_path) as hdul:
