@@ -899,13 +899,14 @@ def readme():
     return render_template('readme.html', active_tab='readme', content=html_content, toc=toc)
 
 last_preview_image = None
+last_preview_info = None  # Store file metadata
 preview_lock = threading.Lock()
 no_files_warning_logged = False
 no_preview_logged = False  # Add this flag
 
 def update_preview_only():
     """Update the preview image only"""
-    global last_preview_image, no_files_warning_logged, no_preview_logged
+    global last_preview_image, last_preview_info, no_files_warning_logged, no_preview_logged
     try:
         # Generate preview image - check both directories for newest file
         readout_dir = '/readout_data/fits'
@@ -935,16 +936,18 @@ def update_preview_only():
                 current_app.logger.warning("No FITS files found in readout or staging directories")
                 no_files_warning_logged = True
             preview_image = None
+            preview_info = None
             latest_file = None
         else:
             no_files_warning_logged = False
             # Find the newest file across both directories
-            file_path, _ = max(all_files, key=lambda x: x[1])
+            file_path, file_mtime = max(all_files, key=lambda x: x[1])
             latest_file = os.path.basename(file_path)
 
             try:
                 with fits.open(file_path) as hdul:
                     data = None
+                    header = hdul[0].header
                     for hdu in hdul:
                         if hdu.data is not None:
                             data = hdu.data
@@ -952,9 +955,27 @@ def update_preview_only():
                     
                     if data is None:
                         raise ValueError("No data found in any HDU of the file")
+                    
+                    # Extract header info
+                    lnr = header.get('LNRS', header.get('LNR', header.get('FOWLER', 'N/A')))
+                    adcs = header.get('NDAVGS', header.get('AVGS', header.get('ADCS', 'N/A')))
+                    coadds = header.get('COADDS', header.get('NCOADDS', 'N/A'))
+                    
+                    # Store preview info
+                    preview_info = {
+                        'filename': latest_file,
+                        'full_path': file_path,
+                        'write_time': datetime.fromtimestamp(file_mtime).strftime('%Y-%m-%d %H:%M:%S'),
+                        'lnr': lnr,
+                        'adcs': adcs,
+                        'coadds': coadds
+                    }
+
+                # Flip the data on the x-axis (vertical flip - bottom becomes top)
+                data_flipped = np.flipud(data)
 
                 fig, ax = plt.subplots(figsize=(10, 8))
-                im = ax.imshow(data, cmap='viridis', aspect='auto')
+                im = ax.imshow(data_flipped, cmap='viridis', aspect='auto')
                 plt.colorbar(im, ax=ax, label='Pixel Value')
                 ax.set_title(f'Preview of {latest_file}')
                 ax.set_xlabel('X Pixel')
@@ -971,10 +992,12 @@ def update_preview_only():
             except Exception as e:
                 current_app.logger.error(f"Error processing file {latest_file}: {str(e)}")
                 preview_image = None
+                preview_info = None
 
         with preview_lock:
             if preview_image is not None:
                 last_preview_image = preview_image
+                last_preview_info = preview_info
 
         if latest_file:
             current_app.logger.info(f"Preview cached successfully for {latest_file}")
@@ -992,16 +1015,22 @@ def preview():
 
 @app.route('/preview_latest_fits')
 def preview_latest_fits():
-    global last_preview_image
+    global last_preview_image, last_preview_info
     with preview_lock:
         if request.args.get('info') == 'true':
             # Return JSON with file info
-            if last_preview_image is None:
+            if last_preview_image is None or last_preview_info is None:
                 return jsonify({"status": "error", "message": "No preview available"}), 404
             else:
                 return jsonify({
                     "status": "success",
-                    "timestamp": time.time()
+                    "timestamp": time.time(),
+                    "filename": last_preview_info.get('filename', 'N/A'),
+                    "full_path": last_preview_info.get('full_path', 'N/A'),
+                    "write_time": last_preview_info.get('write_time', 'N/A'),
+                    "lnr": last_preview_info.get('lnr', 'N/A'),
+                    "adcs": last_preview_info.get('adcs', 'N/A'),
+                    "coadds": last_preview_info.get('coadds', 'N/A')
                 })
         else:
             # Return the actual image data

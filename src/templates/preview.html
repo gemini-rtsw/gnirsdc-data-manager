@@ -1,11 +1,95 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Preview Latest FITS File</h1>
-<div id="image-container">
-    <img id="preview-image" alt="Latest FITS file preview">
+
+<div class="preview-container">
+    <div id="image-container">
+        <img id="preview-image" alt="Latest FITS file preview">
+    </div>
+    
+    <p id="debug-info" class="debug-info"></p>
+    
+    <div class="info-panel">
+        <table class="info-table">
+            <tr>
+                <th>Filename:</th>
+                <td id="info-filename">Loading...</td>
+            </tr>
+            <tr>
+                <th>Full Path:</th>
+                <td id="info-path">Loading...</td>
+            </tr>
+            <tr>
+                <th>Write Time:</th>
+                <td id="info-time">Loading...</td>
+            </tr>
+            <tr>
+                <th>LNR:</th>
+                <td id="info-lnr">Loading...</td>
+            </tr>
+            <tr>
+                <th>ADCS:</th>
+                <td id="info-adcs">Loading...</td>
+            </tr>
+            <tr>
+                <th>Coadds:</th>
+                <td id="info-coadds">Loading...</td>
+            </tr>
+        </table>
+    </div>
 </div>
-<p id="filename"></p>
-<p id="debug-info"></p>
+
+<style>
+    .preview-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .info-panel {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+    }
+    .info-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .info-table th {
+        text-align: left;
+        padding: 8px 12px;
+        background-color: #6c757d;
+        color: white;
+        width: 120px;
+        font-weight: normal;
+    }
+    .info-table td {
+        padding: 8px 12px;
+        font-family: monospace;
+        background-color: white;
+        word-break: break-all;
+    }
+    .info-table tr {
+        border-bottom: 1px solid #dee2e6;
+    }
+    #image-container {
+        text-align: center;
+        background-color: #f0f0f0;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    #preview-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+    }
+    .debug-info {
+        text-align: center;
+        color: #666;
+        font-size: 0.9em;
+        margin-top: 10px;
+    }
+</style>
 
 <script>
     console.log("Script loaded");
@@ -15,22 +99,36 @@
 
     function updatePreview() {
         const debugInfo = document.getElementById('debug-info');
-        const filenameElement = document.getElementById('filename');
         const currentImage = document.getElementById('preview-image');
 
         // Update the image src with a new timestamp
         const newSrc = "{{ url_for('preview_latest_fits') }}?" + new Date().getTime();
         currentImage.src = newSrc;
 
-        // Update filename and debug info
+        // Update file info
         fetch("{{ url_for('preview_latest_fits') }}?info=true")
             .then(response => response.json())
             .then(data => {
-                debugInfo.textContent = "Last update: " + new Date().toLocaleTimeString();
+                if (data.status === "success") {
+                    document.getElementById('info-filename').textContent = data.filename || 'N/A';
+                    document.getElementById('info-path').textContent = data.full_path || 'N/A';
+                    document.getElementById('info-time').textContent = data.write_time || 'N/A';
+                    document.getElementById('info-lnr').textContent = data.lnr || 'N/A';
+                    document.getElementById('info-adcs').textContent = data.adcs || 'N/A';
+                    document.getElementById('info-coadds').textContent = data.coadds || 'N/A';
+                    debugInfo.textContent = "Last refresh: " + new Date().toLocaleTimeString();
+                } else {
+                    document.getElementById('info-filename').textContent = 'No file available';
+                    document.getElementById('info-path').textContent = '-';
+                    document.getElementById('info-time').textContent = '-';
+                    document.getElementById('info-lnr').textContent = '-';
+                    document.getElementById('info-adcs').textContent = '-';
+                    document.getElementById('info-coadds').textContent = '-';
+                }
             })
             .catch(error => {
                 console.error("Error fetching file info:", error);
-                filenameElement.textContent = "No FITS file available for preview. ";
+                document.getElementById('info-filename').textContent = 'Error loading info';
             });
     }
 
