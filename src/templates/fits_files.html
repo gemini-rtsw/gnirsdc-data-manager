@@ -51,23 +51,48 @@
     .btn:hover {
         opacity: 0.9;
     }
+    .btn-ds9 {
+        background-color: #28a745;
+        font-size: 0.85em;
+        padding: 4px 8px;
+    }
+    .header-info {
+        font-family: monospace;
+        font-size: 0.9em;
+    }
+    .header-label {
+        color: #666;
+        font-size: 0.8em;
+    }
 </style>
 <table>
     <tr>
         <th>File Name</th>
+        <th>LNR</th>
+        <th>ADCS</th>
+        <th>Coadds</th>
         <th>Size</th>
         <th>Last Modified</th>
-        <th>Full Path</th>
-        <th>Header</th>
+        <th>Actions</th>
     </tr>
     {% for file in fits_files %}
     <tr>
         <td><a href="{{ url_for('view_fits', filename=file.display_path) }}">{{ file.display_path.split('/')[-1] }}</a></td>
+        <td class="header-info">{{ file.lnr }}</td>
+        <td class="header-info">{{ file.adcs }}</td>
+        <td class="header-info">{{ file.coadds }}</td>
         <td>{{ '{:.2f}'.format(file.size / 1024 / 1024) }} MB</td>
         <td>{{ file.mtime.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-        <td><small>{{ file.full_path }}</small></td>
-        <td><a href="{{ url_for('view_fits_header', filename=file.display_path) }}">View Header</a></td>
+        <td>
+            <a href="{{ url_for('view_fits_header', filename=file.display_path) }}">Header</a> |
+            <a href="{{ url_for('view_fits', filename=file.display_path) }}" class="btn btn-ds9" download="{{ file.display_path.split('/')[-1] }}" title="Download and open with DS9">DS9</a>
+        </td>
     </tr>
     {% endfor %}
 </table>
+
+<div style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+    <strong>DS9 Tip:</strong> Click the DS9 button to download the file, then open it with SAOImage DS9. 
+    You can also drag and drop the downloaded file directly into DS9.
+</div>
 {% endblock %}

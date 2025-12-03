@@ -442,6 +442,20 @@ def save():
         config.write(configfile)
     return redirect(url_for('index'))
 
+def get_fits_header_info(file_path):
+    """Extract key header info from a FITS file"""
+    try:
+        with fits.open(file_path) as hdul:
+            header = hdul[0].header
+            # Try common keyword variations for each value
+            lnr = header.get('LNRS', header.get('LNR', header.get('FOWLER', 'N/A')))
+            adcs = header.get('AVGS', header.get('ADCS', header.get('DIGITALAVGS', header.get('DAVGS', 'N/A'))))
+            coadds = header.get('COADDS', header.get('NCOADDS', header.get('NCOAVG', 'N/A')))
+            return {'lnr': lnr, 'adcs': adcs, 'coadds': coadds}
+    except Exception as e:
+        logger.warning(f"Could not read header from {file_path}: {str(e)}")
+        return {'lnr': 'N/A', 'adcs': 'N/A', 'coadds': 'N/A'}
+
 @app.route('/fits')
 def fits_files():
     staging_dir = config[config_mode].get('STAGING_DIR', '/staging/perm')
@@ -470,24 +484,27 @@ def fits_files():
         stat = os.stat(full_path)
         file_mtime = datetime.fromtimestamp(stat.st_mtime)
         
+        # Get FITS header info
+        header_info = get_fits_header_info(full_path)
+        
+        file_info = {
+            'display_path': f,
+            'full_path': full_path,
+            'size': stat.st_size,
+            'mtime': file_mtime,
+            'lnr': header_info['lnr'],
+            'adcs': header_info['adcs'],
+            'coadds': header_info['coadds']
+        }
+        
         # Apply date filter if both start and end dates are provided
         if start_date and end_date:
             start = datetime.strptime(start_date, '%Y-%m-%d')
             end = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)  # Include the entire end date
             if start <= file_mtime < end:
-                files_info.append({
-                    'display_path': f,
-                    'full_path': full_path,
-                    'size': stat.st_size,
-                    'mtime': file_mtime
-                })
+                files_info.append(file_info)
         else:
-            files_info.append({
-                'display_path': f,
-                'full_path': full_path,
-                'size': stat.st_size,
-                'mtime': file_mtime
-            })
+            files_info.append(file_info)
     
     # Sort files by modification time
     files_info.sort(key=lambda x: x['mtime'], reverse=True)
