@@ -86,6 +86,9 @@ MAX_LOG_MESSAGES = 1000  # Keep this for reference
 clients = set()
 clients_lock = threading.Lock()
 
+# Initialize config_mode with default - will be updated based on --debug flag
+config_mode = 'DEFAULT'
+
 # SSH configuration
 SSH_HOST = 'localhost'  # Since we're using --network=host, localhost refers to the host machine
 SSH_PORT = 22
@@ -1273,13 +1276,18 @@ def subscription_health_check():
             logger.error(f"Error in subscription health check: {str(e)}")
         time.sleep(5)  # Check every 5 seconds
 
-# Start the subscription health check thread
-health_check_thread = threading.Thread(target=subscription_health_check, daemon=True)
-health_check_thread.start()
+# Thread start functions - called from main after config_mode is set
+def start_background_threads():
+    """Start background threads after config_mode is properly initialized"""
+    # Start the subscription health check thread
+    health_check_thread = threading.Thread(target=subscription_health_check, daemon=True)
+    health_check_thread.start()
 
-# Start the preview thread
-preview_thread = threading.Thread(target=preview_thread_function, daemon=True)
-preview_thread.start()
+    # Start the preview thread
+    preview_thread = threading.Thread(target=preview_thread_function, daemon=True)
+    preview_thread.start()
+    
+    logger.info("Background threads started")
 
 @app.route('/get_hostname')
 def get_hostname():
@@ -1461,17 +1469,25 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=8080, help="Port to run the server on")
     args = parser.parse_args()
 
+    # Update global config_mode based on command line flag
     if args.debug:
         config_mode = 'DEBUG'
         debug_mode = config['DEBUG'].getboolean('DEBUG', fallback=False)
-        logger.info(f"Debug flag detected. Using DEBUG from config: {debug_mode}")
+        logger.info(f"Debug flag detected. Using DEBUG config section")
     else:
         config_mode = 'DEFAULT'
         debug_mode = False
-        logger.info("Running in production mode")
+        logger.info("Running in production mode using DEFAULT config section")
+
+    # Log the EPICS prefix being used
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    logger.info(f"Using EPICS prefix: {top_name}")
 
     # Initialize subscriptions at startup
     initialize_subscriptions()
+    
+    # Start background threads after config_mode is set
+    start_background_threads()
 
     logger.info(f"Starting Flask application on port {args.port}")
     # Enable threaded mode to handle multiple concurrent requests
