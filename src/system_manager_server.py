@@ -318,7 +318,7 @@ class PVSubscriptionManager:
             return {pv_name: data for pv_name, data in self.latest_values.items()}
 
     def clear_all_subscriptions(self):
-        """Clear all current subscriptions"""
+        """Clear all current subscriptions and cached values"""
         with self.subscription_lock:
             for pv_name, sub in list(self.subscriptions.items()):
                 try:
@@ -327,6 +327,9 @@ class PVSubscriptionManager:
                 except Exception as e:
                     logger.error(f"Error clearing subscription for {pv_name}: {str(e)}")
             self.subscriptions.clear()
+            # Also clear cached values so they don't have stale prefix keys
+            self.latest_values.clear()
+            logger.info("Cleared all cached PV values")
     
     def setup_core_subscriptions(self, top_name):
         """Set up subscriptions for core PVs"""
@@ -846,6 +849,12 @@ def start_controller():
         # Clear existing subscriptions and set up new ones with the updated top name
         pv_manager.clear_all_subscriptions()
         pv_manager.setup_core_subscriptions(top_name)
+        
+        # Clear the PV cache to ensure fresh data with new prefix
+        global pv_cache, pv_cache_time
+        pv_cache = {}
+        pv_cache_time = 0
+        logger.info(f"Switched to prefix: {top_name}")
         
         # Build command based on mode
         if mode == 'normal':
@@ -1445,7 +1454,7 @@ def initialize_subscriptions():
 # Add this function at the global level, after the pv_manager is created
 def reinitialize_connections():
     """Completely reinitialize all EPICS connections"""
-    global ctx, pv_manager
+    global ctx, pv_manager, pv_cache, pv_cache_time
     
     logger.warning("Reinitializing all EPICS connections from scratch")
     
@@ -1457,6 +1466,10 @@ def reinitialize_connections():
     
     # Create a new manager
     pv_manager = PVSubscriptionManager(ctx)
+    
+    # Clear the PV cache
+    pv_cache = {}
+    pv_cache_time = 0
     
     # Initialize subscriptions just like at startup
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
