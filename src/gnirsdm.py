@@ -191,11 +191,31 @@ def persistent_worker_process(task_queue, result_pipe, data_dir, output_dir, dc_
     import signal
     signal.signal(signal.SIGINT, signal.SIG_IGN)  # Ignore Ctrl+C in worker
     
+    print(f"[Worker Process] Starting with PID {os.getpid()}")
+    
+    # === WARMUP PHASE ===
+    # Pre-import and initialize all heavy modules to avoid cold-start delay on first file
+    print("[Worker Process] Warming up (pre-importing modules)...")
+    try:
+        import numpy as np
+        from astropy.io import fits
+        from astropy.time import Time
+        # Trigger numpy/astropy lazy initialization with dummy operations
+        _ = np.zeros((1024, 1024), dtype=np.float32)
+        _ = fits.Header()
+        _ = Time.now()
+        # Import the processing modules
+        from unscramble import Processor
+        _ = Processor(shift_delta=0, full_frame=True)
+    except Exception as e:
+        print(f"[Worker Process] Warmup warning: {e}")
+    print("[Worker Process] Warmup complete")
+    
     # Create our own DataProcessor in this process
     dm = manager.DataMover(data_dir, output_dir)
     dp = manager.DataProcessor(dm)
     
-    print(f"[Worker Process] Started with PID {os.getpid()}")
+    print(f"[Worker Process] Ready for tasks")
     
     while True:
         try:

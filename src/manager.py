@@ -418,9 +418,14 @@ class DataProcessor:
         # Write FITS file
         fits_path = dm.processing.full_path(fitsname)
         try:
-            if os.access(fits_path, os.F_OK):
-                fits_path = generate_new_filepath(fits_path)
-                self.logger.debug(f"Changed name to: {fits_path}")
+            # Check if file already exists in OUTPUT directory (not processing!)
+            # This prevents overwriting files that haven't been picked up by GDS yet
+            output_fits_path = dm.output.full_path(fitsname)
+            if os.access(output_fits_path, os.F_OK):
+                # File exists in output - generate unique name to avoid overwrite
+                fitsname = os.path.basename(generate_new_filepath(fitsname))
+                fits_path = dm.processing.full_path(fitsname)
+                self.logger.warning(f"Output file exists, using unique name: {fitsname}")
             
             self.logger.debug(f" -> writing to {fits_path}")
             hdulist.writeto(fits_path, overwrite=True)
