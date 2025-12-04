@@ -452,6 +452,16 @@ class DataProcessor:
             self.logger.error(f"Error moving processed file to output: {e}")
             self.logger.error(f"Current working directory: {os.getcwd()}")
             self.logger.error(f"Files in processing directory: {os.listdir(dm.processing.full_path(''))}")
+            # Move raw files to error directory so they don't get stuck in processing
+            dm.move_group(dm.processing, dm.error, fname)
+            # Also move the orphaned FITS file to error if it exists
+            try:
+                fits_in_processing = dm.processing.full_path(fitsname)
+                if os.path.exists(fits_in_processing):
+                    dm.move(dm.processing, dm.error, fitsname)
+                    self.logger.info(f"Moved orphaned FITS file to error: {fitsname}")
+            except Exception as fits_err:
+                self.logger.error(f"Failed to move orphaned FITS file: {fits_err}")
             raise ProcessingError(f"Failed to move processed file for {fname}")
 
         # Handle raw files
