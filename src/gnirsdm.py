@@ -167,6 +167,7 @@ class Command(Enum):
 
 
 def parent_process_commands(pipe, ioc):
+    """Handle commands from child process in the main IOC process."""
     while True:
         command, label = pipe.recv()
         if command == Command.OBSERVE_START_WRITE:
@@ -182,7 +183,61 @@ def parent_process_commands(pipe, ioc):
             break
 
 
+def persistent_worker_process(task_queue, result_pipe, data_dir, output_dir, dc_commit, lib_commit):
+    """
+    Persistent worker process that runs independently with its own GIL.
+    This process is not affected by the main IOC's Python thread scheduling.
+    """
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_IGN)  # Ignore Ctrl+C in worker
+    
+    # Create our own DataProcessor in this process
+    dm = manager.DataMover(data_dir, output_dir)
+    dp = manager.DataProcessor(dm)
+    
+    print(f"[Worker Process] Started with PID {os.getpid()}")
+    
+    while True:
+        try:
+            # Block waiting for tasks - no polling delay
+            file_path = task_queue.get()
+            
+            if file_path is None:  # Shutdown signal
+                print("[Worker Process] Received shutdown signal")
+                break
+                
+            fname = file_path.parts[-1].rpartition('.')[0]
+            label = None
+
+            # Decode header
+            try:
+                rpath, header = manager.decode_header(dm.new, fname)
+                label = header['PDU']['LABEL']
+            except Exception as exc:
+                print(f"[Worker Process] Error reading raw header file: {fname}")
+                print(f"[Worker Process] Exception: {exc}")
+                continue
+
+            print(f'[Worker Process] GDS writing fits: {label}')
+            result_pipe.send((Command.OBSERVE_START_WRITE, label))
+
+            # Process file
+            try:
+                dp.process_file(fname, dc_commit, lib_commit)
+            except Exception as exc:
+                print(f"[Worker Process] Error processing file {fname}: {exc}")
+                
+            result_pipe.send((Command.OBSERVE_END_WRITE, label))
+            
+        except Exception as e:
+            print(f"[Worker Process] Unexpected error: {e}")
+            continue
+    
+    print("[Worker Process] Exiting")
+
+
 def standalone_process_task(file_path, dp, pipe):
+    """Legacy function - kept for compatibility but no longer used."""
     fname = file_path.parts[-1].rpartition('.')[0]
     label = None
 
@@ -206,61 +261,79 @@ def standalone_process_task(file_path, dp, pipe):
         
     pipe.send((Command.OBSERVE_END_WRITE, label))
 
-#    finally:
-#        try:
-#            asyncio.run(ioc.done_task(f"Done processing {file_path.parts[-1]}"))
-#        except Exception as async_exc:
-#            logger.irdc_debug(f"Error in done_task: {async_exc}")
-
 class GnirsDataManagerProcessor:
-    def __init__(self, ioc, processor):
+    def __init__(self, ioc, processor, data_dir=None, output_dir=None):
 
         self.ioc = ioc
         self.dp = processor
-        self.queue = queue.Queue()
+        self.data_dir = data_dir
+        self.output_dir = output_dir
+        self.queue = queue.Queue()  # Local queue for async -> thread communication
         self.ready = threading.Event()
         self.shutting_down = False
         self.logger = getLogger('GNIRSDC')
 
-        self.processes = []
-
+        # Use multiprocessing Queue for cross-process communication
+        self.task_queue = mp.Queue()
+        
+        # Pipe for worker process to send commands back to main process
         self.parent_conn, self.child_conn = mp.Pipe()
+        
+        # Thread in main process to handle commands from worker
         self.command_thread = threading.Thread(target=parent_process_commands, args=(self.parent_conn, self.ioc))
         self.command_thread.start()
+        
+        # Persistent worker process - completely independent of main IOC's GIL
+        self.worker_process = None
+
+    def start_worker_process(self):
+        """Start the persistent worker process."""
+        dc_commit = os.getenv('DC_COMMIT', 'dc_commit_missing')
+        lib_commit = os.getenv('LIB_COMMIT', 'lib_commit_missing')
+        
+        self.worker_process = mp.Process(
+            target=persistent_worker_process,
+            args=(self.task_queue, self.child_conn, self.data_dir, self.output_dir, dc_commit, lib_commit),
+            daemon=False  # Not daemon so it can clean up properly
+        )
+        self.worker_process.start()
+        self.logger.info(f"Started persistent worker process with PID {self.worker_process.pid}")
 
     def set_ready(self):
+        self.start_worker_process()
         self.ready.set()
 
     def shutdown(self):
         self.shutting_down = True
 
-        self.parent_conn.send((None, None))  # Signal to stop the command thread
+        # Send shutdown signal to worker process
+        if self.worker_process and self.worker_process.is_alive():
+            self.task_queue.put(None)  # Shutdown signal
+            self.worker_process.join(timeout=5)
+            if self.worker_process.is_alive():
+                self.logger.warning("Worker process did not exit cleanly, terminating...")
+                self.worker_process.terminate()
+                self.worker_process.join(timeout=2)
+
+        # Stop the command thread
+        self.parent_conn.send((None, None))
         self.command_thread.join()
 
-        for p in self.processes:
-            p.join()
-
     def process_queue(self):
+        """Forward tasks from local queue to the worker process queue."""
         self.ready.wait()
         while not self.shutting_down:
             try:
-                next_task = self.queue.get(timeout=0.5)
+                # Get from local async queue
+                next_task = self.queue.get(timeout=0.05)
                 asyncio.run(self.ioc.state.write(StateEnum.PROCESSING))
-                p = mp.Process(target=standalone_process_task, args=(next_task, self.dp, self.child_conn))
-                p.start()
-                self.processes.append(p)
-                asyncio.run(self.ioc.currentLabel.write(''))
+                
+                # Forward to worker process - this is nearly instant
+                self.task_queue.put(next_task)
+                
                 asyncio.run(self.ioc.state.write(StateEnum.RUNNING))
             except queue.Empty:
-                continue  # Continue checking for new tasks
-            self.cleanup_processes()
-
-    def cleanup_processes(self):
-        # Clean up completed processes
-        for p in list(self.processes):
-            if not p.is_alive():
-                p.join()  # Ensure the process has ended cleanly
-                self.processes.remove(p)
+                continue
 
     async def set_error(self, label, message):
         await self.ioc.lastErrorLabel.write(label)
@@ -777,7 +850,12 @@ async def main():
     dm = manager.DataMover(run_options['data_dir'], run_options['output_dir'])
     # TODO: "Keep should be configured via command line"
     ioc.processor = manager.DataProcessor(dm)
-    proc = GnirsDataManagerProcessor(ioc, ioc.processor)
+    proc = GnirsDataManagerProcessor(
+        ioc, 
+        ioc.processor,
+        data_dir=run_options['data_dir'],
+        output_dir=run_options['output_dir']
+    )
     thrd = threading.Thread(target = proc.process_queue)
     thrd.start()
     prt = partial(startup, ioc, proc, **run_options)
