@@ -82,20 +82,26 @@ class BiasCAD(GnirsCAD):
             return False
         else:
             print("BiasCAD start")
-            if self.parent.arSetupH.value == "0.3":  # Seqexec uses 300mv or 0.3 for SHALLOW we set to 400mv which is called biasLow or -3.6V
-                self.controller.biasLow()
-                await self.logMessage("Bias set to shallow: 400mv, -3.6")
-                await self.MESS.write("Bias set to shallow: 400mv, -3.6")
-                return True
-            elif self.parent.arSetupH.value == "0.6":  # Seqexec uses 600mv or 0.6 for DEEP we set to 600mv which is called biasMed or -3.4V
-                self.controller.biasMed()
-                await self.logMessage("Bias set to deep: 600mv, -3.4")
-                await self.MESS.write("Bias set to deep: 600mv, -3.4")
-                return True
-
-            else:
-                await self.logMessage("Invalid bias voltage value. Leaving bias at: " + str(biasVal))
-                await self.MESS.write("Set Bias failed")
+            try:
+                if self.parent.arSetupH.value == "0.3":  # Seqexec uses 300mv or 0.3 for SHALLOW we set to 400mv which is called biasLow or -3.6V
+                    self.controller.biasLow()
+                    await self.logMessage("Bias set to shallow: 400mv, -3.6")
+                    await self.MESS.write("Bias set to shallow: 400mv, -3.6")
+                    return True
+                elif self.parent.arSetupH.value == "0.6":  # Seqexec uses 600mv or 0.6 for DEEP we set to 600mv which is called biasMed or -3.4V
+                    self.controller.biasMed()
+                    await self.logMessage("Bias set to deep: 600mv, -3.4")
+                    await self.MESS.write("Bias set to deep: 600mv, -3.4")
+                    return True
+                else:
+                    biasVal = float(self.parent.arSetupH.value)
+                    await self.logMessage("Invalid bias voltage value. Leaving bias at: " + str(biasVal))
+                    await self.MESS.write("Set Bias failed")
+                    return False
+            except Exception as e:
+                error_message = str(e)
+                await self.logMessage(f"BiasCAD error: {error_message}")
+                await self.MESS.write(f"BiasCAD error: {error_message[:30]}")
                 return False
 
                 
@@ -106,11 +112,17 @@ class TDLCAD(GnirsCAD):
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
             return False
-        else: 
-            result = self.controller.testDataLink()
-            await self.logMessage(f"TDL: {result}")
-            await self.MESS.write("Set Bias successfull")
-            return True
+        else:
+            try:
+                result = self.controller.testDataLink()
+                await self.logMessage(f"TDL: {result}")
+                await self.MESS.write("TDL successfull")
+                return True
+            except Exception as e:
+                error_message = str(e)
+                await self.logMessage(f"TDLCAD error: {error_message}")
+                await self.MESS.write(f"TDL error: {error_message[:30]}")
+                return False
 
 
 class InitSDSUCAD(GnirsCAD):
@@ -260,9 +272,15 @@ class DCConfigCAD(GnirsCAD):
             await self.MESS.write("Controller not initialized")
             return False
         else:
-            self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.coaddsVAL.value, self.dropReadoutsNum.value, self.p.observeA.value)
-            await self.MESS.write("Configuration Set Successfully")
-            return True
+            try:
+                self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.coaddsVAL.value, self.dropReadoutsNum.value, self.p.observeA.value)
+                await self.MESS.write("Configuration Set Successfully")
+                return True
+            except Exception as e:
+                error_message = str(e)
+                await self.logMessage(f"DCConfigCAD error: {error_message}")
+                await self.MESS.write(f"DCConfig error: {error_message[:30]}")
+                return False
 
 
 class AbortCAD(GnirsCAD):
@@ -272,15 +290,23 @@ class AbortCAD(GnirsCAD):
             await self.MESS.write("Controller not initialized")
             return False
         else:
-            # Abort the current exposure
-            self.controller.abortExposure()
-            
-            # Set the sequence abort flag to stop any running sequence
-            self.parent.sequence_abort = True
-            
-            await self.logMessage(f"Aborting Exposure and Sequence")
-            await self.MESS.write("Abort Successful")
-            return True
+            try:
+                # Abort the current exposure
+                self.controller.abortExposure()
+                
+                # Set the sequence abort flag to stop any running sequence
+                self.parent.sequence_abort = True
+                
+                await self.logMessage(f"Aborting Exposure and Sequence")
+                await self.MESS.write("Abort Successful")
+                return True
+            except Exception as e:
+                error_message = str(e)
+                await self.logMessage(f"AbortCAD error: {error_message}")
+                await self.MESS.write(f"Abort error: {error_message[:30]}")
+                # Still set the abort flag even if controller call failed
+                self.parent.sequence_abort = True
+                return False
 
 
 class ObserveCAD(GnirsCAD):
@@ -324,17 +350,37 @@ class ObserveCAD(GnirsCAD):
                             await self.p.observeA.write(f"{self.p.observeA.value}.fits")
 
                     # begin readout
-                    await self.setBias()
-                    self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
+                    try:
+                        if not await self.setBias():
+                            await self.MESS.write("Observe failed - setBias error")
+                            return False
+                        self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
+                        exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, int(self.p.lnrNum.value), int(self.p.digitalAvgs.value))
+                    except Exception as e:
+                        error_message = str(e)
+                        await self.logMessage(f"Observe setup error: {error_message}")
+                        await self.MESS.write(f"Observe error: {error_message[:30]}")
+                        return False
 
                     await self.p.rdout.write(1)
 
 
                     # Run countdown_timer in a separate thread to prevent blocking
-                    exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, int(self.p.lnrNum.value), int(self.p.digitalAvgs.value))
                     countdown_task = asyncio.create_task(self.countdown_timer(exposure_delay))
 
-                    await self.start_async_exposure()
+                    try:
+                        await self.start_async_exposure()
+                    except Exception as e:
+                        # Cancel countdown timer on error
+                        if not countdown_task.done():
+                            countdown_task.cancel()
+                        await self.p.obsProgress.write(0)
+                        await self.p.coaddProgress.write(0)
+                        await self.p.timeLeft.write('0')
+                        error_message = str(e)
+                        await self.logMessage(f"Exposure failed: {error_message}")
+                        await self.MESS.write(f"Exposure failed: {error_message[:25]}")
+                        return False
                     
                     # Cancel the countdown timer task after exposure completes
                     if not countdown_task.done():
@@ -407,19 +453,37 @@ class ObserveCAD(GnirsCAD):
             await self.logMessage(f'TCS Context: {tcs_context}')
 
             # Send TCS context separately
-            self.controller.setTCSContext(tcs_context)
+            try:
+                self.controller.setTCSContext(tcs_context)
+            except Exception as e:
+                await self.logMessage(f"setTCSContext error: {str(e)}. Continuing without TCS context.")
+
         # readout SDSU
-        self.controller.startExposure(
-            self.p.detectorTemp1.value, 
-            self.p.detectorTemp2.value, 
-            self.p.parent.include_eng.value
-        )
+        try:
+            self.controller.startExposure(
+                self.p.detectorTemp1.value, 
+                self.p.detectorTemp2.value, 
+                self.p.parent.include_eng.value
+            )
+        except Exception as e:
+            error_message = str(e)
+            await self.logMessage(f"startExposure error: {error_message}")
+            await self.MESS.write(f"Exposure error: {error_message[:30]}")
+            await self.p.rdout.write(0)
+            raise
 
         await self.logMessage(f'SDSU readout started')
 
         #while self.controller.getReadingOut(): 
-        while await asyncio.to_thread(self.controller.getReadingOut):
-            await asyncio.sleep(0.1)
+        try:
+            while await asyncio.to_thread(self.controller.getReadingOut):
+                await asyncio.sleep(0.1)
+        except Exception as e:
+            error_message = str(e)
+            await self.logMessage(f"getReadingOut error: {error_message}")
+            await self.MESS.write(f"Readout error: {error_message[:30]}")
+            await self.p.rdout.write(0)
+            raise
 
         await self.logMessage(f'SDSU readout complete')
 
@@ -491,19 +555,25 @@ class ObserveCAD(GnirsCAD):
     async def setBias(self):
             biasVal = float(self.parent.arSetupH.value)
 
-            if self.parent.arSetupH.value == "0.3":  # Seqexec uses 300mv or 0.3 for SHALLOW we set to 400mv which is called biasLow or -3.6V
-                self.controller.biasLow()
-                await self.logMessage("Bias set to shallow: 400mv, -3.6")
-                await self.MESS.write("Bias set to shallow: 400mv, -3.6")
-                return True
-            elif self.parent.arSetupH.value == "0.6":  # Seqexec uses 600mv or 0.6 for DEEP we set to 600mv which is called biasMed or -3.4V
-                self.controller.biasMed()
-                await self.logMessage("Bias set to deep: 600mv, -3.4")
-                await self.MESS.write("Bias set to deep: 600mv, -3.4")
-                return True
-            else:
-                await self.logMessage("Invalid bias voltage value. Leaving bias at: " + str(biasVal))
-                await self.MESS.write("Set Bias failed")
+            try:
+                if self.parent.arSetupH.value == "0.3":  # Seqexec uses 300mv or 0.3 for SHALLOW we set to 400mv which is called biasLow or -3.6V
+                    self.controller.biasLow()
+                    await self.logMessage("Bias set to shallow: 400mv, -3.6")
+                    await self.MESS.write("Bias set to shallow: 400mv, -3.6")
+                    return True
+                elif self.parent.arSetupH.value == "0.6":  # Seqexec uses 600mv or 0.6 for DEEP we set to 600mv which is called biasMed or -3.4V
+                    self.controller.biasMed()
+                    await self.logMessage("Bias set to deep: 600mv, -3.4")
+                    await self.MESS.write("Bias set to deep: 600mv, -3.4")
+                    return True
+                else:
+                    await self.logMessage("Invalid bias voltage value. Leaving bias at: " + str(biasVal))
+                    await self.MESS.write("Set Bias failed")
+                    return False
+            except Exception as e:
+                error_message = str(e)
+                await self.logMessage(f"setBias error: {error_message}")
+                await self.MESS.write(f"setBias error: {error_message[:30]}")
                 return False
 
 
