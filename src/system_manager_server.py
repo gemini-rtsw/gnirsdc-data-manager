@@ -856,14 +856,15 @@ def start_controller():
         pv_cache_time = 0
         logger.info(f"Switched to prefix: {top_name}")
         
-        # Build command based on mode
+        # Build command based on mode - ALWAYS pass the top name to override entrypoint.sh default
         if mode == 'normal':
-            command = '/usr/local/bin/dc-start.sh'
+            command = f'/usr/local/bin/dc-start.sh --top {top_name}'
         elif mode == 'debug':
-            # Only pass --debug flag, top name comes from config
-            command = '/usr/local/bin/dc-start.sh --debug'
+            command = f'/usr/local/bin/dc-start.sh --debug --top {top_name}'
         else:
             raise ValueError(f"Invalid mode: {mode}")
+        
+        logger.info(f"Starting controller with command: {command}")
         
         output, error = run_ssh_command(command)
         
