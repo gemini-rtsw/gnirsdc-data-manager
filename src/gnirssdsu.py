@@ -367,29 +367,39 @@ class ObserveCAD(GnirsCAD):
                 if self.p.sequence.value < 1:
                     await self.p.sequence.write(1)
 
+                # Save the original base label BEFORE the loop - this is what user set
+                # We'll restore it after the sequence so next readout starts fresh
+                original_base_label = self.p.observeA.value
+                # Strip any .fits extension and existing timestamp from base label
+                if original_base_label.endswith('.fits'):
+                    original_base_label = original_base_label[:-5]
+
                 for i in range(self.p.sequence.value, 0, -1):   # reverse and end at i = 1
                     # Check if sequence has been aborted
                     if self.parent.sequence_abort:
                         await self.logMessage(f"Sequence aborted after {self.p.sequence.value - i} exposures")
                         break
                         
-                    # Ensure data label has a timestamp to prevent overwrites
-                    # Add timestamp if labelTimeStamp is enabled OR if label doesn't already have one
-                    current_label = self.p.observeA.value
+                    # Generate unique label for THIS exposure using a fresh timestamp
+                    # Always start from original_base_label to ensure fresh timestamp each time
                     if self.p.labelTimeStamp.value > 0:
                         # Manual timestamp mode: add timestamp-sequence format
                         timestamp = get_current_timestamp()
-                        await self.p.observeA.write(f"{timestamp}-{i}")
-                    elif not has_timestamp_in_label(current_label):
-                        # Auto-add timestamp if label doesn't have one (prevents overwrites)
+                        exposure_label = f"{timestamp}-{i}"
+                    elif not has_timestamp_in_label(original_base_label):
+                        # Auto-add timestamp if base label doesn't have one (prevents overwrites)
                         timestamp = get_current_timestamp()
-                        # Add timestamp as suffix: label_YYYYMMDDHHMMSSmmm
-                        await self.p.observeA.write(f"{current_label}_{timestamp}")
+                        exposure_label = f"{original_base_label}_{timestamp}"
+                    else:
+                        # Base label already has timestamp (e.g., seqexec label) - use as-is
+                        exposure_label = original_base_label
 
-                    # Add fits extension if not going to archive
-                    #if self.p.parent.archive_fits.value == 0:
-                    if not self.p.observeA.value.endswith('.fits'):
-                        await self.p.observeA.write(f"{self.p.observeA.value}.fits")
+                    # Add fits extension
+                    if not exposure_label.endswith('.fits'):
+                        exposure_label = f"{exposure_label}.fits"
+                    
+                    # Update observeA with this exposure's unique label
+                    await self.p.observeA.write(exposure_label)
 
                     # begin readout
                     try:
@@ -449,9 +459,9 @@ class ObserveCAD(GnirsCAD):
                 await self.p.parent.include_eng.write(0)
                 # set write to fits archive by default don't want a test write to affect a seqexec readout
                 await self.p.parent.archive_fits.write(1)
-                # Remove the .fits extension after readout is done
-                if self.p.observeA.value.endswith('.fits'):
-                    await self.p.observeA.write(self.p.observeA.value[:-5])
+                # Restore the original base label (without timestamp) for next readout
+                # This ensures each new readout gets a fresh timestamp
+                await self.p.observeA.write(original_base_label)
 
 
                 await self.MESS.write("Observe CAD Completed Successfully")
