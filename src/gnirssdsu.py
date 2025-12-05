@@ -21,6 +21,7 @@ from tcs_monitor import TCSMonitor
 import time
 
 import os, shutil, glob
+import re
 from datetime import datetime
 
 from libgnirsioc import controllerInterface
@@ -47,6 +48,40 @@ def get_current_timestamp():
     now = datetime.now()
     milliseconds = int(time.time() * 1000) % 1000
     return now.strftime("%Y%m%d%H%M%S") + f"{milliseconds:03d}"
+
+
+def has_timestamp_in_label(label):
+    """
+    Check if a data label already contains a timestamp/datetime identifier.
+    Returns True if the label already has a timestamp and shouldn't have one added.
+    
+    Patterns considered to have timestamp:
+    - Seqexec format: N20251120S0444, GN20251120S0444, GS20251120S0444 (has date)
+    - Timestamp suffix: *_20251120123456789 (17 digits: YYYYMMDDHHMMSSmmm)
+    - Timestamp prefix: 20251120123456789-* (17 digits)
+    """
+    if not label:
+        return False
+    
+    # Remove .fits extension if present
+    base = label.rstrip('.fits') if label.endswith('.fits') else label
+    
+    # Seqexec format: [G][N|S]YYYYMMDDSNNNN (has date in it)
+    seqexec_pattern = r'^G?[NS]\d{8}S\d{4}$'
+    if re.match(seqexec_pattern, base):
+        return True
+    
+    # Timestamp suffix: _YYYYMMDDHHMMSSmmm (17 digits)
+    timestamp_suffix_pattern = r'_\d{17}'
+    if re.search(timestamp_suffix_pattern, base):
+        return True
+    
+    # Timestamp prefix: YYYYMMDDHHMMSSmmm- (17 digits followed by dash)
+    timestamp_prefix_pattern = r'^\d{17}-'
+    if re.match(timestamp_prefix_pattern, base):
+        return True
+    
+    return False
 
 
 class GnirsCAD(CADRecord):
@@ -338,16 +373,23 @@ class ObserveCAD(GnirsCAD):
                         await self.logMessage(f"Sequence aborted after {self.p.sequence.value - i} exposures")
                         break
                         
-                    # Add the timestamp to the observeA value if labelTimeStamp is greater than 0
-                    # (labelTimeStamp is automatically enabled when sequence count > 1)
+                    # Ensure data label has a timestamp to prevent overwrites
+                    # Add timestamp if labelTimeStamp is enabled OR if label doesn't already have one
+                    current_label = self.p.observeA.value
                     if self.p.labelTimeStamp.value > 0:
+                        # Manual timestamp mode: add timestamp-sequence format
                         timestamp = get_current_timestamp()
                         await self.p.observeA.write(f"{timestamp}-{i}")
+                    elif not has_timestamp_in_label(current_label):
+                        # Auto-add timestamp if label doesn't have one (prevents overwrites)
+                        timestamp = get_current_timestamp()
+                        # Add timestamp as suffix: label_YYYYMMDDHHMMSSmmm
+                        await self.p.observeA.write(f"{current_label}_{timestamp}")
 
                     # Add fits extension if not going to archive
-                    if self.p.parent.archive_fits.value == 0:
-                        if not self.p.observeA.value.endswith('.fits'):
-                            await self.p.observeA.write(f"{self.p.observeA.value}.fits")
+                    #if self.p.parent.archive_fits.value == 0:
+                    if not self.p.observeA.value.endswith('.fits'):
+                        await self.p.observeA.write(f"{self.p.observeA.value}.fits")
 
                     # begin readout
                     try:
