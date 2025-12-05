@@ -183,77 +183,64 @@ def parent_process_commands(pipe, ioc):
             break
 
 
-def persistent_worker_process(task_queue, result_pipe, data_dir, output_dir, dc_commit, lib_commit):
+def process_single_file(args):
     """
-    Persistent worker process that runs independently with its own GIL.
-    This process is not affected by the main IOC's Python thread scheduling.
+    Process a single file - called by the process pool.
+    Each call runs in a separate process with its own GIL.
+    
+    Args is a tuple: (file_path, data_dir, output_dir, dc_commit, lib_commit)
+    Returns: (label, success, error_message)
     """
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_IGN)  # Ignore Ctrl+C in worker
+    file_path, data_dir, output_dir, dc_commit, lib_commit = args
     
-    print(f"[Worker Process] Starting with PID {os.getpid()}")
-    
-    # === WARMUP PHASE ===
-    # Pre-import and initialize all heavy modules to avoid cold-start delay on first file
-    print("[Worker Process] Warming up (pre-importing modules)...")
-    try:
-        import numpy as np
-        from astropy.io import fits
-        from astropy.time import Time
-        # Trigger numpy/astropy lazy initialization with dummy operations
-        _ = np.zeros((1024, 1024), dtype=np.float32)
-        _ = fits.Header()
-        _ = Time.now()
-        # Import the processing modules
-        from unscramble import Processor
-        _ = Processor(shift_delta=0, full_frame=True)
-    except Exception as e:
-        print(f"[Worker Process] Warmup warning: {e}")
-    print("[Worker Process] Warmup complete")
-    
-    # Create our own DataProcessor in this process
+    # Create DataProcessor for this process
     dm = manager.DataMover(data_dir, output_dir)
     dp = manager.DataProcessor(dm)
     
-    print(f"[Worker Process] Ready for tasks")
+    fname = file_path.parts[-1].rpartition('.')[0]
+    label = None
     
-    while True:
-        try:
-            # Block waiting for tasks - no polling delay
-            file_path = task_queue.get()
-            
-            if file_path is None:  # Shutdown signal
-                print("[Worker Process] Received shutdown signal")
-                break
-                
-            fname = file_path.parts[-1].rpartition('.')[0]
-            label = None
+    try:
+        # Decode header to get label
+        rpath, header = manager.decode_header(dm.new, fname)
+        label = header['PDU']['LABEL']
+        
+        # Process file
+        dp.process_file(fname, dc_commit, lib_commit)
+        
+        return (label, True, None)
+        
+    except Exception as exc:
+        error_msg = str(exc)
+        print(f"[Pool Worker {os.getpid()}] Error processing {fname}: {error_msg}")
+        return (label, False, error_msg)
 
-            # Decode header
-            try:
-                rpath, header = manager.decode_header(dm.new, fname)
-                label = header['PDU']['LABEL']
-            except Exception as exc:
-                print(f"[Worker Process] Error reading raw header file: {fname}")
-                print(f"[Worker Process] Exception: {exc}")
-                continue
 
-            print(f'[Worker Process] GDS writing fits: {label}')
-            result_pipe.send((Command.OBSERVE_START_WRITE, label))
-
-            # Process file
-            try:
-                dp.process_file(fname, dc_commit, lib_commit)
-            except Exception as exc:
-                print(f"[Worker Process] Error processing file {fname}: {exc}")
-                
-            result_pipe.send((Command.OBSERVE_END_WRITE, label))
-            
-        except Exception as e:
-            print(f"[Worker Process] Unexpected error: {e}")
-            continue
+def pool_initializer():
+    """
+    Initialize each worker in the process pool.
+    Called once when each worker process starts.
+    """
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_IGN)  # Ignore Ctrl+C in workers
     
-    print("[Worker Process] Exiting")
+    print(f"[Pool Worker {os.getpid()}] Warming up...")
+    try:
+        # Pre-import heavy modules
+        import numpy as np
+        from astropy.io import fits
+        from astropy.time import Time
+        from unscramble import Processor
+        
+        # Trigger lazy initialization
+        _ = np.zeros((1024, 1024), dtype=np.float32)
+        _ = fits.Header()
+        _ = Time.now()
+        _ = Processor(shift_delta=0, full_frame=True)
+    except Exception as e:
+        print(f"[Pool Worker {os.getpid()}] Warmup warning: {e}")
+    
+    print(f"[Pool Worker {os.getpid()}] Ready")
 
 
 def standalone_process_task(file_path, dp, pipe):
@@ -282,6 +269,9 @@ def standalone_process_task(file_path, dp, pipe):
     pipe.send((Command.OBSERVE_END_WRITE, label))
 
 class GnirsDataManagerProcessor:
+    # Number of parallel worker processes
+    NUM_WORKERS = 3
+    
     def __init__(self, ioc, processor, data_dir=None, output_dir=None):
 
         self.ioc = ioc
@@ -292,64 +282,68 @@ class GnirsDataManagerProcessor:
         self.ready = threading.Event()
         self.shutting_down = False
         self.logger = getLogger('GNIRSDC')
+        
+        # Process pool for parallel file processing
+        self.pool = None
+        self.pending_futures = []
+        
+        # Store commit info
+        self.dc_commit = os.getenv('DC_COMMIT', 'dc_commit_missing')
+        self.lib_commit = os.getenv('LIB_COMMIT', 'lib_commit_missing')
 
-        # Use multiprocessing Queue for cross-process communication
-        self.task_queue = mp.Queue()
+    def start_worker_pool(self):
+        """Start the process pool for parallel file processing."""
+        from concurrent.futures import ProcessPoolExecutor
         
-        # Pipe for worker process to send commands back to main process
-        self.parent_conn, self.child_conn = mp.Pipe()
-        
-        # Thread in main process to handle commands from worker
-        self.command_thread = threading.Thread(target=parent_process_commands, args=(self.parent_conn, self.ioc))
-        self.command_thread.start()
-        
-        # Persistent worker process - completely independent of main IOC's GIL
-        self.worker_process = None
-
-    def start_worker_process(self):
-        """Start the persistent worker process."""
-        dc_commit = os.getenv('DC_COMMIT', 'dc_commit_missing')
-        lib_commit = os.getenv('LIB_COMMIT', 'lib_commit_missing')
-        
-        self.worker_process = mp.Process(
-            target=persistent_worker_process,
-            args=(self.task_queue, self.child_conn, self.data_dir, self.output_dir, dc_commit, lib_commit),
-            daemon=False  # Not daemon so it can clean up properly
+        self.pool = ProcessPoolExecutor(
+            max_workers=self.NUM_WORKERS,
+            initializer=pool_initializer
         )
-        self.worker_process.start()
-        self.logger.info(f"Started persistent worker process with PID {self.worker_process.pid}")
+        self.logger.info(f"Started process pool with {self.NUM_WORKERS} workers")
 
     def set_ready(self):
-        self.start_worker_process()
+        self.start_worker_pool()
         self.ready.set()
 
     def shutdown(self):
         self.shutting_down = True
 
-        # Send shutdown signal to worker process
-        if self.worker_process and self.worker_process.is_alive():
-            self.task_queue.put(None)  # Shutdown signal
-            self.worker_process.join(timeout=5)
-            if self.worker_process.is_alive():
-                self.logger.warning("Worker process did not exit cleanly, terminating...")
-                self.worker_process.terminate()
-                self.worker_process.join(timeout=2)
+        # Shutdown the process pool
+        if self.pool:
+            self.pool.shutdown(wait=True, cancel_futures=False)
+            self.logger.info("Process pool shutdown complete")
 
-        # Stop the command thread
-        self.parent_conn.send((None, None))
-        self.command_thread.join()
+    def handle_result(self, future):
+        """Handle the result of a completed file processing task."""
+        try:
+            label, success, error_msg = future.result()
+            if label:
+                # Send GIAPI notifications
+                if success:
+                    self.ioc.GIAPIInterface.observeStartWrite(label)
+                    self.ioc.GIAPIInterface.observeEndWrite(label)
+                else:
+                    self.logger.error(f"Processing failed for {label}: {error_msg}")
+                    # Still send end write to notify GDS
+                    self.ioc.GIAPIInterface.observeStartWrite(label)
+                    self.ioc.GIAPIInterface.observeEndWrite(label)
+        except Exception as e:
+            self.logger.error(f"Error handling result: {e}")
 
     def process_queue(self):
-        """Forward tasks from local queue to the worker process queue."""
+        """Submit tasks to the process pool for parallel processing."""
         self.ready.wait()
+        
         while not self.shutting_down:
             try:
                 # Get from local async queue
                 next_task = self.queue.get(timeout=0.05)
                 asyncio.run(self.ioc.state.write(StateEnum.PROCESSING))
                 
-                # Forward to worker process - this is nearly instant
-                self.task_queue.put(next_task)
+                # Submit to process pool - returns immediately
+                args = (next_task, self.data_dir, self.output_dir, self.dc_commit, self.lib_commit)
+                future = self.pool.submit(process_single_file, args)
+                future.add_done_callback(self.handle_result)
                 
                 asyncio.run(self.ioc.state.write(StateEnum.RUNNING))
             except queue.Empty:
