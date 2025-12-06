@@ -1564,27 +1564,20 @@
         fetch('/get_file_log')
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`HTTP error ${response.status}`);
+                    return;
                 }
                 return response.json();
             })
             .then(data => {
-                const wasScrolledToTop = !isUserScrolled;
-                
-                if (data.status === 'success' && data.content) {
+                if (data && data.status === 'success' && data.content) {
+                    const wasScrolledToTop = !isUserScrolled;
                     fileLogMessagesTextarea.value = data.content;
                     if (wasScrolledToTop) {
                         fileLogMessagesTextarea.scrollTop = 0;
                     }
-                } else if (data.status === 'error') {
-                    console.warn('File log error:', data.message);
-                    fileLogMessagesTextarea.value = `Log not available: ${data.message}`;
                 }
             })
-            .catch(error => {
-                console.error('Error fetching file log:', error);
-                fileLogMessagesTextarea.value = 'Error loading log file. It may be unavailable.';
-            });
+            .catch(() => {});
     }
 
     function updateStatusIndicator(elementId, isConnected) {
