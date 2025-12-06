@@ -570,24 +570,35 @@ def view_fits_header(filename):
 
     if os.path.isfile(file_path):
         with fits.open(file_path) as hdul:
-            header = hdul[0].header
+            all_headers = []
+            
+            for i, hdu in enumerate(hdul):
+                # Get extension name or use index
+                ext_name = hdu.name if hdu.name else f'HDU {i}'
+                if i == 0:
+                    ext_name = 'PRIMARY'
+                
+                all_headers.append(f'{"="*60}')
+                all_headers.append(f'HDU {i}: {ext_name}')
+                all_headers.append(f'{"="*60}')
+                
+                header = hdu.header
+                for card in header.cards:
+                    key = card.keyword
+                    value = card.value
+                    comment = card.comment
+                    if key == 'COMMENT':
+                        all_headers.append(f'COMMENT {value}')
+                    elif key == 'HISTORY':
+                        all_headers.append(f'HISTORY {value}')
+                    elif comment:
+                        all_headers.append(f'{key:<8} = {value:<20} / {comment}')
+                    else:
+                        all_headers.append(f'{key:<8} = {value}')
+                
+                all_headers.append('')  # Empty line between HDUs
         
-        # Convert header to a string representation, including comments
-        header_text = []
-        for card in header.cards:
-            key = card.keyword
-            value = card.value
-            comment = card.comment
-            if key == 'COMMENT':
-                header_text.append(f'COMMENT {value}')
-            elif key == 'HISTORY':
-                header_text.append(f'HISTORY {value}')
-            elif comment:
-                header_text.append(f'{key:<8} = {value:<20} / {comment}')
-            else:
-                header_text.append(f'{key:<8} = {value}')
-        
-        header_text = '\n'.join(header_text)
+        header_text = '\n'.join(all_headers)
         
         return render_template('fits_header.html', filename=filename, header_text=header_text)
     else:

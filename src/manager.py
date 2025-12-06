@@ -322,11 +322,18 @@ class TimingMeasurement:
 
 
 
-def extract_timing(samples_header, ext_header):
+def create_timing_hdu(samples_header):
+    """Create a separate HDU for timing data."""
+    timing_header = fits.Header()
+    timing_header['EXTNAME'] = ('Timing', 'Extension name')
+    
     for key, value in samples_header.items():
         # Format the values as decimal numbers
         formatted_value = f'{value:.6f}'
-        ext_header[key] = formatted_value
+        timing_header[key] = formatted_value
+    
+    # Create an ImageHDU with no data, just the timing header
+    return fits.ImageHDU(data=None, header=timing_header)
 
 
 def create_hdulist(header, raw_path, dc_commit = None, lib_commit = None): 
@@ -336,9 +343,10 @@ def create_hdulist(header, raw_path, dc_commit = None, lib_commit = None):
     hdulist, ext_header, lnrs, ndavgs, raw_cols, raw_rows, coadds, exptime, p_mode, fname = define_hdu_list(header, dc_commit, lib_commit)
 
 
-    # Append timing_header to ext_header
+    # Create separate Timing HDU if timing data is present
+    timing_hdu = None
     if 'TIME_SAMPLES' in header:
-        extract_timing(header['TIME_SAMPLES'], ext_header)
+        timing_hdu = create_timing_hdu(header['TIME_SAMPLES'])
 
     total_frames = lnrs * 2
     frame_rows = raw_rows // total_frames
@@ -363,6 +371,10 @@ def create_hdulist(header, raw_path, dc_commit = None, lib_commit = None):
             save_processed_image(raw_data.reshape((raw_rows, raw_cols)), lnrs, ndavgs, exptime, hdulist, ext_header, p_mode == 'SEP')
     except:
         raise RawDataNotFoundError(f"Raw Data Not Found {fname}: missing data, probably an aborted exposure")
+
+    # Add timing HDU at the end if timing data was present
+    if timing_hdu is not None:
+        hdulist.append(timing_hdu)
 
     return fname, hdulist
 
