@@ -204,6 +204,7 @@ class InitSDSUCAD(GnirsCAD):
 
                 await self.logMessage(f"Detector not at temperature")
                 await self.MESS.write("Detector not at temperature")
+                await self.p.sdsuState.write("NOT INITIALIZED")
 
                 return False
             else:
@@ -243,11 +244,13 @@ class InitSDSUCAD(GnirsCAD):
             error_message = str(e)
             await self.logMessage(f"An exception occurred: {error_message}")
             await self.MESS.write("Controller Init Error")
+            await self.p.sdsuState.write("NOT INITIALIZED")
             self.controller = None
             return False
         
         await self.logMessage("SDSU Initialization failed")
         await self.MESS.write("SDSU Initialization failed")
+        await self.p.sdsuState.write("NOT INITIALIZED")
         self.controller = None
         return False
 
