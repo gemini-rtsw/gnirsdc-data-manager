@@ -761,6 +761,10 @@ def get_file_log():
                 content = f.read()
             else:
                 content = f.read()
+        
+        # Reverse line order so newest messages appear at the top
+        lines = content.splitlines()
+        content = '\n'.join(reversed(lines))
                 
         return jsonify({"status": "success", "content": content})
     except Exception as e:
