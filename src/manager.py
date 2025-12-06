@@ -73,7 +73,7 @@ __version__=0.1
 DEFAULT_DATADIR = '/home/readout_data'
 
 # GNAAC Drops first and last row of data for NAXIS2 = 1022 - set true if needed
-FORCE_DROP_ROWS = False
+FORCE_DROP_ROWS = True
 
 class ProcessingError(RuntimeError):
     pass
