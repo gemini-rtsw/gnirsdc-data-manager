@@ -27,6 +27,7 @@ from datetime import datetime
 from libgnirsioc import controllerInterface
 from libgnirsioc import controllerInterfaceDebug
 from libgnirsioc import setGlobalDebug
+import gc
 
 from fits_header_definitions import generate_new_filename
 
@@ -82,6 +83,37 @@ def has_timestamp_in_label(label):
         return True
     
     return False
+
+
+def cleanup_controller(controller):
+    """
+    Properly cleanup a controller interface to release PCI resources.
+    This is needed when re-initializing after an ARC power cycle.
+    """
+    if controller is None:
+        return
+    
+    try:
+        # Try to call close() if it exists
+        if hasattr(controller, 'close'):
+            controller.close()
+        # Try cleanup() as an alternative
+        elif hasattr(controller, 'cleanup'):
+            controller.cleanup()
+        # Try disconnect() as another alternative  
+        elif hasattr(controller, 'disconnect'):
+            controller.disconnect()
+    except Exception as e:
+        print(f"Warning: Error during controller cleanup: {e}")
+    
+    # Force Python to release the object and run destructor
+    del controller
+    
+    # Force garbage collection to ensure C++ destructor runs
+    gc.collect()
+    
+    # Small delay to allow PCI resources to be released
+    time.sleep(0.1)
 
 
 class GnirsCAD(CADRecord):
@@ -207,10 +239,15 @@ class InitSDSUCAD(GnirsCAD):
                 await self.p.sdsuState.write("NOT INITIALIZED")
 
                 return False
-            else:
-                self.controller = None
+            
+            # Properly cleanup existing controller to release PCI resources
+            # This is essential for re-initialization after ARC power cycle
+            if self.controller is not None:
+                await self.logMessage("Cleaning up existing controller...")
+                cleanup_controller(self.controller)
+                self.parent.sdsuController = None  # Clear the reference
 
-                await self.logMessage("SDSU Initializing")
+            await self.logMessage("SDSU Initializing")
 
             firmware_full_path = os.path.join(os.getcwd(), "firmware/AladdinIII_SDSU_Firmware.lod")
 
@@ -245,13 +282,19 @@ class InitSDSUCAD(GnirsCAD):
             await self.logMessage(f"An exception occurred: {error_message}")
             await self.MESS.write("Controller Init Error")
             await self.p.sdsuState.write("NOT INITIALIZED")
-            self.controller = None
+            # Cleanup on failure
+            if self.controller is not None:
+                cleanup_controller(self.controller)
+                self.parent.sdsuController = None
             return False
         
         await self.logMessage("SDSU Initialization failed")
         await self.MESS.write("SDSU Initialization failed")
         await self.p.sdsuState.write("NOT INITIALIZED")
-        self.controller = None
+        # Cleanup on failure
+        if self.controller is not None:
+            cleanup_controller(self.controller)
+            self.parent.sdsuController = None
         return False
 
 
