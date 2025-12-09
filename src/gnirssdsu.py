@@ -319,6 +319,9 @@ class PowerOnCAD(GnirsCAD):
                 error_message = str(e)
                 await self.logMessage(f"An exception occurred: {error_message}")
                 await self.MESS.write(f"An exception occurred: {error_message}")
+                if "CArcPCIe" in error_message or "Command" in error_message:
+                    await self.p.sdsuState.write("NOT INITIALIZED")
+                    await self.logMessage("Controller error detected - marked as NOT INITIALIZED")
                 return False
             
 
@@ -343,6 +346,9 @@ class PowerOffCAD(GnirsCAD):
                 error_message = str(e)
                 await self.logMessage(f"An exception occurred: {error_message}")
                 await self.MESS.write(f"An exception occurred: {error_message}")
+                if "CArcPCIe" in error_message or "Command" in error_message:
+                    await self.p.sdsuState.write("NOT INITIALIZED")
+                    await self.logMessage("Controller error detected - marked as NOT INITIALIZED")
                 return False
 
 
@@ -361,6 +367,9 @@ class DCConfigCAD(GnirsCAD):
                 error_message = str(e)
                 await self.logMessage(f"DCConfigCAD error: {error_message}")
                 await self.MESS.write(f"DCConfig error: {error_message[:30]}")
+                if "CArcPCIe" in error_message or "Command" in error_message:
+                    await self.p.sdsuState.write("NOT INITIALIZED")
+                    await self.logMessage("Controller error detected - marked as NOT INITIALIZED")
                 return False
 
 
@@ -387,6 +396,9 @@ class AbortCAD(GnirsCAD):
                 await self.MESS.write(f"Abort error: {error_message[:30]}")
                 # Still set the abort flag even if controller call failed
                 self.parent.sequence_abort = True
+                if "CArcPCIe" in error_message or "Command" in error_message:
+                    await self.p.sdsuState.write("NOT INITIALIZED")
+                    await self.logMessage("Controller error detected - marked as NOT INITIALIZED")
                 return False
 
 
@@ -568,6 +580,9 @@ class ObserveCAD(GnirsCAD):
             await self.logMessage(f"startExposure error: {error_message}")
             await self.MESS.write(f"Exposure error: {error_message[:30]}")
             await self.p.rdout.write(0)
+            if "CArcPCIe" in error_message or "Command" in error_message:
+                await self.p.sdsuState.write("NOT INITIALIZED")
+                await self.logMessage("Controller error detected - marked as NOT INITIALIZED")
             raise
 
         await self.logMessage(f'SDSU readout started')
@@ -581,6 +596,9 @@ class ObserveCAD(GnirsCAD):
             await self.logMessage(f"getReadingOut error: {error_message}")
             await self.MESS.write(f"Readout error: {error_message[:30]}")
             await self.p.rdout.write(0)
+            if "CArcPCIe" in error_message or "Command" in error_message:
+                await self.p.sdsuState.write("NOT INITIALIZED")
+                await self.logMessage("Controller error detected - marked as NOT INITIALIZED")
             raise
 
         await self.logMessage(f'SDSU readout complete')
@@ -672,6 +690,10 @@ class ObserveCAD(GnirsCAD):
                 error_message = str(e)
                 await self.logMessage(f"setBias error: {error_message}")
                 await self.MESS.write(f"setBias error: {error_message[:30]}")
+                # CArcPCIe errors indicate controller issues - mark as not initialized
+                if "CArcPCIe" in error_message or "Command" in error_message:
+                    await self.p.sdsuState.write("NOT INITIALIZED")
+                    await self.logMessage("Controller error detected - marked as NOT INITIALIZED")
                 return False
 
 
