@@ -1464,7 +1464,7 @@ def download_fits():
 def initialize_subscriptions():
     """Initialize all PV subscriptions at startup"""
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-    logger.info(f"Setting up core PV subscriptions with prefix: {top_name}")
+    print(f"Initializing PV subscriptions with prefix: {top_name}")
     pv_manager.setup_core_subscriptions(top_name)
 
 # Add this function at the global level, after the pv_manager is created
@@ -1502,15 +1502,17 @@ if __name__ == "__main__":
     if args.debug:
         config_mode = 'DEBUG'
         debug_mode = config['DEBUG'].getboolean('DEBUG', fallback=False)
-        logger.info(f"Debug flag detected. Using DEBUG config section")
+        print(f"========== DEBUG MODE ENABLED ==========")
+        print(f"Using config section: {config_mode}")
     else:
         config_mode = 'DEFAULT'
         debug_mode = False
-        logger.info("Running in production mode using DEFAULT config section")
+        print(f"========== PRODUCTION MODE ==========")
+        print(f"Using config section: {config_mode}")
 
     # Log the EPICS prefix being used
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-    logger.info(f"Using EPICS prefix: {top_name}")
+    print(f"Using EPICS prefix: {top_name}")
 
     # Initialize subscriptions at startup
     initialize_subscriptions()

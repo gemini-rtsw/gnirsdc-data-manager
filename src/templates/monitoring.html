@@ -150,10 +150,10 @@
         </ul>
         <div class="tab-content" id="logTabsContent">
             <div class="tab-pane fade show active" id="pv-log" role="tabpanel" aria-labelledby="pv-log-tab">
-                <textarea id="logMessages" rows="20" cols="100" readonly></textarea>
+                <textarea id="logMessages" readonly></textarea>
             </div>
             <div class="tab-pane fade" id="file-log" role="tabpanel" aria-labelledby="file-log-tab">
-                <textarea id="fileLogMessages" rows="20" cols="100" readonly></textarea>
+                <textarea id="fileLogMessages" readonly></textarea>
             </div>
         </div>
     </div>
@@ -995,7 +995,7 @@
         console.warn('setupSSE is deprecated, using setupEventSource instead');
     }
 
-    // Update file log every 5 seconds
+    // Update file log every 500ms
     setInterval(updateFileLog, 500);
 
     // Call setupEventSource initially
@@ -1176,9 +1176,7 @@
     
     .tab-content {
         width: 100%;
-        height: 30vh; /* Use viewport height for responsive sizing */
-        min-height: 200px;
-        max-height: 50vh;
+        flex: 1;
         display: flex;
         flex-direction: column;
     }
@@ -1187,16 +1185,17 @@
         flex: 1;
         display: flex;
         flex-direction: column;
-        height: 100%;
     }
     
     #logMessages, #fileLogMessages {
         width: 100%;
-        height: 100%;
-        flex: 1;
-        resize: both; /* Allow both horizontal and vertical resizing */
+        min-height: 300px;
+        height: 300px;
+        resize: vertical;
         overflow: auto;
         box-sizing: border-box;
+        font-family: monospace;
+        font-size: 12px;
     }
     
     .connection-status {
@@ -1313,7 +1312,6 @@
     }
 
     .tab-content {
-        height: 25vh; /* Responsive height for smaller screens */
         min-height: 200px;
     }
 
@@ -1559,9 +1557,6 @@
     }
 
     function updateFileLog() {
-        // Save current scroll position before updating
-        const currentScrollTop = fileLogMessagesTextarea.scrollTop;
-        
         fetch('/get_file_log')
             .then(response => {
                 if (!response.ok) {
@@ -1571,9 +1566,11 @@
             })
             .then(data => {
                 if (data && data.status === 'success' && data.content) {
+                    // Save scroll position RIGHT BEFORE updating content
+                    const scrollPos = fileLogMessagesTextarea.scrollTop;
                     fileLogMessagesTextarea.value = data.content;
-                    // Restore scroll position - no auto-scrolling
-                    fileLogMessagesTextarea.scrollTop = currentScrollTop;
+                    // Restore immediately after - NO auto-scrolling
+                    fileLogMessagesTextarea.scrollTop = scrollPos;
                 }
             })
             .catch(() => {});
@@ -1639,9 +1636,6 @@
 
     // Initial load of file log
     updateFileLog();
-
-    // Update file log every 5 seconds
-    setInterval(updateFileLog, 500);
 
     // Updated event listener for the integration parameters form
     document.getElementById('integrationParamsForm').addEventListener('submit', function(e) {
