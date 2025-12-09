@@ -138,9 +138,9 @@
     
     <div class="section-separator"></div>
     
-    <div>
-        <h2>Logs</h2>
-        <ul class="nav nav-tabs" id="logTabs" role="tablist">
+    <div style="margin-bottom: 0; padding-bottom: 0;">
+        <h2 style="margin-bottom: 5px;">Logs</h2>
+        <ul class="nav nav-tabs" id="logTabs" role="tablist" style="margin-bottom: 0;">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="pv-log-tab" data-bs-toggle="tab" data-bs-target="#pv-log" type="button" role="tab" aria-controls="pv-log" aria-selected="true">PV Log</button>
             </li>
@@ -148,11 +148,11 @@
                 <button class="nav-link" id="file-log-tab" data-bs-toggle="tab" data-bs-target="#file-log" type="button" role="tab" aria-controls="file-log" aria-selected="false">File Log</button>
             </li>
         </ul>
-        <div class="tab-content" id="logTabsContent">
-            <div class="tab-pane fade show active" id="pv-log" role="tabpanel" aria-labelledby="pv-log-tab">
+        <div class="tab-content" id="logTabsContent" style="padding: 0; margin: 0;">
+            <div class="tab-pane fade show active" id="pv-log" role="tabpanel" aria-labelledby="pv-log-tab" style="padding: 0;">
                 <textarea id="logMessages" readonly></textarea>
             </div>
-            <div class="tab-pane fade" id="file-log" role="tabpanel" aria-labelledby="file-log-tab">
+            <div class="tab-pane fade" id="file-log" role="tabpanel" aria-labelledby="file-log-tab" style="padding: 0;">
                 <textarea id="fileLogMessages" readonly></textarea>
             </div>
         </div>
@@ -1176,26 +1176,26 @@
     
     .tab-content {
         width: 100%;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
+        padding: 0;
+        margin: 0;
     }
     
     .tab-pane {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
+        padding: 0;
+        margin: 0;
     }
     
     #logMessages, #fileLogMessages {
         width: 100%;
-        min-height: 300px;
         height: 300px;
         resize: vertical;
-        overflow: auto;
+        overflow-y: scroll;
         box-sizing: border-box;
         font-family: monospace;
         font-size: 12px;
+        padding: 5px;
+        margin: 0;
+        display: block;
     }
     
     .connection-status {
@@ -1312,7 +1312,8 @@
     }
 
     .tab-content {
-        min-height: 200px;
+        padding: 0;
+        margin: 0;
     }
 
     /* Reduce padding on form controls */
@@ -1557,6 +1558,9 @@
     }
 
     function updateFileLog() {
+        // Save scroll position BEFORE fetch
+        const scrollPos = fileLogMessagesTextarea.scrollTop;
+        
         fetch('/get_file_log')
             .then(response => {
                 if (!response.ok) {
@@ -1566,11 +1570,11 @@
             })
             .then(data => {
                 if (data && data.status === 'success' && data.content) {
-                    // Save scroll position RIGHT BEFORE updating content
-                    const scrollPos = fileLogMessagesTextarea.scrollTop;
                     fileLogMessagesTextarea.value = data.content;
-                    // Restore immediately after - NO auto-scrolling
-                    fileLogMessagesTextarea.scrollTop = scrollPos;
+                    // Use requestAnimationFrame to restore scroll AFTER browser renders
+                    requestAnimationFrame(() => {
+                        fileLogMessagesTextarea.scrollTop = scrollPos;
+                    });
                 }
             })
             .catch(() => {});

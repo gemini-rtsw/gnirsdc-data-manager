@@ -77,6 +77,14 @@ config_path = '../conf/gnirsdc/config.ini'
 config = AlignedCasePreservingConfigParser()
 config.read(config_path)
 
+# Set EPICS_CA_ADDR_LIST from config BEFORE creating context
+# This must be done before Context() is created
+# Use DEFAULT section initially, will be updated when config_mode is set
+epics_addr_list = config.get('DEFAULT', 'EPICS_CA_ADDR_LIST', fallback='')
+if epics_addr_list:
+    os.environ['EPICS_CA_ADDR_LIST'] = epics_addr_list
+    print(f"EPICS_CA_ADDR_LIST set to: {epics_addr_list}")
+
 # Create a caproto context
 ctx = Context()
 
@@ -1477,7 +1485,13 @@ def reinitialize_connections():
     # Clear existing subscriptions
     pv_manager.clear_all_subscriptions()
     
-    # Create a new context
+    # Update EPICS_CA_ADDR_LIST from current config_mode
+    epics_addr_list = config[config_mode].get('EPICS_CA_ADDR_LIST', '')
+    if epics_addr_list:
+        os.environ['EPICS_CA_ADDR_LIST'] = epics_addr_list
+        print(f"EPICS_CA_ADDR_LIST updated to: {epics_addr_list}")
+    
+    # Create a new context with updated settings
     ctx = Context()
     
     # Create a new manager
@@ -1489,7 +1503,7 @@ def reinitialize_connections():
     
     # Initialize subscriptions just like at startup
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
-    logger.info(f"Setting up core PV subscriptions with prefix: {top_name}")
+    print(f"Reinitializing PV subscriptions with prefix: {top_name}")
     pv_manager.setup_core_subscriptions(top_name)
 
 if __name__ == "__main__":
@@ -1510,12 +1524,18 @@ if __name__ == "__main__":
         print(f"========== PRODUCTION MODE ==========")
         print(f"Using config section: {config_mode}")
 
+    # Update EPICS_CA_ADDR_LIST based on config_mode
+    epics_addr_list = config[config_mode].get('EPICS_CA_ADDR_LIST', '')
+    if epics_addr_list:
+        os.environ['EPICS_CA_ADDR_LIST'] = epics_addr_list
+        print(f"EPICS_CA_ADDR_LIST updated to: {epics_addr_list}")
+    
     # Log the EPICS prefix being used
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
     print(f"Using EPICS prefix: {top_name}")
 
-    # Initialize subscriptions at startup
-    initialize_subscriptions()
+    # Initialize connections with correct EPICS settings
+    reinitialize_connections()
     
     # Start background threads after config_mode is set
     start_background_threads()
