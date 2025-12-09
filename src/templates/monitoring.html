@@ -995,9 +995,6 @@
         console.warn('setupSSE is deprecated, using setupEventSource instead');
     }
 
-    // Update file log every 500ms
-    setInterval(updateFileLog, 500);
-
     // Call setupEventSource initially
     setupEventSource();
 
@@ -1186,9 +1183,11 @@
     }
     
     #logMessages, #fileLogMessages {
-        width: 100%;
-        height: 300px;
-        resize: vertical;
+        width: calc(100vw - 60px);
+        height: calc(100vh - 700px);
+        min-height: 200px;
+        max-width: 100%;
+        resize: both;
         overflow-y: scroll;
         box-sizing: border-box;
         font-family: monospace;
@@ -1640,6 +1639,9 @@
 
     // Initial load of file log
     updateFileLog();
+    
+    // Update file log every 500ms
+    setInterval(updateFileLog, 500);
 
     // Updated event listener for the integration parameters form
     document.getElementById('integrationParamsForm').addEventListener('submit', function(e) {
