@@ -1557,23 +1557,16 @@
     }
 
     function updateFileLog() {
-        // Save scroll position BEFORE fetch
-        const scrollPos = fileLogMessagesTextarea.scrollTop;
+        // If scrolled down, don't update - let user read. Full log is in the file anyway.
+        if (fileLogMessagesTextarea.scrollTop > 10) {
+            return;
+        }
         
         fetch('/get_file_log')
-            .then(response => {
-                if (!response.ok) {
-                    return;
-                }
-                return response.json();
-            })
+            .then(response => response.ok ? response.json() : null)
             .then(data => {
                 if (data && data.status === 'success' && data.content) {
                     fileLogMessagesTextarea.value = data.content;
-                    // Use requestAnimationFrame to restore scroll AFTER browser renders
-                    requestAnimationFrame(() => {
-                        fileLogMessagesTextarea.scrollTop = scrollPos;
-                    });
                 }
             })
             .catch(() => {});
