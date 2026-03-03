@@ -23,6 +23,7 @@ import subprocess
 import markdown2
 import paramiko
 import numpy as np
+from QuadStd import QUADS, compute_quadrant_stats, create_rejection_map, sigma_clip_mask
 import io
 import matplotlib.pyplot as plt
 from paramiko.ssh_exception import SSHException
@@ -612,6 +613,84 @@ def view_fits_header(filename):
     else:
         return "FITS file not found", 404
 
+@app.route('/fits_preview/<path:filename>')
+def fits_preview(filename):
+    return render_template('fits_preview.html', active_tab='fits', filename=filename)
+
+@app.route('/fits_preview_image/<path:filename>')
+def fits_preview_image(filename):
+    """Generate and return a preview PNG for a specific FITS file."""
+    staging_dir = config[config_mode].get('STAGING_DIR', '/staging/perm')
+    readout_dir = config[config_mode].get('READOUT_DIR', '/readout_data/fits')
+
+    if filename.startswith('staging/'):
+        file_path = os.path.join(staging_dir, os.path.basename(filename))
+    elif filename.startswith('readout/'):
+        file_path = os.path.join(readout_dir, os.path.basename(filename))
+    else:
+        return "File not found", 404
+
+    if not os.path.isfile(file_path):
+        return "FITS file not found", 404
+
+    img_type = request.args.get('type', 'preview')
+
+    try:
+        with fits.open(file_path) as hdul:
+            data = None
+            header = hdul[0].header
+            for hdu in hdul:
+                if hdu.data is not None:
+                    data = hdu.data
+                    break
+
+            if data is None:
+                return "No image data in FITS file", 404
+
+            if img_type == 'noise':
+                lnr = header.get('LNRS', header.get('LNR', header.get('FOWLER', 'N/A')))
+                adcs = header.get('NDAVGS', header.get('AVGS', header.get('ADCS', 'N/A')))
+                sigma_used = 1.5
+                qmean = {}
+                qstd = {}
+                qmask = {}
+                qbounds = {}
+                for q in range(1, 5):
+                    qmean[q], qstd[q], _, qmask[q], qbounds[q] = compute_quadrant_stats(data, q, sigma_used)
+
+                reject_mask_full = np.zeros_like(data, dtype=bool)
+                for q in range(1, 5):
+                    x1, x2, y1, y2 = qbounds[q]
+                    reject_mask_full[y1:y2+1, x1:x2+1] = qmask[q]
+
+                noise_img = create_rejection_map(
+                    data, reject_mask_full, None, lnr, adcs,
+                    qmean, qstd, sigma_used
+                )
+                buf = io.BytesIO()
+                noise_img.save(buf, format='PNG')
+                buf.seek(0)
+            else:
+                data_flipped = np.flipud(data)
+                fig, ax = plt.subplots(figsize=(10, 8))
+                im = ax.imshow(data_flipped, cmap='viridis', aspect='auto')
+                plt.colorbar(im, ax=ax, label='Pixel Value')
+                ax.set_title(f'Preview of {os.path.basename(file_path)}')
+                ax.set_xlabel('X Pixel')
+                ax.set_ylabel('Y Pixel')
+                buf = io.BytesIO()
+                plt.savefig(buf, format='png', bbox_inches='tight')
+                buf.seek(0)
+                plt.close(fig)
+
+        response = make_response(buf.getvalue())
+        response.headers.set('Content-Type', 'image/png')
+        return response
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating preview for {filename}: {str(e)}")
+        return "Error generating preview", 500
+
 # Modify the SSE route to use non-blocking queue
 @app.route('/sse')
 def sse():
@@ -935,6 +1014,7 @@ def readme():
     return render_template('readme.html', active_tab='readme', content=html_content, toc=toc)
 
 last_preview_image = None
+last_noise_image = None  # Store rejection map PNG bytes
 last_preview_info = None  # Store file metadata
 preview_lock = threading.Lock()
 no_files_warning_logged = False
@@ -942,7 +1022,7 @@ no_preview_logged = False  # Add this flag
 
 def update_preview_only():
     """Update the preview image only"""
-    global last_preview_image, last_preview_info, no_files_warning_logged, no_preview_logged
+    global last_preview_image, last_noise_image, last_preview_info, no_files_warning_logged, no_preview_logged
     try:
         # Generate preview image - check both directories for newest file
         readout_dir = '/readout_data/fits'
@@ -997,6 +1077,31 @@ def update_preview_only():
                     adcs = header.get('NDAVGS', header.get('AVGS', header.get('ADCS', 'N/A')))
                     coadds = header.get('COADDS', header.get('NCOADDS', 'N/A'))
                     
+                    # Compute per-quadrant noise stats and build rejection map
+                    sigma_used = 1.5
+                    qmean = {}
+                    qstd = {}
+                    qmask = {}
+                    qbounds = {}
+                    for q in range(1, 5):
+                        qmean[q], qstd[q], _, qmask[q], qbounds[q] = compute_quadrant_stats(data, q, sigma_used)
+
+                    reject_mask_full = np.zeros_like(data, dtype=bool)
+                    for q in range(1, 5):
+                        x1, x2, y1, y2 = qbounds[q]
+                        reject_mask_full[y1:y2+1, x1:x2+1] = qmask[q]
+
+                    # Generate rejection map image (returned as PIL Image)
+                    noise_img = create_rejection_map(
+                        data, reject_mask_full, None, lnr, adcs,
+                        qmean, qstd, sigma_used
+                    )
+                    # Convert PIL Image to PNG bytes
+                    noise_buf = io.BytesIO()
+                    noise_img.save(noise_buf, format='PNG')
+                    noise_buf.seek(0)
+                    noise_image = noise_buf.getvalue()
+
                     # Store preview info
                     preview_info = {
                         'filename': latest_file,
@@ -1028,12 +1133,14 @@ def update_preview_only():
             except Exception as e:
                 current_app.logger.error(f"Error processing file {latest_file}: {str(e)}")
                 preview_image = None
+                noise_image = None
                 preview_info = None
 
         with preview_lock:
             if preview_image is not None:
                 last_preview_image = preview_image
                 last_preview_info = preview_info
+                last_noise_image = noise_image
 
         if latest_file:
             current_app.logger.info(f"Preview cached successfully for {latest_file}")
@@ -1079,6 +1186,20 @@ def preview_latest_fits():
             response.headers['Pragma'] = 'no-cache'
             response.headers['Expires'] = '-1'
             return response
+
+@app.route('/preview_noise_map')
+def preview_noise_map():
+    global last_noise_image
+    with preview_lock:
+        if last_noise_image is None:
+            return "No noise map available", 404
+
+        response = make_response(last_noise_image)
+        response.headers.set('Content-Type', 'image/png')
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
+        return response
 
 # Add a simple request rate limiter
 pv_cache = {}

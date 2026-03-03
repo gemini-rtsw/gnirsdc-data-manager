@@ -3,12 +3,19 @@
 <h1>Preview Latest FITS File</h1>
 
 <div class="preview-container">
-    <div id="image-container">
-        <img id="preview-image" alt="Latest FITS file preview">
+    <div class="image-row">
+        <div class="image-box">
+            <h3>FITS Preview</h3>
+            <img id="preview-image" alt="Latest FITS file preview">
+        </div>
+        <div class="image-box">
+            <h3>Noise Rejection Map</h3>
+            <img id="noise-image" alt="Noise rejection map">
+        </div>
     </div>
-    
+
     <p id="debug-info" class="debug-info"></p>
-    
+
     <div class="info-panel">
         <table class="info-table">
             <tr>
@@ -41,8 +48,30 @@
 
 <style>
     .preview-container {
-        max-width: 1200px;
+        max-width: 1800px;
         margin: 0 auto;
+    }
+    .image-row {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+    }
+    .image-box {
+        flex: 1;
+        text-align: center;
+        background-color: #f0f0f0;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    .image-box h3 {
+        margin: 0 0 10px 0;
+        font-size: 1em;
+        color: #333;
+    }
+    .image-box img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
     }
     .info-panel {
         background-color: #f8f9fa;
@@ -72,17 +101,6 @@
     .info-table tr {
         border-bottom: 1px solid #dee2e6;
     }
-    #image-container {
-        text-align: center;
-        background-color: #f0f0f0;
-        border-radius: 8px;
-        padding: 10px;
-    }
-    #preview-image {
-        max-width: 100%;
-        height: auto;
-        border-radius: 4px;
-    }
     .debug-info {
         text-align: center;
         color: #666;
@@ -100,10 +118,12 @@
     function updatePreview() {
         const debugInfo = document.getElementById('debug-info');
         const currentImage = document.getElementById('preview-image');
+        const noiseImage = document.getElementById('noise-image');
 
-        // Update the image src with a new timestamp
-        const newSrc = "{{ url_for('preview_latest_fits') }}?" + new Date().getTime();
-        currentImage.src = newSrc;
+        // Update both image sources with a cache-busting timestamp
+        const ts = new Date().getTime();
+        currentImage.src = "{{ url_for('preview_latest_fits') }}?" + ts;
+        noiseImage.src = "{{ url_for('preview_noise_map') }}?" + ts;
 
         // Update file info
         fetch("{{ url_for('preview_latest_fits') }}?info=true")

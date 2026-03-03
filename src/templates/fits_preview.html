@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Preview: {{ filename.split('/')[-1] }}</h1>
+<p><a href="{{ url_for('fits_files') }}">&larr; Back to FITS Files</a></p>
+
+<div class="preview-container">
+    <div class="image-row">
+        <div class="image-box">
+            <h3>FITS Preview</h3>
+            <img src="{{ url_for('fits_preview_image', filename=filename, type='preview') }}" alt="FITS preview">
+        </div>
+        <div class="image-box">
+            <h3>Noise Rejection Map</h3>
+            <img src="{{ url_for('fits_preview_image', filename=filename, type='noise') }}" alt="Noise rejection map">
+        </div>
+    </div>
+</div>
+
+<style>
+    .preview-container {
+        max-width: 1800px;
+        margin: 0 auto;
+    }
+    .image-row {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+    }
+    .image-box {
+        flex: 1;
+        text-align: center;
+        background-color: #f0f0f0;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    .image-box h3 {
+        margin: 0 0 10px 0;
+        font-size: 1em;
+        color: #333;
+    }
+    .image-box img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
