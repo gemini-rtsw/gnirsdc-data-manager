@@ -16,7 +16,7 @@ import logging
 import argparse
 import json
 import caproto
-from epics import caput, caget
+from epics import caput, caget, PV as EpicsPV
 from astropy.io import fits
 from queue import Queue, Full as QueueFull, Empty
 import subprocess
@@ -362,7 +362,9 @@ class PVSubscriptionManager:
             f'{top_name}:sad:dc:rdout',
             f'{top_name}:sad:dc:obsProgress',
             f'{top_name}:dc:firmChecksum',
-            f'{top_name}:dc:dcHealth'
+            f'{top_name}:dc:dcHealth',
+            f'{top_name}:dc:legacyFirmwarePath',
+            f'{top_name}:dc:legacyFirmwareMode'
         ]
         return self.subscribe_to_multiple_pvs(core_pvs)
 
@@ -874,7 +876,166 @@ def engineering():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
     interlock_pv = f'{top_name}:dc:disable_interlock'
     interlock_status = pv_manager.get_latest_value(interlock_pv)
-    return render_template('engineering.html', interlock_status=interlock_status)
+    # Use persistent PV handles (monitor cache can be stale for CHAR waveforms; fresh caget is flaky)
+    try:
+        legacy_path = _decode_long_string(_get_pv_value(f'{top_name}:dc:legacyFirmwarePath'))
+    except Exception as e:
+        logger.error(f"/engineering: read legacyFirmwarePath failed: {e}")
+        legacy_path = ''
+    try:
+        legacy_mode_val = _get_pv_value(f'{top_name}:dc:legacyFirmwareMode')
+        legacy_mode = int(legacy_mode_val) if legacy_mode_val is not None else 0
+    except Exception as e:
+        logger.error(f"/engineering: read legacyFirmwareMode failed: {e}")
+        legacy_mode = 0
+    try:
+        current_checksum = _get_pv_value(f'{top_name}:dc:firmChecksum') or ''
+    except Exception as e:
+        logger.error(f"/engineering: read firmChecksum failed: {e}")
+        current_checksum = ''
+    logger.info(f"/engineering rendering with path={legacy_path!r} mode={legacy_mode} checksum={current_checksum!r}")
+    return render_template(
+        'engineering.html',
+        interlock_status=interlock_status,
+        legacy_firmware_path=legacy_path,
+        legacy_firmware_mode=legacy_mode,
+        current_firmware_checksum=current_checksum,
+    )
+
+
+# Project root = parent of src/ (system_manager_server.py chdirs to src/ at startup)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+PRODUCTION_FIRMWARE_REL = 'src/firmware/AladdinIII_SDSU_Firmware.lod'
+LEGACY_FIRMWARE_DIR = os.path.join(PROJECT_ROOT, 'firmware-archived')
+
+
+@app.route('/get_firmware_options')
+def get_firmware_options():
+    """List the production .lod and every tim.lod under firmware-archived/."""
+    try:
+        options = []
+        prod_path = os.path.join(PROJECT_ROOT, PRODUCTION_FIRMWARE_REL)
+        if os.path.exists(prod_path):
+            options.append({
+                'label': 'Production (AladdinIII_SDSU_Firmware.lod)',
+                'path': '',  # empty path => IOC uses hardcoded production path
+                'legacy': False,
+            })
+        if os.path.isdir(LEGACY_FIRMWARE_DIR):
+            for name in sorted(os.listdir(LEGACY_FIRMWARE_DIR)):
+                lod = os.path.join(LEGACY_FIRMWARE_DIR, name, 'tim.lod')
+                if os.path.isfile(lod):
+                    options.append({'label': name, 'path': lod, 'legacy': True})
+        return jsonify({'status': 'success', 'options': options})
+    except Exception as e:
+        logger.error(f"Error listing firmware options: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+def _decode_long_string(val):
+    """Decode a CHAR-waveform PV value to a Python str. Accepts bytes/list[int]/str."""
+    if val is None:
+        return ''
+    if isinstance(val, str):
+        return val.split('\x00', 1)[0].strip()
+    if isinstance(val, (bytes, bytearray)):
+        return val.split(b'\x00', 1)[0].decode('utf-8', errors='replace').strip()
+    try:
+        return bytes(int(b) for b in val if int(b) != 0).decode('utf-8', errors='replace').strip()
+    except Exception:
+        return ''
+
+
+# Persistent PV handles for the firmware-control PVs. Reuse so we don't pay
+# the connect/disconnect roundtrip on every caput (intermittent failures were
+# the symptom: "cannot connect to tgnirs:dc:legacyFirmware..." then a 200 OK).
+_firmware_pv_cache = {}
+
+
+def _get_pv(pv_name, timeout=3.0):
+    pv = _firmware_pv_cache.get(pv_name)
+    if pv is None or not pv.connected:
+        pv = EpicsPV(pv_name, auto_monitor=False, connection_timeout=timeout)
+        if not pv.wait_for_connection(timeout=timeout):
+            raise RuntimeError(f"Could not connect to {pv_name}")
+        _firmware_pv_cache[pv_name] = pv
+    return pv
+
+
+def _put_long_string(pv_name, s, max_len=256):
+    """Write a string to a CHAR waveform PV (long string). Raises on failure."""
+    encoded = (s or '').encode('utf-8')
+    if len(encoded) >= max_len:
+        raise ValueError(f"Path exceeds {max_len-1} bytes")
+    # Always include the NUL terminator. A 1-element zero array (empty path)
+    # used to fail caproto's numpy conversion; padding to at least 2 bytes avoids it.
+    payload = list(encoded) + [0]
+    if len(payload) < 2:
+        payload = [0, 0]
+    pv = _get_pv(pv_name)
+    result = pv.put(payload, wait=True)
+    logger.info(f"put {pv_name} ({len(encoded)} bytes) -> result={result}")
+    if result is None:
+        raise RuntimeError(f"put to {pv_name} failed (returned None)")
+
+
+def _put_int(pv_name, value):
+    """Write an int to a scalar PV. Raises on failure."""
+    pv = _get_pv(pv_name)
+    result = pv.put(int(value), wait=True)
+    logger.info(f"put {pv_name}={int(value)} -> result={result}")
+    if result is None:
+        raise RuntimeError(f"put to {pv_name} failed (returned None)")
+
+
+def _get_pv_value(pv_name):
+    pv = _get_pv(pv_name)
+    # use_monitor=False forces a fresh CA Get instead of returning the
+    # last monitored value (which can lag a put we just performed).
+    return pv.get(use_monitor=False, timeout=2.0)
+
+
+@app.route('/set_firmware', methods=['POST'])
+def set_firmware():
+    """Set the legacy firmware path PV (and legacy-mode flag). Empty path => production."""
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        path = (request.json.get('path') or '').strip()
+        if path:
+            # Reject paths outside the archived-firmware tree (defense in depth)
+            real = os.path.realpath(path)
+            if not real.startswith(os.path.realpath(LEGACY_FIRMWARE_DIR) + os.sep):
+                return jsonify({'status': 'error', 'message': 'Path is outside firmware-archived/'}), 400
+            if not os.path.isfile(real):
+                return jsonify({'status': 'error', 'message': 'File does not exist'}), 400
+            # Set path FIRST so when mode flips the IOC already has the right path
+            _put_long_string(f'{top_name}:dc:legacyFirmwarePath', real)
+            _put_int(f'{top_name}:dc:legacyFirmwareMode', 1)
+        else:
+            # Going back to production: clear mode first, then clear path
+            _put_int(f'{top_name}:dc:legacyFirmwareMode', 0)
+            _put_long_string(f'{top_name}:dc:legacyFirmwarePath', '')
+
+        # Read back through the same persistent PV handles
+        readback_path = _decode_long_string(_get_pv_value(f'{top_name}:dc:legacyFirmwarePath'))
+        readback_mode = _get_pv_value(f'{top_name}:dc:legacyFirmwareMode')
+        try:
+            readback_checksum = _get_pv_value(f'{top_name}:dc:firmChecksum')
+        except Exception as e:
+            logger.error(f"/set_firmware readback firmChecksum failed: {e}")
+            readback_checksum = None
+        logger.info(f"/set_firmware readback: path={readback_path!r} mode={readback_mode} checksum={readback_checksum}")
+        return jsonify({
+            'status': 'success',
+            'path': readback_path,
+            'legacy_mode': int(readback_mode) if readback_mode is not None else 0,
+            'readback_path': readback_path,
+            'readback_mode': int(readback_mode) if readback_mode is not None else None,
+            'firm_checksum': readback_checksum,
+        })
+    except Exception as e:
+        logger.error(f"Error setting firmware: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @app.route('/toggle_interlock', methods=['POST'])
@@ -1239,7 +1400,9 @@ def get_all_pvs():
         f'{top_name}:gmp_status': 'gmp_status',
         f'{top_name}:ntp_time': 'ntp_time',
         f'{top_name}:dc:firmChecksum': 'firm_checksum',
-        f'{top_name}:dc:dcHealth': 'dc_health'
+        f'{top_name}:dc:dcHealth': 'dc_health',
+        f'{top_name}:dc:legacyFirmwarePath': 'legacy_firmware_path',
+        f'{top_name}:dc:legacyFirmwareMode': 'legacy_firmware_mode'
     }
     
     # Track connection status for key status indicators
@@ -1331,8 +1494,12 @@ def get_all_pvs():
             
         # Special handling for sdsuState - also add sdsu_state alias
         if ui_field == 'sdsu_state' or ui_field == 'sdsuState':
-            formatted_values['sdsu_state'] = value 
-            
+            formatted_values['sdsu_state'] = value
+
+        # CHAR-waveform PVs come through as list/array of ints; decode to str
+        if ui_field == 'legacy_firmware_path':
+            value = _decode_long_string(value)
+
         # Store the value
         formatted_values[ui_field] = value
         
@@ -1392,7 +1559,9 @@ def get_all_pvs():
         'ntp_time': 0,
         'rdout': 0,
         'obs_progress': 0,
-        'firm_checksum': 'N/A'
+        'firm_checksum': 'N/A',
+        'legacy_firmware_path': '',
+        'legacy_firmware_mode': 0
     }
     
     # Fill in any missing values with defaults

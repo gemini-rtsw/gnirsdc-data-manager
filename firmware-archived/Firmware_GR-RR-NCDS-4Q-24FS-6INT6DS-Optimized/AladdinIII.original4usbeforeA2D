@@ -1,0 +1,726 @@
+       COMMENT *
+
+Waveform tables for Aladdin III IR array to be used with one ARC-46 = 
+	8-channel video processor boards and Gen III = ARC22 = 250 MHz 
+	timing board and ARC-32 clock driver board.
+Modified Feb. 2009 for row-by-row reset for high flux observations
+
+	*
+
+AD	EQU	$000001	; Bit to start A/D conversion
+XFER	EQU	$000002	; Bit to transfer A/D counts into the A/D FIFO
+SXMIT	EQU	$00F1C0	; Transmit 8 pixels = one Aladdin quadrant
+
+; Definitions of readout variables
+CLK2	EQU	$002000		; Clock driver board lower half
+CLK3	EQU	$003000		; Clock driver board upper half
+VIDEO	EQU	$000000		; Video processor board switches
+
+; Various delay parameters
+DLY0	EQU	$100000
+DLY1	EQU	$180000		; 1.0 microsec
+DLY2	EQU	$320000		; 2.0 microsec
+DLY4	EQU	$640000		; 4.0 microsec
+DLY6	EQU	$930000		; 6.0 microsec
+
+DLYA	EQU	$130000		; Pixel readout delay parameters
+DLYB	EQU	$040000
+DLYG	EQU	$C00000
+
+XMT_DLY	EQU	$0C0000		; Delay per SXMIT for the fiber optic transmitter
+
+; Voltages for operating the Aladdin III focal plane array. The clock driver
+;   needs to be jumpered for bipolar operation because of the output source
+;   load resistor driver, VSSOUT = +1.0
+
+
+; Voltages for operating the Aladdin III focal plane array ORIGINAL
+;CLK_HI		EQU	+0.0	; Clock voltage low
+;CLK_LO		EQU	-5.0	; Clock voltage low
+;VRW_LO		EQU	-4.0	; VrowON low voltage
+;VRST_HI		EQU	-3.5	; VrstG high voltage
+;VRST_LO		EQU	-5.8	; VrstG low voltage
+;ZERO	 	EQU	 0.0	; Unused clock driver voltage
+ADREF		EQU	+2	; A/D converter voltage reference
+Vmax		EQU	13	; Maximum clock driver voltage, clock board
+Vmax1		EQU	2.0*Vmax
+Vmax2		EQU  7.5	 	; 2 x Maximum clock driver voltage
+Vmax3		EQU	2.0*Vmax2
+
+; Voltages for operating the Aladdin III focal plane array TWEAKED BY LUC AS NASA IRTF
+CLK_HI		EQU	-0.5		; Clock voltage high
+CLK_LO		EQU	-5.8		; Clock voltage low
+VRW_LO		EQU	-4.0		; VrowON low voltage
+VRST_HI		EQU	-3.5		; VrstG high voltage
+VRST_LO		EQU	-5.8		; VrstG low voltage
+ZERO	 	EQU	 0.0		; Unused clock driver voltage
+
+
+; Define switch state bits for CLK2 = bottom of clock board
+SSYNC	EQU     1		; Slow Sync		Pin #1
+S1	EQU     2		; Slow phase 1		Pin #2
+S2	EQU     4		; Slow phase 2		Pin #3
+SOE	EQU     8		; Odd/Even row select	Pin #4
+RDES	EQU     $10		; Row deselect		Pin #5
+VRSTOFF	EQU     $20		; Global reset = VrstG	Pin #6
+VRSTR	EQU     $40		; Row reset bias	Pin #7
+VROWON	EQU	$80		; Bias to row enable	Pin #8
+
+; Define switch state bits for CLK3 = top of clock board
+FSYNC	EQU     1		; Fast sync		Pin #13
+F1	EQU	2		; Fast phase 1		Pin #14
+F2	EQU	4		; Fast phase 2		Pin #15
+
+; Aladdin III DC bias voltage definition
+; Per Peter Onaka, "you shouldn't forward bias the InSb = VDDUC should always be more negative than VDET."
+; FIXME
+VGGCL	EQU	-2.8		; p16 Board2 Column Clamp Clock, was -3.1V but UIST sets it to 0V and IRTF defines it at -3.1V but never switches it 
+VDDCL	EQU	-2.8		; p17 Board2 Column Clamp Bias	was -3.6V now as UIST
+VDDUC	EQU	-4.0		; p33 Board1 Negative Unit Cell Bias set to same as VdetCom for warm testing else -4V
+VNROW	EQU	-5.95		; p31 Board2 Negative row supply		
+VNCOL	EQU	-5.95		; p15 Board2 Negative column supply	
+VDDOUT	EQU	-1.5		; p17 Board1 Drain voltage for drivers	was -1.2 now as UIST
+VDETCOM	EQU	-3.4		; p32 Board1 Detector Common not for MUX should be same as VdduC for warm testing else -3.4V		
+IREF	EQU	-2.0		; p16 Board1 Reference current for Iidle and Islew 
+VSSOUT	EQU	+4.5		; Source follower load voltage
+VROWOFF	EQU	-0.5		; p33 Board2 Applied to SF transistor gate M2 when row is not selected	
+
+;V1		EQU -0.8		; Voltages to test the video boards and firmware 
+;V2		EQU	-0.9		; Set in conjunction with offset and gain settings
+;V3		EQU	-1			; for testing of each video board with the jumper connector
+;V4		EQU	-1.2
+;V5		EQU	-1.4				
+;V6		EQU	-1.5
+;V7		EQU	+5.0
+
+; Video offset variable
+;OFFSET	EQU	$760		; for operation of the Aladdin III array - 
+				;   64k DN at -1.0 volts input => full well
+				;    0k DN at -2.0 volts input => dark
+				; Increase offset to lower image counts
+				
+OFFSETB1	EQU	$7B0			; with slow int gain $760 gives 4kADU dark with fast 8A0
+OFFSETB2	EQU	$7B0			; with fast int gain 
+OFFSETB3	EQU	$7B0			; with fast int gain
+OFFSETB4	EQU	$7B0			; with fast int gain
+
+OFFSET0		EQU	OFFSETB1
+OFFSET1		EQU	OFFSETB1
+OFFSET2		EQU	OFFSETB1
+OFFSET3		EQU	OFFSETB1
+OFFSET4		EQU	OFFSETB1
+OFFSET5		EQU	OFFSETB1
+OFFSET6		EQU	OFFSETB1
+OFFSET7		EQU	OFFSETB1
+
+OFFSET8		EQU	OFFSETB2
+OFFSET9		EQU	OFFSETB2
+OFFSET10	EQU	OFFSETB2
+OFFSET11	EQU	OFFSETB2
+OFFSET12	EQU	OFFSETB2
+OFFSET13	EQU	OFFSETB2
+OFFSET14	EQU	OFFSETB2
+OFFSET15	EQU	OFFSETB2
+
+OFFSET16	EQU	OFFSETB3
+OFFSET17	EQU	OFFSETB3
+OFFSET18	EQU	OFFSETB3
+OFFSET19	EQU	OFFSETB3
+OFFSET20	EQU	OFFSETB3
+OFFSET21	EQU	OFFSETB3
+OFFSET22	EQU	OFFSETB3
+OFFSET23	EQU	OFFSETB3
+
+OFFSET24	EQU	OFFSETB4
+OFFSET25	EQU	OFFSETB4
+OFFSET26	EQU	OFFSETB4
+OFFSET27	EQU	OFFSETB4
+OFFSET28	EQU	OFFSETB4
+OFFSET29	EQU	OFFSETB4
+OFFSET30	EQU	OFFSETB4
+OFFSET31	EQU	OFFSETB4
+
+; Copy of the clocking bit definition for easy reference
+;	DC	CLK2+DELAY+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+VROWON
+;	DC	CLK3+DELAY+FSYNC+F1+F2
+
+FRAME_INIT
+	DC	END_FRAME_INIT-FRAME_INIT-1
+	DC	CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY4+00000+S1+S2+SOE+0000+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY4+00000+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY2+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+END_FRAME_INIT
+
+FRAME_RESET
+	DC	END_FRAME_RESET-FRAME_RESET-1
+	DC	CLK2+DLY1+00000+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLYG+00000+S1+S2+SOE+RDES+0000000+VRSTR+000000
+	DC	CLK2+DLYG+SSYNC+S1+S2+SOE+RDES+0000000+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+00000+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLYG+00000+S1+S2+SOE+RDES+0000000+VRSTR+000000
+	DC	CLK2+DLYG+SSYNC+S1+S2+SOE+RDES+0000000+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+00000+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLYG+00000+S1+S2+SOE+RDES+0000000+VRSTR+000000
+	DC	CLK2+DLYG+SSYNC+S1+S2+SOE+RDES+0000000+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+00000+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLYG+00000+S1+S2+SOE+RDES+0000000+VRSTR+000000
+	DC	CLK2+DLYG+SSYNC+S1+S2+SOE+RDES+0000000+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+END_FRAME_RESET
+
+CLOCK_ROW_1
+	DC	END_CLOCK_ROW_1-CLOCK_ROW_1-1
+	DC	CLK2+DLY1+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK3+DLY2+00000+F1+F2
+	DC	CLK3+DLY1+FSYNC+F1+F2
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_ROW_1
+
+CLOCK_ROW_2
+	DC	END_CLOCK_ROW_2-CLOCK_ROW_2-1
+	DC	CLK2+DLY2+SSYNC+S1+00+000+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK3+DLY2+00000+F1+F2
+	DC	CLK3+DLY1+FSYNC+F1+F2
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_ROW_2
+
+CLOCK_ROW_3
+	DC	END_CLOCK_ROW_3-CLOCK_ROW_3-1
+	DC	CLK2+DLY1+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK3+DLY2+00000+F1+F2
+	DC	CLK3+DLY1+FSYNC+F1+F2
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_ROW_3
+
+CLOCK_ROW_4
+	DC	END_CLOCK_ROW_4-CLOCK_ROW_4-1
+	DC	CLK2+DLY2+SSYNC+00+S2+000+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK3+DLY2+00000+F1+F2
+	DC	CLK3+DLY1+FSYNC+F1+F2
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_ROW_4
+
+CLOCK_RR_ROW_1
+	DC	END_CLOCK_RR_ROW_1-CLOCK_RR_ROW_1-1
+	DC	CLK2+DLY1+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+00000+F1+F2
+	DC	CLK3+DLY1+FSYNC+F1+F2
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_RR_ROW_1
+
+CLOCK_RR_ROW_2
+	DC	END_CLOCK_RR_ROW_2-CLOCK_RR_ROW_2-1
+	DC	CLK2+DLY2+SSYNC+S1+00+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+00000+F1+F2
+	DC	CLK3+DLY1+FSYNC+F1+F2
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_RR_ROW_2
+
+CLOCK_RR_ROW_3
+	DC	END_CLOCK_RR_ROW_3-CLOCK_RR_ROW_3-1
+	DC	CLK2+DLY1+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+00000+F1+F2
+	DC	CLK3+DLY1+FSYNC+F1+F2
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_RR_ROW_3
+
+CLOCK_RR_ROW_4
+	DC	END_CLOCK_RR_ROW_4-CLOCK_RR_ROW_4-1
+	DC	CLK2+DLY2+SSYNC+00+S2+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+00000+F1+F2
+	DC	CLK3+DLY1+FSYNC+F1+F2
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_RR_ROW_4
+
+CLOCK_RESET_ROW_1
+	DC	END_CLOCK_RESET_ROW_1-CLOCK_RESET_ROW_1-1
+	DC	CLK2+DLY2+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK3+DLY0+00000+F1+F2
+	DC	CLK2+DLY2+SSYNC+S1+00+SOE+RDES+VRSTOFF+00000+000000
+	DC	CLK3+DLY4+FSYNC+F1+F2
+	DC	CLK2+DLY1+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_RESET_ROW_1
+
+CLOCK_RESET_ROW_2
+	DC	END_CLOCK_RESET_ROW_2-CLOCK_RESET_ROW_2-1
+	DC	CLK2+DLY2+SSYNC+S1+00+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY0+00000+F1+F2
+	DC	CLK2+DLY2+SSYNC+S1+00+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY4+FSYNC+F1+F2
+	DC	CLK2+DLY1+SSYNC+S1+00+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK2+DLY1+SSYNC+S1+00+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_RESET_ROW_2
+
+CLOCK_RESET_ROW_3
+	DC	END_CLOCK_RESET_ROW_3-CLOCK_RESET_ROW_3-1
+	DC	CLK2+DLY2+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK3+DLY0+00000+F1+F2
+	DC	CLK2+DLY2+SSYNC+00+S2+SOE+RDES+VRSTOFF+00000+000000
+	DC	CLK3+DLY4+FSYNC+F1+F2
+	DC	CLK2+DLY1+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_RESET_ROW_3
+
+CLOCK_RESET_ROW_4
+	DC	END_CLOCK_RESET_ROW_4-CLOCK_RESET_ROW_4-1
+	DC	CLK2+DLY2+SSYNC+00+S2+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY0+00000+F1+F2
+	DC	CLK2+DLY2+SSYNC+00+S2+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY4+FSYNC+F1+F2
+	DC	CLK2+DLY1+SSYNC+00+S2+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK2+DLY1+SSYNC+00+S2+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_RESET_ROW_4
+
+CLOCK_CDS_RESET_ROW_1
+	DC	END_CLOCK_CDS_RESET_ROW_1-CLOCK_CDS_RESET_ROW_1-1
+	DC	CLK2+DLY2+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK3+DLY0+00000+F1+F2
+	DC	CLK2+DLY2+SSYNC+S1+00+SOE+RDES+VRSTOFF+00000+000000
+	DC	CLK3+DLY4+FSYNC+F1+F2
+	DC	CLK2+DLY1+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_CDS_RESET_ROW_1
+
+CLOCK_CDS_RESET_ROW_2
+	DC	END_CLOCK_CDS_RESET_ROW_2-CLOCK_CDS_RESET_ROW_2-1
+	DC	CLK2+DLY2+SSYNC+S1+00+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY0+00000+F1+F2
+	DC	CLK2+DLY2+SSYNC+S1+00+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY4+FSYNC+F1+F2
+	DC	CLK2+DLY1+SSYNC+S1+00+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK2+DLY1+SSYNC+S1+00+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_CDS_RESET_ROW_2
+
+CLOCK_CDS_RESET_ROW_3
+	DC	END_CLOCK_CDS_RESET_ROW_3-CLOCK_CDS_RESET_ROW_3-1
+	DC	CLK2+DLY2+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK3+DLY0+00000+F1+F2
+	DC	CLK2+DLY2+SSYNC+00+S2+SOE+RDES+VRSTOFF+00000+000000
+	DC	CLK3+DLY4+FSYNC+F1+F2
+	DC	CLK2+DLY1+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_CDS_RESET_ROW_3
+
+CLOCK_CDS_RESET_ROW_4
+	DC	END_CLOCK_CDS_RESET_ROW_4-CLOCK_CDS_RESET_ROW_4-1
+	DC	CLK2+DLY2+SSYNC+00+S2+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY0+00000+F1+F2
+	DC	CLK2+DLY2+SSYNC+00+S2+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY4+FSYNC+F1+F2
+	DC	CLK2+DLY1+SSYNC+00+S2+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK2+DLY1+SSYNC+00+S2+000+RDES+VRSTOFF+VRSTR+VROWON
+	DC	CLK3+DLY2+FSYNC+00+F2
+	DC	CLK3+DLY0+FSYNC+F1+F2
+END_CLOCK_CDS_RESET_ROW_4
+
+RESET_ROW_12
+	DC	END_RESET_ROW_12-RESET_ROW_12-1
+	DC	CLK2+DLY2+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK3+DLY0+00000+F1+F2
+	DC	CLK2+DLY2+SSYNC+S1+00+SOE+RDES+VRSTOFF+00000+000000
+	DC	CLK3+DLY4+FSYNC+F1+F2
+	DC	CLK2+DLY1+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+S1+00+SOE+RDES+VRSTOFF+VRSTR+VROWON
+END_RESET_ROW_12
+
+RESET_ROW_34
+	DC	END_RESET_ROW_34-RESET_ROW_34-1
+	DC	CLK2+DLY2+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK3+DLY0+00000+F1+F2
+	DC	CLK2+DLY2+SSYNC+00+S2+SOE+RDES+VRSTOFF+00000+000000
+	DC	CLK3+DLY4+FSYNC+F1+F2
+	DC	CLK2+DLY1+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+000000
+	DC	CLK2+DLY1+SSYNC+00+S2+SOE+RDES+VRSTOFF+VRSTR+VROWON
+END_RESET_ROW_34
+
+CLOCK_COLUMN
+	DC	END_CLOCK_COLUMN-CLOCK_COLUMN-1
+	DC	CLK3+DLYA+FSYNC+F1+00
+	DC	CLK3+DLYB+FSYNC+F1+F2
+	DC	CLK3+DLYA+FSYNC+00+F2
+	DC	CLK3+DLYB+FSYNC+F1+F2
+END_CLOCK_COLUMN
+
+; Video processor bit definitions
+	
+;	Bit #3 = Move A/D data to FIFO 	(high going edge)
+;	Bit #2 = A/D Convert 		(low going edge to start conversion)
+;	Bit #1 = Reset Integrator  	(=0 to reset)
+;	Bit #0 = Integrate 		(=0 to integrate)
+
+; STARTS HERE THE READOUT OF 6DS
+DTW	EQU	$080000		;  Tw Fast Sync Time (200ns + 40ns exec = 240ns)
+PAD_TIM	EQU	$0F0000		;  Pixel PAD Time			(600ns)
+INT_TIM	EQU	$180000		;  Pixel Sample Time		(~1600ns)
+ADC_TIM	EQU	$180000		;  ADC Hold/Conversion Time	(~960ns)
+SXM_TIM	EQU	$8C0000		;  Pixel Transmit Delay		(3840ns)
+ADC_CNV EQU	$000000		;  ADC Sample Time			(0ns)
+STL_TIM	EQU	$000000		;  A Generic Settling time	(0ns)
+RST_TIM EQU	$8C0000		;  Reset Time 				(~3840ns)
+STP_TIM	EQU	$000000		;  Stop Reseting
+FIP_TIM EQU $4A0000		;  Delay for signal settling before 1st A2D 4A0000 found to be ok might be optimizable
+RST_DLY EQU $180000		;  Delay for resetting the integrator
+PIX_RTE EQU $180000		;  Delay to adjust the pixel rate (min 2.6us/pix)
+
+; Define CLOCK as a macro to produce in-line code to reduce execution time
+; Here we do INT and A2D 8 times successively
+RD_COL_MACRO1	MACRO
+	DC      VIDEO+RST_DLY+%0111             ; Wait 4 Reset Integrator   		1600ns
+	DC      VIDEO+RST_TIM+%0101             ; Reset Integrator   			3840ns
+	DC      VIDEO+$000000+%0111             ; Stop Reset				40ns
+	DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 1    			1000ns
+	DC      VIDEO+FIP_TIM+%0111             ; Stop Integration			40ns	<----Leach March 5, 2020DC      VIDEO+ADC_CNV+%0011             ; Start A/D cnv Pix 1 Sample1		40ns
+	DC      VIDEO+PAD_TIM+%0011             ; Pad Delay -	        		640ns
+	DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert     			1000ns
+	DC      VIDEO+STL_TIM+%1111             ; Move A/D data FIFO    		40ns
+;	DC      SXMIT                           ; SXMIT 			   	40ns
+	DC      VIDEO+PIX_RTE+%1111             ; WAIT PIXEL RATE    			1000ns
+	ENDM
+
+RD_COL_MACRO2	MACRO
+	DC      VIDEO+RST_DLY+%0111             ; Wait 4 Reset Integrator   		1600ns
+	DC      VIDEO+RST_TIM+%0101             ; Reset Integrator   			3840ns
+	DC      VIDEO+$000000+%0111             ; Stop Reset				40ns
+	DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 1    			1000ns
+	DC      VIDEO+FIP_TIM+%0111             ; Stop Integration			40ns	<----Leach March 5, 2020DC      VIDEO+ADC_CNV+%0011             ; Start A/D cnv Pix 2 Sample 1  	40ns
+	DC      VIDEO+PAD_TIM+%0011             ; Pad Delay -	        		640ns
+	DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert     			1000ns
+	DC      VIDEO+STL_TIM+%1111             ; Move A/D data FIFO    		40ns
+	DC      SXMIT                           ; SXMIT 			    	40ns
+	DC      VIDEO+PIX_RTE+%1111             ; WAIT PIXEL RATE    			1000ns
+	ENDM
+
+; This code initiates the pipeline for each row - no image transmission yet
+; Modified by L. Boucher for 6 Digital Samples 
+RD_COL_PIPELINE
+	DC	END_RD_COL_PIPELINE-RD_COL_PIPELINE-1
+	DC      CLK3+000+FSYNC+F1+F2		; trick to loop with rd_cols
+	DC      CLK3+000+FSYNC+F1+00		; Select Pixel 1			40ns
+	
+	RD_COL_MACRO2	; Macro
+	RD_COL_MACRO2
+	RD_COL_MACRO2
+	RD_COL_MACRO2
+	RD_COL_MACRO2
+	RD_COL_MACRO2
+
+	DC      CLK3+DTW+FSYNC+F1+F2		; Deselect Pixel 1			360ns
+	DC      CLK3+000+FSYNC+00+F2		; Select Pixel 2	 		40ns
+
+	RD_COL_MACRO2	; Macro
+	RD_COL_MACRO2
+	RD_COL_MACRO2
+	RD_COL_MACRO2
+	RD_COL_MACRO2
+	RD_COL_MACRO2
+
+END_RD_COL_PIPELINE
+
+RD_COLS1	MACRO	
+	DC      VIDEO+RST_DLY+%0111             ; Wait 4 Reset Integrator   		1600ns
+	DC      VIDEO+RST_TIM+%0101             ; Reset Integrator   			3840ns
+	DC      VIDEO+$000000+%0111             ; Stop Reset				40ns
+	DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 1    			1000ns
+	DC      VIDEO+FIP_TIM+%0111             ; Stop Integration			40ns	<----Leach March 5, 2020DC      VIDEO+ADC_CNV+%0011             ; Start A/D cnv Pix 3 Sample 1  	40ns
+	DC      VIDEO+PAD_TIM+%0011             ; Pad Delay -	       			640ns
+	DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert     			1000ns
+	DC      VIDEO+STL_TIM+%1111             ; Move A/D data FIFO    		40ns
+	DC      SXMIT                           ; SXMIT 			    	40ns
+	DC      VIDEO+PIX_RTE+%1111             ; WAIT PIXEL RATE    			1000ns
+	ENDM
+
+; This code reads out most of the array, with full image transmission
+; Modified by L. Boucher for 6 Digital Samples 
+RD_COLS
+	DC	END_RD_COLS-RD_COLS-1 ; 
+	DC      CLK3+DTW+FSYNC+F1+F2		; Deselect Pixel 2			360ns
+	DC      CLK3+000+FSYNC+F1+00		; Select next Pixel  			40ns
+
+	RD_COLS1	; Macro
+	RD_COLS1
+	RD_COLS1
+	RD_COLS1
+	RD_COLS1
+	RD_COLS1
+
+	DC      CLK3+DTW+FSYNC+F1+F2		; Deselect Pixel 3 			(240ns)
+	DC      CLK3+000+FSYNC+00+F2		; Select Pixel 4 			(40ns)
+
+	RD_COLS1	; Macro
+	RD_COLS1
+	RD_COLS1
+	RD_COLS1
+	RD_COLS1
+	RD_COLS1
+
+END_RD_COLS
+	
+; This transmits the last pixels in each row, emptying the pipeline
+; Modified by L. Boucher for 6 Digital Samples 
+LAST_8INROW
+	DC	END_LAST_8INROW-LAST_8INROW
+	DC      CLK3+DTW+FSYNC+F1+F2		; Deselect Pixel 			360ns
+	DC      CLK3+000+FSYNC+F1+00		; Select next Pixel  			40ns
+
+	RD_COLS1	; Macro
+	RD_COLS1
+	RD_COLS1
+	RD_COLS1
+	RD_COLS1
+	RD_COLS1
+
+END_LAST_8INROW
+	
+; ENDS HERE THE REAOUDT OF THE 6DS
+
+	
+; This code intiates the pipeline of pixels for each row
+RD_NTX_PIPELINE
+	DC	END_RD_NTX_PIPELINE-RD_NTX_PIPELINE-1
+	DC      CLK3+000+FSYNC+F1+00		; Select Pixel 1	40ns
+	DC      VIDEO+PAD_TIM+%0111             ; Pad Delay -		640ns
+	DC      VIDEO+ADC_TIM+%0111             ; Hold No Pixel	       1000ns
+	DC      VIDEO+STL_TIM+%0101             ; Move No Pixel		 400ns
+	DC      VIDEO+$000000+%0101             ; Place for SXMIT	 40ns
+    DC      VIDEO+SXM_TIM+%0101             ; Settling time	       3880ns
+	DC      VIDEO+STP_TIM+%0111             ; Stop Reseting          40ns
+    DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 1    1000ns
+    DC      VIDEO+$000000+%0111             ; Stop Integration       40ns
+	DC      VIDEO+ADC_CNV+%0011             ; Start A/D cnv Pix 1    40ns
+	DC      CLK3+DTW+FSYNC+F1+F2		; Deselect Pixel 1	360ns
+	DC      CLK3+000+FSYNC+00+F2		; Select Pixel 2	 40ns
+	DC      VIDEO+PAD_TIM+%0111             ; Pad Delay -	        640ns
+	DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert     1000ns
+	DC      VIDEO+STL_TIM+%1101             ; Move A/D data FIFO     40ns
+	DC      VIDEO+0000000+%0101             ; Settling time	         40ns	
+    DC      VIDEO+SXM_TIM+%0101             ; Settling time	       3880ns	
+	DC      VIDEO+STP_TIM+%0111             ; Stop Reseting		 40ns
+    DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 3    1000ns
+    DC      VIDEO+$000000+%0111             ; Stop Integration       40ns
+	DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert      40ns
+	DC      CLK3+DTW+FSYNC+F1+F2		; Deselect Pixel 3	360ns
+END_RD_NTX_PIPELINE
+
+RD_NTX
+	DC	END_RD_NTX-RD_NTX-1
+	DC      CLK3+000+FSYNC+F1+00		; Select Pixel 2 (40ns)
+	DC      VIDEO+PAD_TIM+%0111             ; Pad Delay - 40ns 
+	DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert sig Pixel 1 (1us)
+	DC      VIDEO+STL_TIM+%1101             ; Move A/D data to FIFO Pixel 1 (40ns)
+	DC      VIDEO+0000000+%0101             ; Settling time	         40ns	
+    DC      VIDEO+SXM_TIM+%0101             ; Settling time (480ns)
+	DC      VIDEO+STP_TIM+%0111             ; Stop Reseting
+    DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 2 (760ns)
+    DC      VIDEO+$000000+%0111             ; Stop Integration
+	DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert Pixel 2 (400ns)
+	DC      CLK3+DTW+FSYNC+F1+F2		; Deselect Pixel 1 (240ns)
+	DC      CLK3+000+FSYNC+00+F2		; Select Pixel 3 (40ns)
+	DC      VIDEO+PAD_TIM+%0111             ; Pad Delay - 40ns
+	DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert sig Pixel 2 (1us)
+	DC      VIDEO+STL_TIM+%1101             ; Move A/D data to FIFO Pixel 2 (40ns)
+	DC      VIDEO+0000000+%0101             ; Settling time	         40ns	
+    DC      VIDEO+SXM_TIM+%0101             ; Settling time (480ns)
+	DC      VIDEO+STP_TIM+%0111             ; Stop Reseting
+    DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 3 (760ns)
+    DC      VIDEO+$000000+%0111             ; Stop Integration
+	DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert Pixel 3 (400ns)
+	DC      CLK3+DTW+FSYNC+F1+F2		; Deselect Pixel 3 (240ns)
+END_RD_NTX
+	
+LAST_NTX_8INROW
+	DC	END_LAST_NTX_8INROW-LAST_NTX_8INROW
+	DC      CLK3+000+FSYNC+F1+00		; Select Pixel 2 (40ns)
+	DC      VIDEO+PAD_TIM+%0111             ; Pad Delay - 40ns
+	DC      VIDEO+ADC_TIM+%0111             ; Hold A/D convert sig Pixel 1 (1us)
+	DC      VIDEO+STL_TIM+%1101             ; Move A/D data to FIFO Pixel 1 (40ns)
+	DC      VIDEO+0000000+%0101             ; Settling time	         40ns	
+    DC      VIDEO+SXM_TIM+%0101             ; Settling time (480ns)
+	DC      VIDEO+STP_TIM+%0111             ; Stop Reseting
+    DC      VIDEO+INT_TIM+%0110             ; Integrate Pixel 2 (760ns)
+    DC      VIDEO+$000000+%0111             ; Stop Integration
+	DC      VIDEO+ADC_CNV+%0011             ; Start A/D convert Pixel 2 (40+40ns)
+	DC      CLK3+DTW+FSYNC+F1+F2		; Deselect Pixel 1 (240ns)
+END_LAST_NTX_8INROW
+
+CLOCKS	DC      END_CLOCKS-CLOCKS-1
+	DC	$2A0080						; DAC = unbuffered mode
+	DC	$200100+@CVI(((CLK_HI+Vmax)/Vmax)*255)	; Pin #1, SSYNC
+	DC	$200200+@CVI(((CLK_LO+Vmax)/Vmax)*255)
+	DC	$200400+@CVI(((CLK_HI+Vmax)/Vmax)*255)	; Pin #2, S1
+	DC	$200800+@CVI(((CLK_LO+Vmax)/Vmax)*255)
+	DC	$202000+@CVI(((CLK_HI+Vmax)/Vmax)*255)	; Pin #3, S2
+	DC	$204000+@CVI(((CLK_LO+Vmax)/Vmax)*255)
+	DC	$208000+@CVI(((CLK_HI+Vmax)/Vmax)*255)	; Pin #4, SOE
+	DC	$210000+@CVI(((CLK_LO+Vmax)/Vmax)*255)
+	DC	$220100+@CVI(((CLK_HI+Vmax)/Vmax)*255)	; Pin #5, RDES
+	DC	$220200+@CVI(((CLK_LO+Vmax)/Vmax)*255)
+	DC	$220400+@CVI(((VRST_HI+Vmax)/Vmax)*255)	; Pin #6, VRSTOFF
+	DC	$220800+@CVI(((VRST_LO+Vmax)/Vmax)*255)	;   = VrstG
+	DC	$222000+@CVI(((VRST_HI+Vmax)/Vmax)*255)	; Pin #7, VRSTR
+	DC	$224000+@CVI(((VRST_LO+Vmax)/Vmax)*255)
+	DC	$228000+@CVI(((CLK_HI+Vmax)/Vmax)*255)	; Pin #8, VROWON
+	DC	$230000+@CVI(((VRW_LO+Vmax)/Vmax)*255)
+	DC	$240100+@CVI(((ZERO+Vmax)/Vmax)*255)	; Pin #9, Unused
+	DC	$240200+@CVI(((ZERO+Vmax)/Vmax)*255)
+	DC	$240400+@CVI(((ZERO+Vmax)/Vmax)*255)	; Pin #10, Unused
+	DC	$240800+@CVI(((ZERO+Vmax)/Vmax)*255)
+	DC	$242000+@CVI(((ZERO+Vmax)/Vmax)*255)	; Pin #11, Unused
+	DC	$244000+@CVI(((ZERO+Vmax)/Vmax)*255)
+	DC	$248000+@CVI(((ZERO+Vmax)/Vmax)*255)	; Pin #12, Unused
+	DC	$250000+@CVI(((ZERO+Vmax)/Vmax)*255)
+
+; Upper bank
+	DC	$260100+@CVI(((CLK_HI+Vmax)/Vmax)*255)	; Pin #13, FSYNC
+	DC	$260200+@CVI(((CLK_LO+Vmax)/Vmax)*255)
+	DC	$260400+@CVI(((CLK_HI+Vmax)/Vmax)*255)	; Pin #14, F1
+	DC	$260800+@CVI(((CLK_LO+Vmax)/Vmax)*255)	
+	DC	$262000+@CVI(((CLK_HI+Vmax)/Vmax)*255)	; Pin #15, F2
+	DC	$264000+@CVI(((CLK_LO+Vmax)/Vmax)*255)
+	DC	$268000+@CVI(((ZERO+Vmax)/Vmax)*255)	
+	DC	$270000+@CVI(((ZERO+Vmax)/Vmax)*255)	
+	DC	$280100+@CVI(((ZERO+Vmax)/Vmax)*255)	
+	DC	$280200+@CVI(((ZERO+Vmax)/Vmax)*255)
+	DC	$280400+@CVI(((ZERO+Vmax)/Vmax)*255)	
+	DC	$280800+@CVI(((ZERO+Vmax)/Vmax)*255)
+	DC	$282000+@CVI(((ZERO+Vmax)/Vmax)*255)	
+	DC	$284000+@CVI(((ZERO+Vmax)/Vmax)*255)
+	DC	$288000+@CVI(((ZERO+Vmax)/Vmax)*255)	
+	DC	$290000+@CVI(((ZERO+Vmax)/Vmax)*255)
+	DC	$2A0100+@CVI(((ZERO+Vmax)/Vmax)*255)	
+	DC	$2A0200+@CVI(((ZERO+Vmax)/Vmax)*255)
+	DC	$2A0400+@CVI(((ZERO+Vmax)/Vmax)*255)	
+	DC	$2A0800+@CVI(((ZERO+Vmax)/Vmax)*255)
+	DC	$2A2000+@CVI(((ZERO+Vmax)/Vmax)*255)	
+	DC	$2A4000+@CVI(((ZERO+Vmax)/Vmax)*255)
+	DC	$2A8000+@CVI(((ZERO+Vmax)/Vmax)*255)	
+	DC	$2B0000+@CVI(((ZERO+Vmax)/Vmax)*255)
+END_CLOCKS
+
+; Video offset assignments 
+BIASES	DC	END_BIASES-BIASES-1
+
+; Integrator gain and a few other things
+;	DC	$0c3001			; Integrate 1, R = 4k, Low gain, Slow
+;	DC	$0c3000		 	; Integrate 2, High gain
+	DC	$0c3000		 	; Integrate 2, High gain
+	DC	$1c3000		 	; Integrate 2, High gain
+	DC	$2c3000		 	; Integrate 2, High gain
+	DC	$3c3000		 	; Integrate 2, High gain
+	DC	$0c1000			; Reset image data FIFOs
+	DC	$0c0000+@CVI((ADREF+5.0)/10.0*4095)
+	DC	$1c0000+@CVI((ADREF+5.0)/10.0*4095)
+	DC	$2c0000+@CVI((ADREF+5.0)/10.0*4095)
+	DC	$3c0000+@CVI((ADREF+5.0)/10.0*4095)
+
+; Video processor offset voltages to bring the video withing range of the A/D ARC46#1	
+	DC	$0e0000+OFFSET0		; Output #0
+	DC	$0e4000+OFFSET1		; Output #1
+	DC	$0e8000+OFFSET2		; Output #2
+	DC	$0ec000+OFFSET3		; Output #3
+	DC	$0f0000+OFFSET4		; Output #4
+	DC	$0f4000+OFFSET5		; Output #5
+	DC	$0f8000+OFFSET6		; Output #6
+	DC	$0fc000+OFFSET7		; Output #7
+
+; Video processor offset voltages to bring the video withing range of the A/D ARC46#2
+	DC	$1e0000+OFFSET8		; Output #0
+	DC	$1e4000+OFFSET9		; Output #1
+	DC	$1e8000+OFFSET10	; Output #2
+	DC	$1ec000+OFFSET11	; Output #3
+	DC	$1f0000+OFFSET12	; Output #4
+	DC	$1f4000+OFFSET13	; Output #5
+	DC	$1f8000+OFFSET14	; Output #6
+	DC	$1fc000+OFFSET15	; Output #7
+
+; Video processor offset voltages to bring the video withing range of the A/D ARC46#3	
+	DC	$2e0000+OFFSET16	; Output #0
+	DC	$2e4000+OFFSET17	; Output #1
+	DC	$2e8000+OFFSET18	; Output #2
+	DC	$2ec000+OFFSET19	; Output #3
+	DC	$2f0000+OFFSET20	; Output #4
+	DC	$2f4000+OFFSET21	; Output #5
+	DC	$2f8000+OFFSET22	; Output #6
+	DC	$2fc000+OFFSET23	; Output #7
+
+; Video processor offset voltages to bring the video withing range of the A/D ARC46#4
+	DC	$3e0000+OFFSET24		; Output #0
+	DC	$3e4000+OFFSET25		; Output #1
+	DC	$3e8000+OFFSET26		; Output #2
+	DC	$3ec000+OFFSET27		; Output #3
+	DC	$3f0000+OFFSET28		; Output #4
+	DC	$3f4000+OFFSET29		; Output #5
+	DC	$3f8000+OFFSET30		; Output #6
+	DC	$3fc000+OFFSET31		; Output #7
+
+
+; Note that BIAS BO1(p17) and BO2(p33) should be used for higher currents biasses because  
+; they have 100 ohm filtering resistors (R345/350) , versus 1k on the other pins. 
+; Video board #1, Bipolar -7.5 to +7.5 volts supplies
+	DC	$0c4000+@CVI((VDDOUT+Vmax2)/Vmax3*4095)				; Pin #17 VDDOUT	
+	DC	$0c8000+@CVI((VDDUC+Vmax2)/Vmax3*4095)	 			; Pin #33 VDDUC	 	
+	DC	$0cc000+@CVI((IREF+Vmax2)/Vmax3*4095)				; Pin #16 IREF		
+	DC	$0d0000+@CVI((VDETCOM+Vmax2)/Vmax3*4095)			; Pin #32 VDETCOM	
+	DC	$0d4000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #15 NC
+	DC	$0d8000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #31 NC
+	DC	$0dc000+@CVI((VSSOUT+Vmax2)/Vmax3*4095)				; Pin #14 NC but provides output source follower source voltage = 5V	 
+
+; Video board #2
+	DC	$1c4000+@CVI((VDDCL+Vmax2)/Vmax3*4095)				; Pin #17 VDDCL
+	DC	$1c8000+@CVI((VROWOFF+Vmax2)/Vmax3*4095)			; Pin #33 VROWOFF
+	DC	$1cc000+@CVI((VGGCL+Vmax2)/Vmax3*4095)				; Pin #16 VGGCL
+	DC	$1d0000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #32 NC 
+	DC	$1d4000+@CVI((VNCOL+Vmax2)/Vmax3*4095)				; Pin #15 VNCOL 
+	DC	$1d8000+@CVI((VNROW+Vmax2)/Vmax3*4095)				; Pin #31 VNROW
+	DC	$1dc000+@CVI((VSSOUT+Vmax2)/Vmax3*4095)				; Pin #14 NC but provides output source follower source voltage = 5V	
+
+; Video board #3, Bipolar -7.5 to +7.5 volts supplies
+	DC	$2c4000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #17 NC
+	DC	$2c8000+@CVI((ZERO+Vmax2)/Vmax3*4095)	 			; Pin #33 NC
+	DC	$2cc000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #16 NC
+	DC	$2d0000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #32 NC
+	DC	$2d4000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #15 NC
+	DC	$2d8000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #31 NC
+	DC	$2dc000+@CVI((VSSOUT+Vmax2)/Vmax3*4095)				; Pin #14 NC but provides output source follower source voltage = 5V	
+
+; Video board #4
+	DC	$3c4000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #17 NC
+	DC	$3c8000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #33 NC
+	DC	$3cc000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #16 NC
+	DC	$3d0000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #32 NC
+	DC	$3d4000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #15 NC
+	DC	$3d8000+@CVI((ZERO+Vmax2)/Vmax3*4095)				; Pin #31 NC
+	DC	$3dc000+@CVI((VSSOUT+Vmax2)/Vmax3*4095)				; Pin #14 NC but provides output source follower source voltage = 5V	
+END_BIASES

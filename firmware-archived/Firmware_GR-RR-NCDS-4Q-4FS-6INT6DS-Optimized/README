@@ -1,0 +1,115 @@
+1. The wiring of the clock driver is set up as follows, as may be seen by
+	looking at the "AladdinIII.waveforms" file - 
+
+Clock name   	Description	Clock driver (ARC-32) pin number
+
+SSYNC		Slow Sync		Pin #1
+S1		Slow phase 1		Pin #2
+S2		Slow phase 2		Pin #3
+SOE		Odd/Even row select	Pin #4
+RDES		Row deselect		Pin #5
+VRSTOFF		Global reset = VrstG	Pin #6
+VRSTR		Row reset bias		Pin #7
+VROWON		Bias to row enable	Pin #8
+FSYNC		Fast sync		Pin #13
+F1		Fast phase 1		Pin #14
+F2		Fast phase 2		Pin #15
+
+DC bias      voltage 	Description
+VGGCL		-1.5	Column Clamp Clock, warm 	Pin #16
+VDDCL		-3.8	Column Clamp Bias		Pin #17
+VDDUC		-3.8	Negative Unit Cell Bias		Pin #18
+VNROW		-6.0	Negative row supply		Pin #19
+VNCOL		-6.0	Negative column supply		Pin #33
+VDDOUT		-1.5	Drain voltage for drivers	Pin #34
+VDETCOM		-3.9	Detector Common			Pin #35
+IREF		-5.0	Reference current for Iidle 	Pin #36
+VSSOUT		+1.0	Source follower load voltage	Pin #37
+		
+This last signal VSSOUT is available to connect to a bank of source 
+load resistors that should be connected from the output source pins 
+of each of the eight channels of the Aladdin array to this voltage.
+
+The video inputs to the ARC-46 Rev. 3C 8-channel video board are set 
+up to be connected directly to the AladdinIII array, with the pinout 
+as follows required to get the image counts increasing when the input
+flux on the array is increasing:
+					ARC-46, P1 
+					DB-50 pin #
+Channel #0, video			   1
+	    ground			  18   
+Channel #1, video			   3
+	    ground			  19
+Channel #2, video			   4
+	    ground			  21
+Channel #3, video			   6
+	    ground			  22
+Channel #4, video			   7
+	    ground			  24
+Channel #5, video			   9
+	    ground			  25
+Channel #6, video			  10
+	    ground			  27
+Channel #7, video			  12
+	    ground			  28
+
+2. The video processors will generate images of around 5k ADU with a grounded
+	or even open input. This is a useful test to perform soon after the
+	system is first turned on. Proper operation with the expected 
+	Aladdin III output voltage range requires the OFFSET parameter in the 
+	"AladdinIII.waveforms" file to be set the value $760.
+ 
+The AladdinIII output voltage range is approximately as follows - 
+
+	Dark		-2.0 volts	 0k ADU
+	Full well	-1.0 volts	64k ADU
+
+	For proper operation with an array connected the OFFSET value needs
+	to be changed to approximately $6C0, and then further optimized to
+	your Aladdin III array. In summary - 
+   
+   	OFFSET	EQU	$6C0	; for the Aladdin III array
+	OFFSET	EQU	$760	; for grounded input to give ~3k counts
+	
+3. The clocking speed during readout is about 8 microsec per pixel, 
+	much slower than the specifications in order to reduce crosstalk. 
+	The readout speed can be increased substantially at the expense 
+	of crosstalk by reducing the delay times in the AladdinIII.waveforms 
+	file, but it is recommended that the system operation first be 
+	verified and characterized before attempting this. 
+
+4. There are two commands to be executed from voodoo, from the window 
+	Debug, DSP Commands, Manual, as follows -
+		
+CDS argument = 0 or 1  	Correlated Double Sample - The argument "1" causes
+			a read out to occur before the exposure, and a 
+			second readout to occur after the elapsed exposure
+			time. One file on disk will contain both images. 
+
+RRR argument = 0 or 1	Row-by-Row Reset - The argument "1" causes pairs 
+			of rows to be reset, read (if CDS = 1), delayed
+			for the exposure time and then read. This is useful
+			for high flux applications. 
+			 	
+5. The image size must be set to 512 x 512 pixels, as this is hard coded
+	in the readout software in many places. This is the default with
+	no correlated double sampling. For correlated double sampling set
+	the image size to 1024 x 512. 
+
+6. The exposure timing follows the normal mode of halting the Aladdin
+	clocking for the specified number of seconds in the main voodoo
+	Exposure window.
+	
+7. Continuous readout is implemented wherein a series of identical exposures
+	is obtained without computer intervention. The 'Parameters' window is
+	used to select this mode and its variations. It is implemented by
+	pulsing VrowON low along with VrstR and Fsync to reset the row-pair;
+	VrowON is left high at all other times. The Aladdin III manual
+	is a bit ambiguous about this, so Fig. 5.3 was followed. In normal
+	(not row-by-row reset) mode VrowON is left low all the time, following
+	the text of section 5.3.
+
+ 
+
+
+

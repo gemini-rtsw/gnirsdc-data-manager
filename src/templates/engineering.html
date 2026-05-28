@@ -2,6 +2,14 @@
 {% block content %}
 <h1 class="mb-4">Engineering Controls</h1>
 
+<div id="legacy-firmware-banner"
+     class="alert alert-warning"
+     style="display: {{ 'block' if legacy_firmware_mode else 'none' }};">
+    <strong>LEGACY FIRMWARE MODE ACTIVE.</strong>
+    Bias, LNRS, ADC averages and exposure-time controls are inert until production firmware is reselected.
+    Current .lod: <code id="legacy-banner-path">{{ legacy_firmware_path or '(none)' }}</code>
+</div>
+
 <div class="row">
     <div class="col-md-6 mb-4">
         <div class="card h-100">
@@ -15,6 +23,32 @@
         </div>
     </div>
 
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">Firmware Override (.lod)</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-danger small mb-2">
+                    Legacy firmware ignores bias/LNRS/ADC parameters. Use only for engineering tests.
+                    Re-initialize the controller after switching.
+                </p>
+                <div class="mb-2">
+                    <label for="firmware-select" class="form-label">Available firmware:</label>
+                    <select id="firmware-select" class="form-select"></select>
+                </div>
+                <div class="small mb-2">
+                    <div>Current .lod: <code id="current-firmware-path">{{ legacy_firmware_path or '(production)' }}</code></div>
+                    <div>Checksum: <code id="current-firmware-checksum">{{ current_firmware_checksum or '&hellip;' | safe }}</code></div>
+                    <div>Mode: <span id="legacy-mode-badge" class="badge bg-{{ 'warning' if legacy_firmware_mode else 'success' }}">{{ 'LEGACY' if legacy_firmware_mode else 'Production' }}</span></div>
+                </div>
+                <button id="apply-firmware" class="btn btn-danger">Apply Firmware Selection</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
     <div class="col-md-6 mb-4">
         <div class="card h-100">
             <div class="card-header bg-info text-white">
@@ -41,6 +75,75 @@
 </div>
 
 <script>
+const initialLegacyPath = {{ (legacy_firmware_path or '') | tojson }};
+const initialLegacyMode = {{ (legacy_firmware_mode or 0) | tojson }};
+
+function refreshFirmwareOptions(selectedPath) {
+    fetch('/get_firmware_options')
+        .then(r => r.json())
+        .then(data => {
+            if (data.status !== 'success') {
+                console.error('Failed to list firmware:', data.message);
+                return;
+            }
+            const sel = document.getElementById('firmware-select');
+            sel.innerHTML = '';
+            data.options.forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt.path;
+                o.textContent = opt.label + (opt.legacy ? '  [LEGACY]' : '');
+                sel.appendChild(o);
+            });
+            // Preselect the currently active firmware
+            const want = selectedPath || '';
+            for (const opt of sel.options) {
+                if (opt.value === want) { opt.selected = true; break; }
+            }
+        })
+        .catch(err => console.error('Error fetching firmware options:', err));
+}
+
+function updateLegacyUI(path, mode, checksum) {
+    document.getElementById('current-firmware-path').textContent = path || '(production)';
+    if (checksum !== undefined && checksum !== null && checksum !== '') {
+        document.getElementById('current-firmware-checksum').textContent = checksum;
+    }
+    const badge = document.getElementById('legacy-mode-badge');
+    badge.textContent = mode ? 'LEGACY' : 'Production';
+    badge.className = `badge bg-${mode ? 'warning' : 'success'}`;
+    const banner = document.getElementById('legacy-firmware-banner');
+    banner.style.display = mode ? 'block' : 'none';
+    document.getElementById('legacy-banner-path').textContent = path || '(none)';
+}
+
+document.getElementById('apply-firmware').addEventListener('click', function() {
+    const sel = document.getElementById('firmware-select');
+    const chosen = sel.value;  // empty string = production
+    const label = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : chosen;
+    const goingLegacy = chosen !== '';
+    const msg = goingLegacy
+        ? `Switch to LEGACY firmware?\n\n${label}\n\nBias, LNRS and ADC parameter controls will be disabled. Re-initialize the controller after applying.`
+        : `Switch back to PRODUCTION firmware?\n\nRe-initialize the controller after applying.`;
+    if (!confirm(msg)) return;
+
+    fetch('/set_firmware', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({path: chosen}),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'success') {
+                updateLegacyUI(data.path, data.legacy_mode, data.firm_checksum);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(err => alert('Error applying firmware: ' + err));
+});
+
+refreshFirmwareOptions(initialLegacyPath);
+
 document.getElementById('toggle-interlock').addEventListener('click', function() {
     fetch('/toggle_interlock', {method: 'POST'})
         .then(response => response.json())

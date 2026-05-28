@@ -24,6 +24,9 @@ import os, shutil, glob
 import re
 from datetime import datetime
 
+# Production firmware lives at src/firmware/AladdinIII_SDSU_Firmware.lod, regardless of where the IOC is launched from
+PRODUCTION_FIRMWARE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'firmware', 'AladdinIII_SDSU_Firmware.lod')
+
 from libgnirsioc import controllerInterface
 from libgnirsioc import controllerInterfaceDebug
 from libgnirsioc import setGlobalDebug
@@ -147,6 +150,10 @@ class BiasCAD(GnirsCAD):
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
             return False
+        elif self.p.in_legacy_mode():
+            await self.logMessage("BiasCAD skipped: legacy firmware mode")
+            await self.MESS.write("Bias skipped (legacy)")
+            return True
         else:
             print("BiasCAD start")
             try:
@@ -249,7 +256,13 @@ class InitSDSUCAD(GnirsCAD):
 
             await self.logMessage("SDSU Initializing")
 
-            firmware_full_path = os.path.join(os.getcwd(), "firmware/AladdinIII_SDSU_Firmware.lod")
+            override_path = self.p.get_legacy_firmware_path()
+            if override_path:
+                firmware_full_path = override_path
+                await self.logMessage(f"LEGACY firmware override active: {firmware_full_path}")
+                await self.MESS.write("Using legacy firmware")
+            else:
+                firmware_full_path = PRODUCTION_FIRMWARE_PATH
 
             # Calculate a fresh firmware checksum each time
             firmChecksum = calculate_firmware_checksum(firmware_full_path)
@@ -358,6 +371,10 @@ class DCConfigCAD(GnirsCAD):
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")
             return False
+        elif self.p.in_legacy_mode():
+            await self.logMessage("DCConfigCAD skipped: legacy firmware mode (LNRS/ADC/exptime hardcoded)")
+            await self.MESS.write("Config skipped (legacy)")
+            return True
         else:
             try:
                 self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, self.p.coaddsVAL.value, self.dropReadoutsNum.value, self.p.observeA.value)
@@ -464,8 +481,12 @@ class ObserveCAD(GnirsCAD):
                         if not await self.setBias():
                             await self.MESS.write("Observe failed - setBias error")
                             return False
-                        self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
-                        exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, int(self.p.lnrNum.value), int(self.p.digitalAvgs.value))
+                        if self.p.in_legacy_mode():
+                            await self.logMessage("setExposure/getExposureDelay skipped: legacy firmware mode")
+                            exposure_delay = float(self.p.exposureTime.value or 0.2)
+                        else:
+                            self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
+                            exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, int(self.p.lnrNum.value), int(self.p.digitalAvgs.value))
                     except Exception as e:
                         error_message = str(e)
                         await self.logMessage(f"Observe setup error: {error_message}")
@@ -669,6 +690,10 @@ class ObserveCAD(GnirsCAD):
         await self.p.timeLeft.write('0')
     
     async def setBias(self):
+            if self.p.in_legacy_mode():
+                await self.logMessage("setBias skipped: legacy firmware mode")
+                return True
+
             biasVal = float(self.parent.arSetupH.value)
 
             try:
@@ -912,9 +937,47 @@ class GnirsCADCARController(PVGroup):
         # Simply copy the value from the existing temperature PV
         await instance.write(self.temperature.value)
 
-    disable_interlock  = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="dc:disable_interlock")    
+    disable_interlock  = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="dc:disable_interlock")
 
-    def interlocked(self): 
+    legacyFirmwarePath = pvproperty(value=[0] * 256, dtype=caproto.ChannelType.CHAR, max_length=256, name="dc:legacyFirmwarePath", doc="Override .lod path. Empty = production firmware. (Long string / char waveform)")
+    legacyFirmwareMode = pvproperty(value=0, dtype=caproto.ChannelType.INT, name="dc:legacyFirmwareMode", doc="1 = skip controller calls unsupported by legacy firmware (bias, setExposure).")
+
+    @legacyFirmwarePath.putter
+    async def legacyFirmwarePath(self, instance, value):
+        # value comes in as bytes/list-of-ints/str (CHAR waveform). Normalize to str.
+        if isinstance(value, (bytes, bytearray)):
+            decoded = value.split(b'\x00', 1)[0].decode('utf-8', errors='replace').strip()
+        elif isinstance(value, str):
+            decoded = value.split('\x00', 1)[0].strip()
+        else:
+            try:
+                decoded = bytes(b for b in value if b).decode('utf-8', errors='replace').strip()
+            except Exception:
+                decoded = ''
+        new_path = decoded or PRODUCTION_FIRMWARE_PATH
+        checksum = calculate_firmware_checksum(new_path)
+        await self.firmChecksum.write(checksum)
+
+    def in_legacy_mode(self):
+        return self.legacyFirmwareMode.value > 0
+
+    def get_legacy_firmware_path(self):
+        # legacyFirmwarePath is a CHAR waveform (long string). Decode to str.
+        raw = self.legacyFirmwarePath.value
+        if raw is None:
+            return ''
+        if isinstance(raw, (bytes, bytearray)):
+            return raw.split(b'\x00', 1)[0].decode('utf-8', errors='replace').strip()
+        if isinstance(raw, str):
+            # Strip NULs (caproto may surface CHAR-waveform default as a NUL-filled str)
+            return raw.split('\x00', 1)[0].strip()
+        # list/tuple of ints
+        try:
+            return bytes(b for b in raw if b).decode('utf-8', errors='replace').strip()
+        except Exception:
+            return ''
+
+    def interlocked(self):
         if ((self.temperature.value > INTERLOCK_TEMP or self.temperature.value == -999) and self.disable_interlock.value <= 0):
             return True
         else:
@@ -967,8 +1030,9 @@ class GnirsCADCARController(PVGroup):
 
     @firmChecksum.startup
     async def firmChecksum(self, instance, async_lib):
-        # Calculate the checksum on startup
-        firmware_path = os.path.join(os.getcwd(), "firmware/AladdinIII_SDSU_Firmware.lod")
+        # Calculate the checksum on startup. Honor legacyFirmwarePath if set.
+        override_path = self.get_legacy_firmware_path()
+        firmware_path = override_path or PRODUCTION_FIRMWARE_PATH
         checksum = calculate_firmware_checksum(firmware_path)
         await instance.write(checksum)
 
