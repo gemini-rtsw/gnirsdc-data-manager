@@ -481,11 +481,15 @@ class ObserveCAD(GnirsCAD):
                         if not await self.setBias():
                             await self.MESS.write("Observe failed - setBias error")
                             return False
+                        # setExposure must run even on legacy firmware to configure the
+                        # readout geometry (LNRS/ADC args are ignored by the old .lod, but
+                        # the call is still needed for the readout to terminate). Only
+                        # getExposureDelay is unavailable on legacy firmware.
+                        self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
                         if self.p.in_legacy_mode():
-                            await self.logMessage("setExposure/getExposureDelay skipped: legacy firmware mode")
+                            await self.logMessage("getExposureDelay skipped: legacy firmware mode")
                             exposure_delay = float(self.p.exposureTime.value or 0.2)
                         else:
-                            self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
                             exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, int(self.p.lnrNum.value), int(self.p.digitalAvgs.value))
                     except Exception as e:
                         error_message = str(e)
