@@ -481,15 +481,22 @@ class ObserveCAD(GnirsCAD):
                         if not await self.setBias():
                             await self.MESS.write("Observe failed - setBias error")
                             return False
-                        # setExposure must run even on legacy firmware to configure the
-                        # readout geometry (LNRS/ADC args are ignored by the old .lod, but
-                        # the call is still needed for the readout to terminate). Only
-                        # getExposureDelay is unavailable on legacy firmware.
-                        self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
                         if self.p.in_legacy_mode():
-                            await self.logMessage("getExposureDelay skipped: legacy firmware mode")
+                            # ASSUMES the 1FS-1DS legacy .lod. That firmware ignores the
+                            # SFS/SDS commands (not in its command table) and clocks out a
+                            # fixed geometry: 1 Fowler sample, 1 ADC digital sample, no drops.
+                            # The host's readout loop (libgnirsioc Camera::expose) waits for
+                            # nFrames*2*(1+drop) frames of ncols=COLS*nadcs pixels; passing the
+                            # operator's LNRS/ADC/drop makes the pixel counts never reconcile
+                            # and the readout hangs forever. Forcing 1/1/0 matches what the
+                            # firmware actually produces.
+                            # NOTE: other archived lods (8FS, 16FS, 32FS, *DS) have different
+                            # geometry -- this hardcoded 1/1/0 is NOT correct for them.
+                            self.controller.setExposure(1, 1, self.p.exposureTime.value, int(self.p.coaddsVAL.value), 0, self.p.observeA.value)
+                            await self.logMessage("Legacy firmware: forcing LNRS=1, ADC=1, drop=0 (assumes 1FS-1DS lod); getExposureDelay skipped")
                             exposure_delay = float(self.p.exposureTime.value or 0.2)
                         else:
+                            self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
                             exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, int(self.p.lnrNum.value), int(self.p.digitalAvgs.value))
                     except Exception as e:
                         error_message = str(e)
@@ -694,7 +701,6 @@ class ObserveCAD(GnirsCAD):
         await self.p.timeLeft.write('0')
     
     async def setBias(self):
-            legacy = self.p.in_legacy_mode()
             biasVal = float(self.parent.arSetupH.value)
 
             try:
@@ -716,11 +722,6 @@ class ObserveCAD(GnirsCAD):
                 error_message = str(e)
                 await self.logMessage(f"setBias error: {error_message}")
                 await self.MESS.write(f"setBias error: {error_message[:30]}")
-                # On legacy firmware bias commands may not exist; don't abort the
-                # readout over it (bias is hardcoded in the legacy .lod anyway).
-                if legacy:
-                    await self.logMessage("setBias error ignored: legacy firmware mode")
-                    return True
                 # CArcPCIe errors indicate controller issues - mark as not initialized
                 if "CArcPCIe" in error_message or "Command" in error_message:
                     await self.p.sdsuState.write("NOT INITIALIZED")
