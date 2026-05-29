@@ -694,10 +694,7 @@ class ObserveCAD(GnirsCAD):
         await self.p.timeLeft.write('0')
     
     async def setBias(self):
-            if self.p.in_legacy_mode():
-                await self.logMessage("setBias skipped: legacy firmware mode")
-                return True
-
+            legacy = self.p.in_legacy_mode()
             biasVal = float(self.parent.arSetupH.value)
 
             try:
@@ -719,6 +716,11 @@ class ObserveCAD(GnirsCAD):
                 error_message = str(e)
                 await self.logMessage(f"setBias error: {error_message}")
                 await self.MESS.write(f"setBias error: {error_message[:30]}")
+                # On legacy firmware bias commands may not exist; don't abort the
+                # readout over it (bias is hardcoded in the legacy .lod anyway).
+                if legacy:
+                    await self.logMessage("setBias error ignored: legacy firmware mode")
+                    return True
                 # CArcPCIe errors indicate controller issues - mark as not initialized
                 if "CArcPCIe" in error_message or "Command" in error_message:
                     await self.p.sdsuState.write("NOT INITIALIZED")
