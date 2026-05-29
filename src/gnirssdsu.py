@@ -481,22 +481,16 @@ class ObserveCAD(GnirsCAD):
                         if not await self.setBias():
                             await self.MESS.write("Observe failed - setBias error")
                             return False
+                        # setExposure is always called; for legacy firmware the lib
+                        # (gnirsdc-lib setExposure) detects the 1FS-1DS lod and overrides
+                        # frames/nadcs/drop and the readout geometry itself, ignoring these
+                        # args. getExposureDelay is unavailable on legacy firmware, so it is
+                        # skipped and the countdown falls back to the exposure time.
+                        self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
                         if self.p.in_legacy_mode():
-                            # ASSUMES the 1FS-1DS legacy .lod. That firmware ignores the
-                            # SFS/SDS commands (not in its command table) and clocks out a
-                            # fixed geometry: 1 Fowler sample, 1 ADC digital sample, no drops.
-                            # The host's readout loop (libgnirsioc Camera::expose) waits for
-                            # nFrames*2*(1+drop) frames of ncols=COLS*nadcs pixels; passing the
-                            # operator's LNRS/ADC/drop makes the pixel counts never reconcile
-                            # and the readout hangs forever. Forcing 1/1/0 matches what the
-                            # firmware actually produces.
-                            # NOTE: other archived lods (8FS, 16FS, 32FS, *DS) have different
-                            # geometry -- this hardcoded 1/1/0 is NOT correct for them.
-                            self.controller.setExposure(1, 1, self.p.exposureTime.value, int(self.p.coaddsVAL.value), 0, self.p.observeA.value)
-                            await self.logMessage("Legacy firmware: forcing LNRS=1, ADC=1, drop=0 (assumes 1FS-1DS lod); getExposureDelay skipped")
+                            await self.logMessage("Legacy firmware: lib forces fixed geometry; getExposureDelay skipped")
                             exposure_delay = float(self.p.exposureTime.value or 0.2)
                         else:
-                            self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
                             exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, int(self.p.lnrNum.value), int(self.p.digitalAvgs.value))
                     except Exception as e:
                         error_message = str(e)
