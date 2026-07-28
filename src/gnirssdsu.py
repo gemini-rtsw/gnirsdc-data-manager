@@ -276,7 +276,20 @@ class InitSDSUCAD(GnirsCAD):
             setGlobalDebug(DEBUG_MODE)
             self.controller = controllerInterface("/readout_data", firmware_full_path)
 
-            self.controller.setAladdinIII(True)
+            # setAladdinIII selects the row-513 readout path, which is a property of
+            # the firmware build rather than the detector. The AladdinIII lods clock
+            # an extra 513th row carrying quadrants 3 & 4 of row 512, and the lib
+            # accounts for it in three places: it waits for (nrows+1)*ncols pixels,
+            # sizes the buffer to nrows+1, and folds row 513 back in via copyRow513.
+            # The archived 1FS-1DS lod is an AladdinII-era build that never emits that
+            # row, so leaving this True makes the readout wait 2048 pixels that never
+            # arrive and hang. Select the AladdinII path in legacy mode.
+            is_aladdin_iii = not self.p.in_legacy_mode()
+            self.controller.setAladdinIII(is_aladdin_iii)
+            await self.logMessage(
+                f"Readout path: Aladdin {'III' if is_aladdin_iii else 'II'} "
+                f"(row 513 {'enabled' if is_aladdin_iii else 'disabled'})"
+            )
 
             result = self.controller.testDataLink()
 
