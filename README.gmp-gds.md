@@ -247,7 +247,7 @@ The container is built automatically via `.gitlab-ci.yml`:
 ```yaml
 # Build and push gmp-server image
 - |
-  docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN \
+  docker build --build-arg REGISTRY_TOKEN=$REGISTRY_TOKEN \
                --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
                --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
                -f Dockerfile.gmp \

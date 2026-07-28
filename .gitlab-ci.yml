@@ -2,16 +2,21 @@ stages:
   - build
   - pages
 
-# Note: The 'DEPLOY_TOKEN' is used here for operations requiring authentication.
-# If 'DEPLOY_TOKEN' expires or you need to create a new one, follow these steps:
-# 1. Navigate to your GitLab rtsw group's settings.
+# Note: 'REGISTRY_TOKEN' is used here for operations requiring authentication
+# (registry login, cloning the sibling IOC repos). It is a GROUP-level CI/CD
+# variable ("Gemini CI Access") inherited from the parent group, so it is shared
+# across the rtsw projects and is not defined per-project.
+#
+# If it expires or needs rotating:
+# 1. Navigate to the GitLab rtsw group's settings.
 # 2. Go to 'Access Tokens' under the 'Settings' menu.
-# 3. Create a new Personal Access Token with the appropriate scopes. 
+# 3. Create a new Personal Access Token with the appropriate scopes.
 #    will need: read repo, read api, rw registry
 # 4. Copy the newly generated token.
-# 5. In your project's settings under 'CI / CD', go to 'Variables'.
-# 6. Add a new variable with the key 'DEPLOY_TOKEN' and paste the token as the value.
+# 5. In the GROUP's settings under 'CI / CD', go to 'Variables'.
+# 6. Update the 'REGISTRY_TOKEN' variable with the new token as the value.
 #    Ensure to mark it as 'Protected off' and 'Masked' as necessary.
+#    Rotating it at the group level affects every project that inherits it.
 
 variables:
   CONTAINER_NAME: "gnirsdc"
@@ -24,16 +29,16 @@ build_image:
   services:
     - docker:dind
   before_script:
-    - echo "Logging into GitLab Container Registry with deploy token..."
-    - echo $DEPLOY_TOKEN | docker login $CI_REGISTRY -u $DEPLOY_TOKEN --password-stdin
+    - echo "Logging into GitLab Container Registry with registry token..."
+    - echo $REGISTRY_TOKEN | docker login $CI_REGISTRY -u oauth2 --password-stdin
   script:
-    - git clone -b master https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git gnirsdc
-    - git clone -b main https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/pycadcar.git pycadcar
-    - git clone -b master https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git gnirsdc-tools
-    - git clone -b master https://oauth2:$DEPLOY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git gnirsdc-lib
+    - git clone -b master https://oauth2:$REGISTRY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager.git gnirsdc
+    - git clone -b main https://oauth2:$REGISTRY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/pycadcar.git pycadcar
+    - git clone -b master https://oauth2:$REGISTRY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-tools.git gnirsdc-tools
+    - git clone -b master https://oauth2:$REGISTRY_TOKEN@gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git gnirsdc-lib
     # Build and push dev image
     - |
-      docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN \
+      docker build --build-arg REGISTRY_TOKEN=$REGISTRY_TOKEN \
                    --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
                    --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
                    -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-dev:latest \
@@ -44,7 +49,7 @@ build_image:
     
     # Build and push run image
     - |
-      docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN \
+      docker build --build-arg REGISTRY_TOKEN=$REGISTRY_TOKEN \
                    --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
                    --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
                    -t $CI_REGISTRY_IMAGE/${CONTAINER_NAME}-run:latest \
@@ -55,7 +60,7 @@ build_image:
     
     # Build and push gmp-server image
     - |
-      docker build --build-arg DEPLOY_TOKEN=$DEPLOY_TOKEN \
+      docker build --build-arg REGISTRY_TOKEN=$REGISTRY_TOKEN \
                    --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
                    --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
                    -f Dockerfile.gmp \
