@@ -958,6 +958,12 @@ class GnirsCADCARController(PVGroup):
         new_path = decoded or PRODUCTION_FIRMWARE_PATH
         checksum = calculate_firmware_checksum(new_path)
         await self.firmChecksum.write(checksum)
+        # Must return the value: caproto stores whatever the putter returns, so
+        # falling off the end wrote None here and get_legacy_firmware_path() read
+        # back empty -> InitSDSUCAD silently loaded the production lod while
+        # legacyFirmwareMode stayed 1. firmChecksum still showed the legacy sum
+        # (computed from the requested path), which masked it in the web UI.
+        return value
 
     def in_legacy_mode(self):
         return self.legacyFirmwareMode.value > 0
