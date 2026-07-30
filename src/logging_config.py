@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import sys
 from logging import getLogger, Formatter, StreamHandler, INFO, DEBUG, FileHandler
 from logging.handlers import TimedRotatingFileHandler, QueueHandler, QueueListener
@@ -203,6 +204,16 @@ def start_native_stdout_capture(logger_name='native'):
     os.dup2(write_fd, 2)
     os.close(write_fd)
 
+    # Python's own output reaches fd 1 twice over: TeeStream echoes it to the
+    # real stream and the root StreamHandler prints each record. Both land in
+    # this pipe, so re-logging them would duplicate every line. Those arrivals
+    # are already-formatted log records, so recognise and drop them; anything
+    # else on fd 1/2 is genuine native output worth capturing.
+    already_logged = re.compile(
+        r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} - \S+ - (?:%s) - '
+        % '|'.join(sorted(log_levels, key=len, reverse=True))
+    )
+
     def drain():
         with os.fdopen(read_fd, 'r', buffering=1, errors='replace') as pipe:
             for line in pipe:
@@ -211,7 +222,7 @@ def start_native_stdout_capture(logger_name='native'):
                     os.write(real_stdout_fd, (line + '\n').encode('utf-8', 'replace'))
                 except OSError:
                     pass
-                if line.strip():
+                if line.strip() and not already_logged.match(line):
                     native_logger.irdc_debug(line)
 
     threading.Thread(target=drain, name='native-stdout-capture', daemon=True).start()
