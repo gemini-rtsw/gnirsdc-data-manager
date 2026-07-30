@@ -155,7 +155,66 @@ def setup_logging(console_level=IRDC_DEBUG, file_level=IRDC_DEBUG, log_file=None
 
     sys.stdout = TeeStream(sys.stdout, stdout_logger)
 
+    # TeeStream only replaces Python's sys.stdout object. The C++ extension
+    # (libgnirsioc) writes with std::cout straight to file descriptor 1, never
+    # touching sys.stdout, so none of its output -- including the readout's
+    # pixel-count diagnostics -- reached the log. Capture at the fd level too.
+    start_native_stdout_capture()
+
     return None
+
+
+_native_capture_started = False
+
+
+def start_native_stdout_capture(logger_name='native'):
+    """Route writes to fd 1/2 (C/C++ stdout+stderr) into the logging system.
+
+    Replaces fds 1 and 2 with a pipe and drains it on a daemon thread, echoing
+    each line to the real terminal and logging it. Without this, anything the
+    compiled extension prints is silently discarded.
+
+    IMPORTANT: the captured lines must NOT be sent to any handler that writes
+    back to fd 1/2 -- the StreamHandler on the root logger does exactly that,
+    which would feed every line straight back into the pipe and loop forever.
+    So this logger gets the file/custom handlers only, with propagate=False.
+    """
+    global _native_capture_started
+    if _native_capture_started:
+        return
+    _native_capture_started = True
+
+    native_logger = logging.getLogger(logger_name)
+    native_logger.setLevel(logging.INFO)
+    # Detach from the root logger so the console StreamHandler can't echo these
+    # lines back into the captured fd (infinite loop). Re-attach only the
+    # handlers that write somewhere other than fd 1/2.
+    native_logger.propagate = False
+    native_logger.handlers = []
+    for handler in logging.getLogger().handlers:
+        if isinstance(handler, StreamHandler) and not isinstance(handler, FileHandler):
+            continue  # writes to the captured fd -- would loop
+        native_logger.addHandler(handler)
+
+    # Keep the original fd so captured output still reaches the console/docker logs.
+    real_stdout_fd = os.dup(1)
+    read_fd, write_fd = os.pipe()
+    os.dup2(write_fd, 1)
+    os.dup2(write_fd, 2)
+    os.close(write_fd)
+
+    def drain():
+        with os.fdopen(read_fd, 'r', buffering=1, errors='replace') as pipe:
+            for line in pipe:
+                line = line.rstrip('\n')
+                try:
+                    os.write(real_stdout_fd, (line + '\n').encode('utf-8', 'replace'))
+                except OSError:
+                    pass
+                if line.strip():
+                    native_logger.irdc_debug(line)
+
+    threading.Thread(target=drain, name='native-stdout-capture', daemon=True).start()
 
 def set_log_message_func(func, loop=None):
     global custom_handler
