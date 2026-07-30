@@ -276,20 +276,22 @@ class InitSDSUCAD(GnirsCAD):
             setGlobalDebug(DEBUG_MODE)
             self.controller = controllerInterface("/readout_data", firmware_full_path)
 
-            # setAladdinIII selects the row-513 readout path, which is a property of
-            # the firmware build rather than the detector. The AladdinIII lods clock
-            # an extra 513th row carrying quadrants 3 & 4 of row 512, and the lib
-            # accounts for it in three places: it waits for (nrows+1)*ncols pixels,
-            # sizes the buffer to nrows+1, and folds row 513 back in via copyRow513.
-            # The archived 1FS-1DS lod is an AladdinII-era build that never emits that
-            # row, so leaving this True makes the readout wait 2048 pixels that never
-            # arrive and hang. Select the AladdinII path in legacy mode.
-            is_aladdin_iii = not self.p.in_legacy_mode()
-            self.controller.setAladdinIII(is_aladdin_iii)
-            await self.logMessage(
-                f"Readout path: Aladdin {'III' if is_aladdin_iii else 'II'} "
-                f"(row 513 {'enabled' if is_aladdin_iii else 'disabled'})"
-            )
+            # Always the AladdinIII readout path: this is an AladdinIII detector and
+            # gIsAladdinIII drives set_size()/SetImageSize(nrows+1, ncols), i.e. the
+            # frame geometry the controller is told to clock out -- not just a host
+            # side pixel count. Forcing the AladdinII path for legacy firmware made
+            # the readout "complete" only because both the expected count and the
+            # requested image size shrank together; the resulting FITS was all zeros.
+            self.controller.setAladdinIII(True)
+
+            # The archived legacy lods have no SDS entry in their DSP command table.
+            # expose() sends SDS on a detached thread and throws if the DSP rejects
+            # it, which is uncaught and aborts the IOC. Those builds are fixed at one
+            # digital sample, so skipping the command is correct. Kept separate from
+            # setAladdinIII so it does not disturb the readout geometry.
+            supports_sds = not self.p.in_legacy_mode()
+            self.controller.setSupportsSDS(supports_sds)
+            await self.logMessage(f"Firmware SDS support: {supports_sds}")
 
             result = self.controller.testDataLink()
 
