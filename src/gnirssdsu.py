@@ -276,22 +276,20 @@ class InitSDSUCAD(GnirsCAD):
             setGlobalDebug(DEBUG_MODE)
             self.controller = controllerInterface("/readout_data", firmware_full_path)
 
-            # Always the AladdinIII readout path: this is an AladdinIII detector and
-            # gIsAladdinIII drives set_size()/SetImageSize(nrows+1, ncols), i.e. the
-            # frame geometry the controller is told to clock out -- not just a host
-            # side pixel count. Forcing the AladdinII path for legacy firmware made
-            # the readout "complete" only because both the expected count and the
-            # requested image size shrank together; the resulting FITS was all zeros.
             self.controller.setAladdinIII(True)
 
-            # The archived legacy lods have no SDS entry in their DSP command table.
-            # expose() sends SDS on a detached thread and throws if the DSP rejects
-            # it, which is uncaught and aborts the IOC. Those builds are fixed at one
-            # digital sample, so skipping the command is correct. Kept separate from
-            # setAladdinIII so it does not disturb the readout geometry.
-            supports_sds = not self.p.in_legacy_mode()
-            self.controller.setSupportsSDS(supports_sds)
-            await self.logMessage(f"Firmware SDS support: {supports_sds}")
+            # The archived lods run unmodified -- they are the low-noise reference
+            # the production firmware is being compared against -- so the lib adapts
+            # to them instead: no SDS (not in their command table; the DSP rejects
+            # it and the throw on expose()'s detached thread aborts the IOC), one
+            # digital sample, 512 rows with no row 513, and frames DMA'd back to back
+            # because they send IIA once per exposure rather than before every
+            # READOUT. That last one is what made both CDS frames copy the same
+            # buffer and the FITS come out all zeros. This overrides setAladdinIII's
+            # geometry; SetImageSize does not change what the legacy lod clocks.
+            legacy = self.p.in_legacy_mode()
+            self.controller.setLegacyFirmware(legacy)
+            await self.logMessage(f"Legacy firmware readout: {legacy}")
 
             result = self.controller.testDataLink()
 
@@ -496,14 +494,14 @@ class ObserveCAD(GnirsCAD):
                         if not await self.setBias():
                             await self.MESS.write("Observe failed - setBias error")
                             return False
-                        # setExposure is always called; for legacy firmware the lib
-                        # (gnirsdc-lib setExposure) detects the 1FS-1DS lod and overrides
-                        # frames/nadcs/drop and the readout geometry itself, ignoring these
-                        # args. getExposureDelay is unavailable on legacy firmware, so it is
-                        # skipped and the countdown falls back to the exposure time.
+                        # setExposure is always called; with setLegacyFirmware(True) the lib
+                        # forces ADCs=1 and Fowler mode and uses the legacy 512-row geometry.
+                        # LNRS and drops still apply (the legacy lods accept SFS).
+                        # getExposureDelay is skipped in legacy mode and the countdown falls
+                        # back to the exposure time.
                         self.controller.setExposure(self.p.lnrNum.value, self.p.digitalAvgs.value, self.p.exposureTime.value, int(self.p.coaddsVAL.value), int(self.p.dropReadoutsNum.value), self.p.observeA.value)
                         if self.p.in_legacy_mode():
-                            await self.logMessage("Legacy firmware: lib forces fixed geometry; getExposureDelay skipped")
+                            await self.logMessage("Legacy firmware: ADCs forced to 1; getExposureDelay skipped")
                             exposure_delay = float(self.p.exposureTime.value or 0.2)
                         else:
                             exposure_delay = self.controller.getExposureDelay(self.p.exposureTime.value, int(self.p.lnrNum.value), int(self.p.digitalAvgs.value))
