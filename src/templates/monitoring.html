@@ -101,6 +101,12 @@
                     <label for="sequence">Sequence:</label>
                     <input type="number" id="sequence" name="sequence" value="{{ sequence }}" min="1" class="form-control">
                 </div>
+                <div class="form-group form-check">
+                    <!-- Mirrors the IOC's include_eng PV, which resets to 0 after every
+                         observe; applies on click, not with Set Parameters. -->
+                    <input type="checkbox" id="includeEng" class="form-check-input">
+                    <label for="includeEng" class="form-check-label">Engineering mode (next observe only)</label>
+                </div>
             </div>
             <div class="column">
                 <div class="form-group">
@@ -324,6 +330,11 @@
                 case 'sequence':
                     updateTextContent('sequence', value);
                     break;
+                case 'include_eng': {
+                    const includeEngBox = document.getElementById('includeEng');
+                    if (includeEngBox) includeEngBox.checked = Number(value) === 1;
+                    break;
+                }
                 case 'top_name':
                     updateTextContent('topNameValue', value);
                     break;
@@ -770,6 +781,10 @@
                         coaddsInput.value = pvs.coadds || "";
                         sequenceInput.value = pvs.sequence || "";
                     }
+
+                    // Always the live PV value, so the box clears when the IOC
+                    // resets include_eng after an observe.
+                    includeEngCheckbox.checked = Number(pvs.include_eng) === 1;
 
                     // Update NTP time - DIRECT APPROACH
                     if (pvs.ntp_time !== undefined) {
@@ -1516,6 +1531,7 @@
     const applyActionBtn = document.getElementById('applyActionBtn');
     const coaddsInput = document.getElementById('coadds');
     const sequenceInput = document.getElementById('sequence');
+    const includeEngCheckbox = document.getElementById('includeEng');
     const ntpTimeValue = document.getElementById('ntpTimeValue');
     const startIntegrationBtn = document.getElementById('startIntegrationBtn');
 
@@ -1671,6 +1687,27 @@
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show', 'active'));
             tab.classList.add('active');
             document.querySelector(tab.getAttribute('data-bs-target')).classList.add('show', 'active');
+        });
+    });
+
+    includeEngCheckbox.addEventListener('change', function() {
+        fetch('/set_include_eng', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ enabled: this.checked }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status !== 'success') {
+                console.error('Error setting engineering mode:', data.message);
+            }
+            updateAllPVs();  // Show what the PV actually holds
+        })
+        .catch(error => {
+            console.error('Error setting engineering mode:', error);
+            updateAllPVs();
         });
     });
 

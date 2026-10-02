@@ -435,6 +435,18 @@ class AbortCAD(GnirsCAD):
 class ObserveCAD(GnirsCAD):
 
     async def start(self):
+        try:
+            return await self._start()
+        finally:
+            # Engineering frames and test (non-archive) writes must never carry
+            # over into the next readout, which may be a seqexec science frame.
+            # The normal end-of-sequence reset in _start() is skipped by every
+            # early return (setBias/setup/exposure failures, not initialized,
+            # interlocked), so enforce these two on every exit.
+            await self.p.parent.include_eng.write(0)
+            await self.p.parent.archive_fits.write(1)
+
+    async def _start(self):
         if self.controller is None:
             await self.logMessage(f"Controller not initialized")
             await self.MESS.write("Controller not initialized")

@@ -358,6 +358,7 @@ class PVSubscriptionManager:
             f'{top_name}:dc:sdsuState',
             f'{top_name}:dc:coadds.VAL',
             f'{top_name}:dc:sequence',
+            f'{top_name}:include_eng',
             f'{top_name}:ntp_time',
             f'{top_name}:sad:dc:rdout',
             f'{top_name}:sad:dc:obsProgress',
@@ -1080,6 +1081,19 @@ def toggle_bias_voltage():
         logger.error(f"Error changing bias voltage: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/set_include_eng', methods=['POST'])
+def set_include_eng():
+    # Writes the IOC's include_eng PV directly. The IOC resets it to 0 after
+    # every observe, so the page reflects the PV rather than remembering a value.
+    top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
+    try:
+        enabled = 1 if request.json.get('enabled') else 0
+        caput(f'{top_name}:include_eng', enabled, wait=True)
+        return jsonify({"status": "success", "include_eng": enabled})
+    except Exception as e:
+        logger.error(f"Error setting include_eng: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/apply_tdl', methods=['POST'])
 def apply_tdl():
     top_name = config[config_mode].get('DEFAULT_PREFIX', 'nirs')
@@ -1393,6 +1407,7 @@ def get_all_pvs():
         f'{top_name}:dc:sdsuState': 'sdsu_state',
         f'{top_name}:dc:coadds.VAL': 'coadds',
         f'{top_name}:dc:sequence': 'sequence',
+        f'{top_name}:include_eng': 'include_eng',
         f'{top_name}:sad:dc:rdout': 'rdout',
         f'{top_name}:sad:dc:obsProgress': 'obs_progress',
         f'{top_name}:sad:dc:heartBeat': 'heartbeat',
@@ -1556,6 +1571,7 @@ def get_all_pvs():
         'sdsu_state': 'UNKNOWN',
         'coadds': 1,
         'sequence': 1,
+        'include_eng': 0,
         'ntp_time': 0,
         'rdout': 0,
         'obs_progress': 0,
