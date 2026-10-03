@@ -803,10 +803,11 @@ in this repo, with its DSP source in `src/firmware/src`. Archived builds in
 `firmware-archived/` can be selected from the Engineering tab (legacy firmware
 mode).
 
-The DSP56K assembler runs under gemini-wine (see the
-[gnirsdc-dsp](https://github.com/gemini-rtsw/gnirsdc-dsp) repo and its
-`build-firmware.sh`, which takes the Wine image from `WINE_IMAGE`). gemini-wine
-has not been migrated to GHCR, so the assembler is not available in CI.
+The DSP56K tools (32-bit Windows console programs) run under
+[gemini-wine](https://github.com/gemini-rtsw/gemini-wine), Wine 10 built for
+EL9 and published to rpm-repo. The [gnirsdc-dsp](https://github.com/gemini-rtsw/gnirsdc-dsp)
+repo shows how: its RPM build assembles its firmware with gemini-wine, and its
+`build-firmware.sh` / `make firmware` does the same locally.
 
 To change the production firmware:
 
