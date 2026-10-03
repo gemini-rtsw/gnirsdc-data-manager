@@ -1,5 +1,6 @@
 #!/bin/bash
 # macOS test setup: GMP + dev container (IOC + System Manager + TCS sim).
+# Both run from the one gnirsdc-data-manager image; IMAGE overrides which one.
 # - GMP owns the network namespace so 8008 (GIAPI) and host:HOST_PORT->8080 (web UI) are published there
 # - gnirsdc-dev joins gmp's network so IOC can reach GMP at localhost:8008
 # - IOC + System Manager + TCS sim run as detached `docker exec` processes inside gnirsdc-dev
@@ -11,9 +12,7 @@
 
 set -e
 
-REGISTRY="registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager"
-GMP_IMAGE="${REGISTRY}/gmp-server:latest"
-DEV_IMAGE="${REGISTRY}/gnirsdc-dev:latest"
+IMAGE="${IMAGE:-ghcr.io/gemini-rtsw/gnirsdc-data-manager:latest}"
 
 HOST_PORT="${HOST_PORT:-8080}"      # Mac-side port for the System Manager web UI
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -52,7 +51,8 @@ docker run -d --name gmp \
     -p 8008:8008 -p "${HOST_PORT}:8080" \
     -v "${DATA_DIR}/readout_data:/readout_data" \
     -v "${DATA_DIR}/staging/perm:/staging/perm" \
-    "${GMP_IMAGE}" >/dev/null
+    --entrypoint /gnirsdc/entrypoint-gmp.sh \
+    "${IMAGE}" >/dev/null
 
 echo "Starting gnirsdc-dev (sharing gmp's network)..."
 docker run -itd --name gnirsdc-dev --privileged \
@@ -60,7 +60,8 @@ docker run -itd --name gnirsdc-dev --privileged \
     -v "${REPO_DIR}:/work" \
     -v "${DATA_DIR}/readout_data:/readout_data:rw" \
     -v "${DATA_DIR}/staging/perm:/staging/perm:rw" \
-    "${DEV_IMAGE}" bash -l >/dev/null
+    --entrypoint bash \
+    "${IMAGE}" -l >/dev/null
 
 echo "Launching TCS simulator..."
 docker exec -d gnirsdc-dev bash -lc \

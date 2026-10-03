@@ -1,0 +1,25 @@
+name: Build
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  build:
+    uses: gemini-rtsw/gemini-rtsw-ci/.github/workflows/ci.yml@main
+    secrets: inherit
+    with:
+      scripts_dir: gemini-rtsw-ci
+      # epics, not lightweight: the spec pins gnirsdc-lib and pycadcar, which
+      # only resolve from the rpm-repo container this profile starts.
+      profile: epics
+      # EL9 / Python 3.9. The GIAPI glue is a Rocky 8 build that runs on EL9
+      # with libxcrypt-compat (see Dockerfile).
+      el_version: '9'
+      spec_path: packaging/gnirsdc-data-manager.spec
+      app_image: Dockerfile
+
+  publish:
+    needs: build
+    uses: gemini-rtsw/gemini-rtsw-ci/.github/workflows/publish.yml@main
+    secrets: inherit

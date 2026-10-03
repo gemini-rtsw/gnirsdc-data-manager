@@ -6,6 +6,7 @@ import importlib
 import os
 import subprocess
 import queue
+import re
 import sys
 import threading
 import time
@@ -144,6 +145,26 @@ def get_repo_info_for_directories():
             logger.print("Failed to retrieve repo information.")
             logger.print("---")
 
+    # The released image has no git checkouts: the DC commit is recorded at build
+    # time, and gnirsdc-lib is an RPM whose release names its commit
+    # (e.g. 1.git4a080dd.el8).
+    if 'DC_COMMIT' not in os.environ:
+        try:
+            with open('/gnirsdc/.githash') as f:
+                os.environ['DC_COMMIT'] = f.read().strip()
+            logger.print(f"DC commit (image build): {os.environ['DC_COMMIT']}")
+        except OSError:
+            pass
+
+    if 'LIB_COMMIT' not in os.environ:
+        try:
+            release = subprocess.check_output(["rpm", "-q", "--qf", "%{RELEASE}", "gnirsdc-lib"]).decode("utf-8")
+            match = re.search(r"git([0-9a-f]+)", release)
+            if match:
+                os.environ['LIB_COMMIT'] = match.group(1)
+                logger.print(f"gnirsdc-lib commit (RPM {release}): {os.environ['LIB_COMMIT']}")
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
 
     os.chdir(WORKING_DIR)
 

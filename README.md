@@ -38,9 +38,9 @@ The GMP (Gemini Master Process) is used for GIAPI (Gemini Instrument Application
      ```
      ssh telops@gn-irdc-lp3
      ```
-      - Start the System Manager with the following command:
+      - Restart the System Manager service:
      ```
-     dc-system-manager.sh
+     sudo systemctl restart gnirsdc-system-manager
      ```
       - Open a web browser and navigate to `http://gn-irdc-lp3:8080`
 
@@ -63,9 +63,9 @@ The GMP (Gemini Master Process) is used for GIAPI (Gemini Instrument Application
      ```
          - You should see something like this:
      ```
-     CONTAINER ID   IMAGE                                                                                              NAMES
-     1ac26040939c   registry...gnirsdc-run:current   "/gnirsdc/entrypoint…"   4 seconds ago   Up 3 seconds             gnirsdc
-     05f3dde51464   registry...gmp-server:current    "/usr/local/bin/entr…"   4 seconds ago   Up 3 seconds             gmp
+     CONTAINER ID   IMAGE                                                     NAMES
+     1ac26040939c   ghcr.io/gemini-rtsw/gnirsdc-data-manager:1.0.0-git...      gnirsdc
+     05f3dde51464   ghcr.io/gemini-rtsw/gnirsdc-data-manager:1.0.0-git...      gmp
      ```
 
 
@@ -96,19 +96,16 @@ The GMP (Gemini Master Process) is used for GIAPI (Gemini Instrument Application
 
 1. SSH to one of the required IRDC servers (gn-irdc-lp1, gn-irdc-lp2, gn-irdc-lp3)
 
-2. Start the [System Manager](#system-manager):
+2. The [System Manager](#system-manager) runs as the `gnirsdc-system-manager`
+   service and starts at boot. Check or restart it with:
 
    ```
-   dc-system-manager.sh
+   sudo systemctl status gnirsdc-system-manager
+   sudo systemctl restart gnirsdc-system-manager
    ```
 
-   If the DC is running in debug mode the System Manager must be started with the `--debug` option:
-
-   ```
-   dc-system-manager.sh --debug
-   ```   
-
-   Note: This script must be run as the telops user. Ensure that the telops user has an SSH key set up before starting the System Manager.
+   If the DC is running in debug mode, set `SM_ARGS=--debug` in
+   `/etc/sysconfig/gnirsdc` and restart the service.
 
 3. Open a web browser and navigate to `http://<server ip address>:8080`
 
@@ -181,13 +178,17 @@ scp <user>@<server>:/readout_data/fits/* .
 
 ## Detector Controller (DC) Operation Scripts
 
+Installed by the `gnirsdc-data-manager` RPM in `/usr/local/bin`. The System
+Manager runs `dc-start.sh` and `dc-stop.sh` over SSH for Start/Restart/Stop DC.
+
 ### dc-start.sh
-Starts the Detector Controller Software and related Docker containers.
+Starts the `gmp` and `gnirsdc` containers from the image pinned by the installed RPM.
 ```
 Usage: dc-start.sh [additional arguments]
 ```
 - Additional arguments are passed to the `gnirsdc` container.
 - Example: `dc-start.sh --top tgnirs` (for debug mode)
+- `--help` shows the pinned image.
 
 ### dc-stop.sh
 Stops the Detector Controller Software and removes related Docker containers.
@@ -204,44 +205,15 @@ Usage: dc-status.sh
 - No additional flags or arguments.
 - Displays running status of `gnirsdc` and `gmp` containers.
 
-### dc-system-manager.sh
-Launches the System Manager web interface for monitoring and controlling the DC software.
+### gnirsdc-system-manager (systemd)
+Runs the System Manager web interface; see [System Manager](#system-manager).
 ```
-Usage: dc-system-manager.sh [--debug]
+sudo systemctl status|restart gnirsdc-system-manager
 ```
-- `--debug`: Starts the System Manager in debug mode.
-- `--help`: Displays help information.
 
-### dc-devel.sh
-Starts Docker containers for the Detector Controller Software in a development environment.
-```
-Usage: dc-devel.sh
-```
-- No additional flags or arguments.
-- Attempts to start containers with development images.
-
-### dc-production.sh
-Updates Docker images by pulling the latest 'production' tag and tagging it as 'current'.
-```
-Usage: dc-production.sh
-```
-- No additional flags or arguments.
-- Ensures 'current' tag points to the latest 'production' version.
-
-### dc-latest.sh
-Updates Docker images by pulling the latest 'latest' tag and tagging it as 'current'.
-```
-Usage: dc-latest.sh
-```
-- No additional flags or arguments.
-- Ensures 'current' tag points to the most recent 'latest' version.
-
-### dc-promote.sh
-Promotes Docker images from 'current' to 'production' tag, archiving the old 'production' image.
-```
-Usage: dc-promote.sh [--help]
-```
-- `--help`: Displays help information about the script's functionality.
+Versions are managed with the RPM -- `dnf upgrade` / `dnf downgrade
+gnirsdc-data-manager` -- which replaces the old current/production image tags;
+see [Versions, upgrades and rollback](#versions-upgrades-and-rollback).
 
 Note: These scripts should be run with appropriate permissions, typically as the 'telops' user or a user with Docker access.   
 
@@ -266,141 +238,56 @@ https://gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirs-pci-driver
 
 ## Docker Login
 
-**Note:** If `dc-latest.sh` doesn't work, you may need to log in to Docker.
+The images are on GHCR (`ghcr.io/gemini-rtsw/...`). The gnirsdc-system-manager
+service pulls the pinned image **as root**, and the System Manager starts the DC
+containers from that same local image, so root needs read access to GHCR unless
+the package is public:
 
-Docker login is required to pull the images that the DC and DM screens are deployed in. The telops user has access to start/stop the containers but does not have access to gitlab registry. A user with access to the registry is needed to pull the images.
-
-### GitLab Docker Login with Personal Access Token Using `--password-stdin` Option
-
-**Login to GitLab Website:**
-
-Navigate to your GitLab instance (e.g., https://gitlab.com) and log in with your credentials.
-
-**Create a Personal Access Token:**
-
-1. Click on your profile avatar and select **"Edit profile"**.
-2. Go to **"Access Tokens"**.
-3. Enter a name for the token (e.g., `Docker Registry Access`).
-4. Set an expiration date (optional but recommended).
-5. Select the scopes:
-   - `read_registry`
-   - `read_repository`
-6. Click on **"Create personal access token"**.
-7. **Important:** Copy the generated token. You won't be able to see it again.
-
-**Docker Login Using `--password-stdin`:**
-
-For enhanced security, use the `--password-stdin` option to avoid exposing your access token in the shell history.
-
-```
-echo "your-personal-access-token" | docker login registry.gitlab.com -u your-gitlab-username --password-stdin
-```
-
-- Replace \`your-gitlab-username\` with your actual GitLab username.
-- Replace \`your-personal-access-token\` with the token you copied earlier.
-
-**Example:**
-
-```
-echo "glpat-xxxxxxxxxxxxxx" | docker login registry.gitlab.com -u johndoe --password-stdin
-```
-
-**Note:** Ensure that your user on the IRDC server is a member of the \`docker\` group.
-
-
-
-# How to Build gnirsdc-lib
-
-The gnirsdc-lib is a C++ library with Python bindings (using Pybind11) designed to control the SDSU ARC (San Diego State University Astronomical Research Cameras) controller. It handles firmware loading and execution of firmware calls.
-
-To build the library:
-
-1. **Clone the Repository:**
-
+1. Create a GitHub personal access token (classic) with the `read:packages`
+   scope: github.com/settings/tokens.
+2. Log root in once:
    ```
-   git clone git@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-lib.git
+   echo "<token>" | sudo -H docker login ghcr.io -u <github-username> --password-stdin
    ```
+   `-H` makes it land in `/root/.docker/config.json`.
 
-2. **Setup Development Environment:**
-   - Open the cloned directory in Visual Studio Code.
-   - Use the Command Palette (Ctrl+Shift+P) to start the development container.
+**Note:** Ensure that your user on the IRDC server is a member of the `docker` group.
 
-3. **Build Process:**
-   The project uses a GitLab CI/CD pipeline for automated building and deployment:
-   - It creates a Docker image for the build environment.
-   - Builds the library within this container.
-   - If changes are detected in `libgnirsioc.so`, it commits and pushes these changes.
-   - Triggers a deployment in the `gnirsdc-data-manager` project to use the updated library.
+# gnirsdc-lib
 
-4. **Manual Build (if needed):**
-   Inside the development container:
+gnirsdc-lib is a C++ library with Python bindings (using Pybind11) designed to control the SDSU ARC (San Diego State University Astronomical Research Cameras) controller. It handles firmware loading and execution of firmware calls.
 
-   ```
-   make clean all
-   ```
-   
-   ```
-   pip3.9 install .
-   ```
-
-This process ensures that the library is built consistently and that dependent projects are updated accordingly.
+It lives in its own repo, [gnirsdc-lib](https://github.com/gemini-rtsw/gnirsdc-lib),
+and is published as the `gnirsdc-lib` RPM (EL9, Python 3.9). This repo picks it
+up through the pinned `BuildRequires` in `packaging/gnirsdc-data-manager.spec`;
+see [What goes into the image](#what-goes-into-the-image). Its README covers
+building and testing it.
 
 
 
 
 
-## VSCode
-Work within the Dev Container for a consistent environment.
-- Prereqs: Docker, VSCode with Dev Containers extension.
-- Open the folder and use: Command Palette → "Dev Containers: Reopen in Container".
-- The container includes Python 3.9, EPICS tools, GIAPI glue (see `Dockerfile.dev`).
-- To update environment after base image changes: Command Palette → "Dev Containers: Rebuild Container".
-
-## dev con
-Common developer workflows inside the VSCode Dev Container:
-- Start GMP server (host networking):
-  ```bash
-dc-start-gmp.sh
-  ```
-- Run the TCS simulator:
-  ```bash
-python3 test/tcs_simulator.py
-  ```
-- Start the Data Manager IOC (debug, test top):
-  ```bash
-python3 src/gnirsdm.py --debug --top tgnirs
-  ```
-- Launch the System Manager:
-  ```bash
-python3 src/system_manager_server.py --debug
-  ```
+## Development
+Work in the application image with this checkout mounted (see [Debug Setup](#debug-setup)):
+it has Python 3.9, cppyy, the GIAPI glue, GMP, and the pinned gnirsdc-lib and
+pycadcar. Inside it:
+- Start GMP (host networking): run the image with `--entrypoint /gnirsdc/entrypoint-gmp.sh`
+- Run the TCS simulator: `python3 test/tcs_simulator.py`
+- Start the Data Manager IOC (debug, test top): `python3 src/gnirsdm.py --debug --top tgnirs`
+- Launch the System Manager: `python3 src/system_manager_server.py --debug`
 - Verify PVs via System Manager Monitoring tab or EPICS tools (`caget`, `caput`).
 
-## pip3.9 install . 
-Use to install local Python packages (notably `gnirsdc-lib`) into the container.
-- From the `gnirsdc-lib` checkout:
-  ```bash
-make clean all
-pip3.9 install .
-  ```
-- Validate:
-  ```bash
-python3 -c "import libgnirsioc; print('libgnirsioc OK')"
-  ```
-
-### rm /usr/local/lib64/python3.9/site-packages/libgnirsioc.so 
-If `pip3.9 install .` doesn’t update the shared object (caching/path issues), remove and reinstall:
+To build the RPM and image exactly as CI does:
 ```bash
-rm -f /usr/local/lib64/python3.9/site-packages/libgnirsioc.so
-pip3.9 install .
+./gemini-rtsw-ci/build_rpm.sh --el 9 --spec packaging/gnirsdc-data-manager.spec
+./gemini-rtsw-ci/build_app_image.sh --no-push
 ```
+To build against a gnirsdc-lib or pycadcar build that is not in rpm-repo yet,
+drop its RPM in `local-rpms/` (gitignored) and match the spec's pin to it.
 
 ### etc
-- If GIAPI libraries aren’t found, ensure `GIAPI_ROOT` and `LD_LIBRARY_PATH` are set. For ad‑hoc shells: `source giapi-glue-cc/defineGiapiglueEnv.sh`.
+- If GIAPI libraries aren't found, ensure `GIAPI_ROOT` and `LD_LIBRARY_PATH` are set (the image sets both). For ad-hoc shells: `source $GIAPI_ROOT/defineGiapiglueEnv.sh`.
 - Ensure `EPICS_CA_ADDR_LIST` is reachable (configured in `conf/gnirsdc/config.ini`; applied by `gnirsdm.py` at startup).
-
-## pipeline generated commit
-`gnirsdc-lib` CI builds `libgnirsioc.so`. When it changes, downstream images (this repo) are rebuilt so the IOC (`gnirssdsu.py`, `tcs_monitor.py`) pick up the new library. For local iteration, rebuild and `pip3.9 install .` as above and restart the IOC.
 
 # libgnirsioc python cmd line use
 Minimal sanity in dev container:
@@ -414,8 +301,8 @@ PY
 Full controller usage is via EPICS CADs in `gnirssdsu.py` (operate with System Manager or EPICS tools).
 
 # how do run debug modes
-Quick flow (see Debug Setup for full details):
-- Start GMP: `dc-start-gmp.sh`
+Quick flow (see [Debug Setup](#debug-setup) for full details):
+- Start GMP: `docker run -d --network=host --name gmp --entrypoint /gnirsdc/entrypoint-gmp.sh ghcr.io/gemini-rtsw/gnirsdc-data-manager:latest`
 - Start TCS simulator: `python3 test/tcs_simulator.py`
 - Start IOC: `python3 src/gnirsdm.py --debug --top tgnirs`
 - Start System Manager: `python3 src/system_manager_server.py --debug`
@@ -466,33 +353,6 @@ export DISPLAY=host.docker.internal:0
 # debug mode in vscode
 Use the Dev Container steps above. `--debug` selects the `DEBUG` section of `conf/gnirsdc/config.ini`, using test EPICS tops (`tgnirs:`) and test TCS/AG prefixes.
 
-# gnirs-lib manual build
-Manual build of `gnirsdc-lib` for local iteration:
-## /gnirsdc-lib
-## make
-```bash
-make clean all
-```
-## pip3.9 install .
-```bash
-pip3.9 install .
-python3 -c "import libgnirsioc; print('OK')"
-```
-Restart the IOC to load the new library.
-
-# git setup 
-## [root@docker-desktop gnirsdc-lib]# git config --global user.name "Hawi Stecher"
-## [root@docker-desktop gnirsdc-lib]# git config --global user.email "hawi.stecher@noirlab.edu"
-Use your own user.name/email inside the dev container when pushing.
-
-# dev container
-## docker pull
-Pull the latest dev image:
-```bash
-docker pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev
-```
-## rebuild
-In VSCode, use “Dev Containers: Rebuild Container” after pulls or dependency changes. If broken, try “Rebuild and Reopen in Container”.
 
 ## GNIRS WCS Procedures
 
@@ -601,46 +461,29 @@ updated 2018 Nov 27 - astephens + MES
 
 ## Build Architecture
 
-The GNIRS DC Data Manager build architecture involves several dependencies and components that are integrated during the Docker build process:
+Each piece is built in its own repo by gemini-rtsw-ci and published as an RPM or
+image; this repo's spec and Dockerfile pin the exact versions it uses.
 
 ```mermaid
 graph TD
-    A[gnirsdc-data-manager repo] --> B[Base Image: gnirsdc-base]
-    B --> C[System Dependencies]
-    C --> D[Python Dependencies]
-    D --> E[gnirsdc]
-    E --> F[pycadcar]
-    E --> G[gnirsdc-lib]
-    E --> H[giapi-gluecc]
-    
-    subgraph BR[Build Requirments]
-        F
-        G
-        H
-    end
-    
-    BR --> I[Final Image]
-    
-    classDef component fill:#f9f,stroke:#333,stroke-width:2px
-    classDef repo fill:#bbf,stroke:#333,stroke-width:2px
-    
-    class A,E,F,G repo
-    class B,C,D,H,I component
+    LIB[gnirsdc-lib repo] -->|RPM| REPO[(rpm-repo)]
+    PCC[pycadcar repo] -->|RPM| REPO
+    GG[gnirsdc-giapi-gmp repo] -->|image| GGI[gnirsdc-giapi-gmp image]
+    REPO -->|BuildRequires, pinned| DEV[gnirsdc-data-manager dev image]
+    DEV --> APP[application image]
+    GGI -->|COPY --from| APP
+    DM[gnirsdc-data-manager repo] -->|Dockerfile, src, conf| APP
+    DM -->|spec| RPM[gnirsdc-data-manager RPM]
+    RPM -->|pins image tag| HOST[DC host: systemd unit + dc-* scripts]
+    APP --> HOST
 ```
 
-The build process follows these steps:
-
-1. Start with the base image `gnirsdc-base`
-2. Install system dependencies (git, python3-pip)
-3. Install Python packages (flask, caproto, numpy, etc.)
-4. Copy and install component repos in sequence:
-   - `pycadcar` → installed first
-   - `gnirsdc-lib` → depends on pycadcar
-   - `gnirsdc` → depends on both previous components
-5. Extract and configure `giapi-gluecc` from tar.gz file
-6. Set up necessary environment variables and libraries
-
-This architecture ensures that all dependencies are properly installed in the correct order for the GNIRS DC Data Manager to function.
+1. gnirsdc-lib and pycadcar publish RPMs to the shared rpm-repo.
+2. This repo's build environment installs them at the versions pinned in the
+   spec; that environment is published as the dev image.
+3. The application image is built from the dev image, adds the Python packages,
+   cppyy, the GIAPI glue and GMP server (from gnirsdc-giapi-gmp), and this repo.
+4. The RPM pins that image; installing it on the DC host is the deployment.
 
 
 # System Manager
@@ -649,34 +492,25 @@ The System Manager is a web-based interface for monitoring and configuring the D
 
 ## Usage
 
-The System Manager must be started with the telops user. The telops user must have an SSH key set up before starting the System Manager. If you haven't set up an SSH key yet, you can do so by running:
+## Usage
+
+The System Manager runs as the systemd service `gnirsdc-system-manager`
+(installed by the `gnirsdc-data-manager` RPM) and starts at boot. Its container
+runs as the telops user, which must have an SSH key set up (it runs the `dc-*`
+scripts on the host over SSH). If you haven't set up an SSH key yet, you can do so by running:
 
 ```
 ssh-keygen
 ```
 
-To start the System Manager, use the provided script:
-
 ```
-dc-system-manager.sh
-```
-
-This script will:
-1. Check if it's being run by the telops user
-2. Remove any existing System Manager container
-3. Start a new System Manager container with the necessary configurations
-
-Options:
-- `--help`: Display help information
-- `--debug`: Start the System Manager Server in debug mode
-
-Example usage:
-```
-dc-system-manager.sh --debug
+sudo systemctl status gnirsdc-system-manager
+sudo systemctl restart gnirsdc-system-manager
+journalctl -u gnirsdc-system-manager -f
 ```
 
-After starting the System Manager, open a web browser and navigate to `http://localhost:8080` (or the appropriate IP address if accessing remotely).
-
+To run it in debug mode, set `SM_ARGS=--debug` in `/etc/sysconfig/gnirsdc` and
+restart the service.
 ## Features
 
 The System Manager offers several features accessible through different tabs:
@@ -745,29 +579,61 @@ Key features of the code include:
 Ensure that you have the necessary permissions to read and write the configuration file (`conf/gnirsdc/config.ini`) and access the log and FITS file directories when using the System Manager.
 
 
-# Updating the Development Container
+# Building, Releasing and Deploying
 
-When changes occur in the development environment, such as a new gnirsdc-lib build or modifications to the Dockerfile, you need to update your local development container. Follow these steps to ensure you're working with the latest environment:
+This repo is built by [gemini-rtsw-ci](https://github.com/gemini-rtsw/gemini-rtsw-ci).
+Every push to `main` builds:
 
-1. **Pull the latest Docker image:**
+- the **`gnirsdc-data-manager` RPM** (`packaging/gnirsdc-data-manager.spec`),
+  published to the shared rpm-repo: the systemd unit, the `dc-*` scripts and
+  `/etc/sysconfig/gnirsdc`
+- the **application image** from `Dockerfile`, pushed as
+  `ghcr.io/gemini-rtsw/gnirsdc-data-manager:<version>-git<hash>` -- the tag the
+  RPM pins
 
+A pull request builds both and publishes neither; its RPM is attached to the
+run as an artifact. See the gemini-rtsw-ci WORKFLOW.md for the full flow.
+
+## What goes into the image
+
+The image is built on this repo's dev image, which contains everything the
+spec pins in `BuildRequires`: **gnirsdc-lib** (libgnirsioc) and **pycadcar**
+(pygeminirec), at the exact builds named there. The GIAPI C++ glue and the GMP
+server come from **gnirsdc-giapi-gmp**, pinned by version in the `Dockerfile`.
+
+To move to a new gnirsdc-lib or pycadcar build, merge it in its own repo, copy
+the new version from the "BUILD DEPENDENCY VERSIONS" block of its green build
+into the spec's `BuildRequires`, and merge that here.
+
+## Versions, upgrades and rollback
+
+The installed RPM decides what runs: the unit and `dc-start.sh` both pin this
+release's image, so all three containers (System Manager, gnirsdc, gmp) run it.
+
+```bash
+rpm -q gnirsdc-data-manager                       # what is installed, and so what runs
+sudo dnf upgrade gnirsdc-data-manager             # move forward
+sudo dnf downgrade gnirsdc-data-manager           # roll back
+dnf list --showduplicates gnirsdc-data-manager    # every published build
+sudo systemctl restart gnirsdc-system-manager     # then Restart DC from the web page
 ```
-   docker pull registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev
+
+The DC keeps running its current image until it is restarted from the System
+Manager, so an upgrade never interrupts an observation by itself.
+
+To try an unreleased build (for example a pull request's image), set
+`GNIRSDC_IMAGE` in `/etc/sysconfig/gnirsdc`, restart the unit and Restart DC;
+clear it again afterwards.
+
+## First install on a DC host
+
+```bash
+sudo dnf install gnirsdc-data-manager
+sudo vi /etc/sysconfig/gnirsdc                    # SM_USER (telops), SM_ARGS
+sudo systemctl enable --now gnirsdc-system-manager
 ```
 
-   This command fetches the most recent version of the development container image.
-
-2. **Rebuild the development container in VSCode:**
-   - Open the Command Palette (Ctrl+Shift+P or Cmd+Shift+P on Mac)
-   - Type and select "Remote-Containers: Rebuild Container"
-
-This process ensures that your development environment is up-to-date with the latest changes, including any new dependencies or configurations.
-
-**Note:** If you encounter any issues after updating, try removing the old container completely and rebuilding from scratch:
-- Use the Command Palette in VSCode
-- Select "Remote-Containers: Rebuild and Reopen in Container"
-
-Remember to perform these steps whenever you're notified of significant changes to the development environment or if you experience unexpected behavior in your current setup.
+Root must be able to pull from GHCR (see [Docker Login](#docker-login)).
 
 # Changing TCS Process Variable (PV) in the TCS context
 
@@ -852,72 +718,42 @@ graph TD
 
 ## Debug Setup
 
-For debugging purposes, you can set up the environment using the following steps:
+For debugging, run everything from the application image with this checkout
+mounted at `/work` (on macOS, `dc-mac-test.sh` does all of this for you; see
+[macOS Debug Setup](#macos-debug-setup)).
 
 1. **Start the GMP Server:**
-   Run the following command to start the GMP (Gemini Master Process) server in a Docker container:
-   ```bash
-   dc-start-gmp.sh
-   ```
-   or
-
    ```bash
    docker run -d --network=host --name gmp \
-     -v /Users/hawi.stecher/irdc_data/readout_data:/readout_data \
-     -v /Users/hawi.stecher/irdc_data/staging/perm:/staging/perm \
-     registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
+     -v /readout_data:/readout_data -v /staging/perm:/staging/perm \
+     --entrypoint /gnirsdc/entrypoint-gmp.sh \
+     ghcr.io/gemini-rtsw/gnirsdc-data-manager:latest
    ```
 
-   This command mounts the necessary volumes for data storage and runs the GMP server in detached mode.
-
-2. **Start the GNIRSDC Development Container:**
-   Launch the GNIRSDC development container with the following command:
-
-   ```bash
-   dc-devel.sh
-   ```
-
-   or
-
+2. **Start a development container:**
    ```bash
    docker run -itd --name gnirsdc-dev --privileged --network=host \
-     -v `pwd`:/work \
-     registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-dev bash -l
+     -v `pwd`:/work --entrypoint bash \
+     ghcr.io/gemini-rtsw/gnirsdc-data-manager:latest -l
+   docker exec -it gnirsdc-dev bash -l
    ```
+   The image already sets the GIAPI environment (`GIAPI_ROOT`, `LD_LIBRARY_PATH`).
 
-   This command starts an interactive container with the current directory mounted as the `/work` directory.
-
-3. **Run the TCS Simulator:**
-   Inside the GNIRSDC development container, start the TCS (Telescope Control System) simulator:
-
+3. **Run the TCS Simulator** (inside the container, from `/work`):
    ```bash
    python3 test/tcs_simulator.py
    ```
 
-4. **Start the GNIRSDC Data Manager:**
-   In the same container, run the GNIRSDC Data Manager in debug mode:
-
-   Set up the GIAPI-GLUE environment:
-
-   ```bash
-   cd giapi-glue-cc
-   source defineGiapiglueEnv.sh
-   cd ..
-   ```   
-
+4. **Start the GNIRSDC Data Manager** in debug mode:
    ```bash
    python3 src/gnirsdm.py --debug --top tgnirs
    ```
    Note: --debug is optional. If you don't use --debug the DC will attempt to connect to an ARC.
 
-
-5. **Launch the System Manager Server:**
-   Finally, start the System Manager Server in debug mode:
-
+5. **Launch the System Manager Server** in debug mode:
    ```bash
    python3 src/system_manager_server.py --debug
    ```
-
    Note: --debug flag tells the System Manager to use the tgnirs top. It is inconsistent with the --top flag in DC.
 
 By following these steps, you'll have a complete debug environment set up with the GMP server, TCS simulator, GNIRSDC Data Manager, and System Manager Server all running in their respective containers or processes.
@@ -954,7 +790,7 @@ If you encounter SSH authentication errors starting or stopping the controller f
 4. Restart the system manager:
 
    ```bash
-   dc-system-manager.sh
+   sudo systemctl restart gnirsdc-system-manager
    ```
 
 After performing these steps, try starting the controller again. If you continue to experience issues, please consult the system logs or contact software for support.
@@ -962,234 +798,40 @@ After performing these steps, try starting the controller again. If you continue
 
 ## Building the SDSU Firmware
 
-The firmware for the SDSU ARC controller can be built using the following steps:
+The production firmware the DC loads is `src/firmware/AladdinIII_SDSU_Firmware.lod`
+in this repo, with its DSP source in `src/firmware/src`. Archived builds in
+`firmware-archived/` can be selected from the Engineering tab (legacy firmware
+mode).
 
-1. **Clone the repository:**
+The DSP56K assembler runs under gemini-wine (see the
+[gnirsdc-dsp](https://github.com/gemini-rtsw/gnirsdc-dsp) repo and its
+`build-firmware.sh`, which takes the Wine image from `WINE_IMAGE`). gemini-wine
+has not been migrated to GHCR, so the assembler is not available in CI.
+
+To change the production firmware:
+
+1. Assemble the new `.lod` and copy it over `src/firmware/AladdinIII_SDSU_Firmware.lod`.
+2. To try it before releasing, copy it into the running container and reinitialize
+   the controller from the System Manager:
    ```bash
-   git clone git@gitlab.com:nsf-noirlab/gemini/rtsw/iocs/gnirsdc-dsp.git
+   docker cp AladdinIII_SDSU_Firmware.lod gnirsdc:/gnirsdc/src/firmware/
    ```
-
-2. **Navigate to the repository directory:**
-   ```bash
-   cd gnirsdc-dsp
-   ```
-
-3. **Build the firmware:**
-   ```bash
-   ./build-firmware.sh
-   ```
-
-4. **Locate the built firmware:**
-   ```bash
-   find . -name '*.lod'
-   ```
-   Example output:
-   ```
-   ./FullFrame-unified-AladdinII/AladdinII_SDSU_Firmware.lod
-   ./FullFrame-unified-AladdinIII/AladdinIII_SDSU_Firmware.lod
-   ```
-
-5. **Copy the firmware to the appropriate directory:**
-   - To copy the firmware directly into the container, copy the firmware files to `/gnirsdc/src/firmware` within the container:
-     ```bash
-     docker cp ./FullFrame-unified-AladdinII/AladdinII_SDSU_Firmware.lod gnirsdc:/gnirsdc/src/firmware
-     docker cp ./FullFrame-unified-AladdinIII/AladdinIII_SDSU_Firmware.lod gnirsdc:/gnirsdc/src/firmware
-     ```
-   - If the firmware directory is mounted to the local filesystem, copy the firmware to `/readout_data/firmware`:
-     ```bash
-     cp ./FullFrame-unified-AladdinII/AladdinII_SDSU_Firmware.lod /readout_data/firmware
-     cp ./FullFrame-unified-AladdinIII/AladdinIII_SDSU_Firmware.lod /readout_data/firmware
-     ```
-
-6. **Reinitialize the controller:**
-   - Use the System Manager to reinitialize the controller to apply the new firmware.
+3. Commit it and open a pull request; the next release's image carries it.
 
 # macOS Debug Setup
 
-For a simplified debug setup on macOS, follow these steps:
+`dc-mac-test.sh` starts GMP and a dev container from the released image, then
+the TCS simulator, the IOC (`--debug --top tgnirs`) and the System Manager inside
+it, with this checkout mounted at `/work`:
 
-1. **Start the GMP Server:**
-   Run the following command to start the GMP (Gemini Master Process) server in a Docker container:
-   ```bash
-   docker run -d --network=host --name gmp \
-     -v /Users/hawi.stecher/irdc_data/readout_data:/readout_data \
-     -v /Users/hawi.stecher/irdc_data/staging/perm:/staging/perm \
-     registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-serverhstecher-ml1:gnirsdc-data-manager
-   ```
+```bash
+./dc-mac-test.sh                 # start everything; web UI on http://localhost:8080
+./dc-mac-test.sh logs ioc        # tail logs: tcs-sim | ioc | sm
+./dc-mac-test.sh stop
+IMAGE=ghcr.io/gemini-rtsw/gnirsdc-data-manager:<tag> ./dc-mac-test.sh   # a specific build
+```
 
-2. **Run the TCS Simulator:**
-   Inside the VSCode dev container terminal, run:
-   ```bash
-   python3 test/tcs_simulator.py
-   ```
-   This simulates the Telescope Control System for testing purposes.
-
-3. **Start the GNIRSDC Data Manager:**
-   Open a new terminal in the VSCode dev container and run:
-   ```bash
-   python3 gnirsdm.py --debug
-   ```
-   
-4. **Launch the System Manager Server:**
-   Open another terminal in the VSCode dev container and run:
-   ```bash
-   python3 system_manager_server.py --debug
-   ```
-
-5. **Access the System Manager:**
-   Open a web browser and navigate to:
-   ```
-   http://localhost:8080
-   ```
-
-This setup provides a complete debug environment with the GMP server, TCS simulator, GNIRSDC Data Manager, and System Manager Server all running in their respective containers or processes.
+Docker must be able to run amd64 images (Rosetta in Docker Desktop, or Colima
+with `--vz-rosetta`); see the gemini-rtsw-ci README, "Building on Apple Silicon".
 
 Note: The `--debug` flag is important as it tells the components to run in debug mode without attempting to connect to actual hardware.
-
-## GNIRS WCS Procedures
-
-The WCS files are stored in `/gemini/GEM5/gnirs/DC/DC/data/`, and they have names like "gnirs_3_short.wcs".
-
-Update this web page so that we can keep track of WCS changes: internal.gemini.edu/science/instruments/GNIRS/Systems_Reference/wcs/gnirsWCS.html
-
-The WCS depends on the hotspot, so if the hotspot is significantly off and there are huge offsets, gwcs may fail in very weird ways, and you may need to start with the single star method.
-
-Typically, we check the WCS for GNIRS short blue camera.
-
-### Using an "astrometric field"
-
-If you've doing the hotspot, IAA, checkouts already just skip to step 5.
-
-1. Choose a field with a bright star at the center and many Gaia/2MASS stars in the field
-2. Check that science fold values have been updated and are correct
-3. Slew to the astrometric field
-4. Do GNIRS hotspot and Refine the IAA if necessary
-5. Take an image
-6. Run gwcs to derive new WCS. If you've done the IAA checkouts, the output from giaa gives WCS offsets (WCS dX, WCS dY)
-7. If WCS is good within 1-2 arcseconds then don't do anything. otherwise continue with the rest of the steps
-8. Follow the 'Adjusting the WCS with shiftwcs.sh' and 'Using offsets with a single star below'
-9. Upload the WCS file if needed to `/gemini/GEM5/gnirs/DC/DC/data/`. Note the shiftwcs.sh script automatically makes a backup of the original WCS file, so you don't need to manually make a backup
-10. Reload the WCS file if needed (Mark/Start) using the initWcsCAD (DC-->Additional Screens-->initWcsCAD)
-11. Take another image and re-run gwcs to confirm the new WCS
-
-### Adjusting the WCS with shiftwcs.sh
-
-Log in to gemvx@pisces and run the shiftwcs.csh script using the offsets outputted by WCS. This script should be located in `/home/gemvx/bin/shiftwcs.sh`. Go to the directory where the NIRI wcs are stored and run this script. Note the script automatically backups the original copy of the WCS so you can revert back to it if needed.
-
-```
-shiftwcs.sh - shift an instrument WCS
-
-SYNOPSIS
-
-shiftwcs.sh [-p] wcsfile xshift yshift
-
-DESCRIPTION
-
-Make a backup of the supplied WCS file by appending it's last modification date, then shift the WCS file in X and Y. By default the supplied X and Y shifts are assumed to be in arcseconds. One may give offsets in pixels with the -p option. Note that shifts in arcseconds are in the TELESCOPE reference frame, and shifts in pixels are in the DETECTOR reference frame. For this reason it may be more intuitive to apply shifts in pixels, although shifts due to hotspot changes may be easier to apply in arcseconds.
-
-OPTIONS
-
--p : Apply shifts in pixels instead of arcseconds
-```
-
-Reload the WCS file (Mark/Start) using the initWcsCAD (DC>Additional Screens)
-Take another image to confirm the new WCS (make sure the compass on the QuickLook Tool is correct)
-
-### Using offsets with a single star (when there are less than ~9 stars in the field)
-
-1. Choose a field with a single bright star
-2. Have the SOS center the star on the CR center while guiding
-3. Create an observation with ~10 offsets which move the star to the field extremes, starting and ending at (0,0)
-4. Record the instrument offsets (X,Y) from the TSD for each position (instrument offsets are NOT the P,Q offsets in the OT offset iterator!)
-5. Use IRAF imexam "r" to record the star position on each image (in pixels)
-6. Create a "raw" coordinate file with the image number, Instrument offsets and Image coordinates:
-
-```
-> cat gnirs.raw
-# N     Instrument      Image
-#       X       Y       X       Y
-232     2.66   7.08     511.00  512.51
-233     -5.37 15.05     878.21 145.36
-234     -5.30 -0.95     144.91 148.78
-235     10.63 15.12     878.95 876.40
-236     10.70 -0.88     145.26 879.84
-237     2.66   7.08     511.16 513.69
-```
-
-7. Create the wcs file by running this raw file through awk:
-```
-awk '$1>0 {printf "%6.2f %6.2f  %8.4f %8.4f\n", $4,$5,$2/1.61144,$3/1.61144}' gnirs.raw > gnirs.wcs
-```
-
-This will:
-- convert the Instrument offsets from arcseconds to millimeters by dividing by 1.61144
-- re-order the columns to be Image Coordinates (x,y) and Instrument Offsets (x,y)
-
-```
-> cat gnirs.wcs
-511.00 512.51    1.6507   4.3936
-878.21 145.36   -3.3324   9.3395
-144.91 148.78   -3.2890  -0.5895
-878.95 876.40    6.5966   9.3829
-145.26 879.84    6.6400  -0.5461
-511.16 513.69    1.6507   4.3936
-```
-
-8. Update the WCS file on pisces
-9. Make a backup of the old WCS file (if there isn't one already):
-```
-mv gnirs_3_short.wcs gnirs_3_short.wcs.date
-```
-10. Copy the new WCS file: (the syntax is p<port>f<camera><altair>.wcs)
-```
-scp gnirs.wcs gemvx@pisces:/gemini/GEM5/gnirs/DC/DC/data//gnirs_3_short.wcs
-```
-11. Reload the WCS file (Mark/Start) using the initWcsCAD (DC>Additional Screens)
-12. Take another image to confirm the new WCS (make sure the compass on the QuickLook Tool is correct)
-
-R. Mason 20130424
-
-updated 2018 Nov 27 - astephens + MES
-
-## Build Architecture
-
-The GNIRS DC Data Manager build architecture involves several dependencies and components that are integrated during the Docker build process:
-
-```mermaid
-graph TD
-    A[gnirsdc-data-manager repo] --> B[Base Image: gnirsdc-base]
-    B --> C[System Dependencies]
-    C --> D[Python Dependencies]
-    D --> E[gnirsdc]
-    E --> F[pycadcar]
-    E --> G[gnirsdc-lib]
-    E --> H[giapi-gluecc]
-    
-    subgraph BR[Build Requirments]
-        F
-        G
-        H
-    end
-    
-    BR --> I[Final Image]
-    
-    classDef component fill:#f9f,stroke:#333,stroke-width:2px
-    classDef repo fill:#bbf,stroke:#333,stroke-width:2px
-    
-    class A,E,F,G repo
-    class B,C,D,H,I component
-```
-
-The build process follows these steps:
-
-1. Start with the base image `gnirsdc-base`
-2. Install system dependencies (git, python3-pip)
-3. Install Python packages (flask, caproto, numpy, etc.)
-4. Copy and install component repos in sequence:
-   - `pycadcar` → installed first
-   - `gnirsdc-lib` → depends on pycadcar
-   - `gnirsdc` → depends on both previous components
-5. Extract and configure `giapi-gluecc` from tar.gz file
-6. Set up necessary environment variables and libraries
-
-This architecture ensures that all dependencies are properly installed in the correct order for the GNIRS DC Data Manager to function.

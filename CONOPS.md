@@ -63,11 +63,11 @@ Use these pages for all routine operations. Indicators and controls mirror EPICS
 ### Normal operations
 
 #### 1) Start the System Manager
-- As `telops` on the IRDC host:
+- It starts at boot as the `gnirsdc-system-manager` service. To restart it on the IRDC host (needs sudo):
   ```bash
-  dc-system-manager.sh
+  sudo systemctl restart gnirsdc-system-manager
   # or debug mode (for testing per instruction)
-  dc-system-manager.sh --debug
+  sudo systemctl restart gnirsdc-system-manager   # with SM_ARGS=--debug in /etc/sysconfig/gnirsdc
   ```
 - Open the UI at `http://<irdc-host>:8080`.
 - Note: Once System Manager is running, all controller operations are performed from the UI. The `dc-start/stop/status` scripts are for troubleshooting only.
@@ -145,7 +145,7 @@ Use these pages for all routine operations. Indicators and controls mirror EPICS
 
 ### Troubleshooting
 - System Manager doesn’t open:
-  - SSH to the IRDC host and run `dc-system-manager.sh` as `telops`.
+  - SSH to the IRDC host and restart the service: `sudo systemctl restart gnirsdc-system-manager`.
   - Confirm no firewall or port conflicts on 8080.
 
 - DC not running or unhealthy:
@@ -168,7 +168,7 @@ Use these pages for all routine operations. Indicators and controls mirror EPICS
 
 - UI values not updating:
   - Refresh Monitoring.
-  - If persistent, restart System Manager: `dc-system-manager.sh`.
+  - If persistent, restart System Manager: `sudo systemctl restart gnirsdc-system-manager`.
 
 ### Command reference
 Note: These scripts are primarily for troubleshooting and maintenance. Normal operations are performed via the System Manager UI.
@@ -176,7 +176,7 @@ Note: These scripts are primarily for troubleshooting and maintenance. Normal op
 - `dc-start.sh [args]`: Start `gmp` and `gnirsdc` with current images. Passes extra args to DC.
 - `dc-stop.sh`: Stop and remove `gnirsdc` and `gmp` containers.
 - `dc-status.sh`: Show running container status and `docker ps`.
-- `dc-system-manager.sh [--debug]`: Start System Manager (requires `telops`).
+- `gnirsdc-system-manager` (systemd): runs the System Manager as `telops`; `SM_ARGS=--debug` in `/etc/sysconfig/gnirsdc` for debug.
 - `dc-production.sh`: Pull production images and retag as `current` (restart required).
 - `dc-latest.sh`: Pull latest images and retag as `current` (restart required).
 - `dc-promote.sh`: Archive current production and promote `current` to `production`.

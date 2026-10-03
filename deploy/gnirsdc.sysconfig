@@ -1,0 +1,19 @@
+# Host settings for the GNIRS DC.  /etc/sysconfig/gnirsdc
+#
+# %config(noreplace): your edits survive `dnf upgrade`. Read (sourced as shell)
+# by /usr/libexec/gnirsdc-data-manager/run-system-manager and
+# /usr/local/bin/dc-start.sh.
+
+# Image override. Leave EMPTY in operation: the image is pinned by the installed
+# gnirsdc-data-manager RPM (rpm -q gnirsdc-data-manager), and dnf upgrade /
+# downgrade is how it changes. Set it only to try an unreleased build, e.g.
+#   GNIRSDC_IMAGE=ghcr.io/gemini-rtsw/gnirsdc-data-manager:<version>-git<hash>
+# then restart gnirsdc-system-manager and Restart DC.
+GNIRSDC_IMAGE=
+
+# User the System Manager runs as, and whose SSH key it uses to run the dc-*
+# scripts on this host.
+SM_USER=telops
+
+# Extra System Manager arguments, e.g. --debug
+SM_ARGS=

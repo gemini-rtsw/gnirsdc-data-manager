@@ -1,0 +1,47 @@
+#!/bin/bash
+# Run the System Manager container in the foreground for systemd
+# (gnirsdc-system-manager.service). Same container dc-system-manager.sh used to
+# start by hand: host network, privileged, the DC data mounts, and running as
+# telops with telops's SSH key so it can run the dc-* scripts on this host.
+#
+# Foreground `docker run --rm`, not -d / --restart: systemd owns the lifecycle.
+set -euo pipefail
+
+[ -r /etc/sysconfig/gnirsdc ] && . /etc/sysconfig/gnirsdc
+IMAGE="${GNIRSDC_IMAGE:-${PINNED_IMAGE:?PINNED_IMAGE not set; run from gnirsdc-system-manager.service}}"
+SM_USER="${SM_USER:-telops}"
+NAME=system_manager_server
+
+pw=$(getent passwd "$SM_USER") || { echo "ERROR: user $SM_USER does not exist" >&2; exit 1; }
+SM_UID=$(echo "$pw" | cut -d: -f3)
+SM_GID=$(echo "$pw" | cut -d: -f4)
+SM_HOME=$(echo "$pw" | cut -d: -f6)
+
+# Best-effort: a registry outage must not stop a working local image.
+docker pull "$IMAGE" || echo "WARNING: could not pull $IMAGE; using the local copy" >&2
+docker rm -f "$NAME" >/dev/null 2>&1 || true
+
+# The System Manager SSHes to localhost; make sure the host key is known
+# (once, rather than appending a copy on every start).
+runuser -u "$SM_USER" -- sh -c \
+    'ssh-keygen -F localhost >/dev/null 2>&1 || ssh-keyscan -H localhost >> "$HOME/.ssh/known_hosts" 2>/dev/null' || true
+
+tz_mount=()
+[ -e /etc/timezone ] && tz_mount=(-v /etc/timezone:/etc/timezone:ro)
+
+exec docker run --rm --name "$NAME" \
+    --network=host \
+    --privileged \
+    -v /readout_data:/readout_data \
+    -v /staging/perm:/staging/perm \
+    -v /readout_data/conf:/gnirsdc/conf \
+    -v /etc/localtime:/etc/localtime:ro \
+    "${tz_mount[@]}" \
+    -v "$SM_HOME/.ssh:$SM_HOME/.ssh:ro" \
+    -v /etc/passwd:/etc/passwd:ro \
+    -v /etc/group:/etc/group:ro \
+    -v /etc/shadow:/etc/shadow:ro \
+    -u "$SM_UID:$SM_GID" \
+    --entrypoint "" \
+    "$IMAGE" \
+    python3 /gnirsdc/src/system_manager_server.py ${SM_ARGS:-}

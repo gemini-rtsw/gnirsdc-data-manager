@@ -21,7 +21,7 @@ This document is for engineers maintaining the GNIRS System Manager web UI. It e
   - Keys used: `DEFAULT_PREFIX`, paths (`READOUT_DIR`, `STAGING_DIR`, `LOG_DIR`), logging, etc.
   - `config_mode` toggled by `--debug` flag at server start, or dynamically via `/start_controller` action to match controller mode
 - Server start: `python3 src/system_manager_server.py [--debug] --port 8080`
-  - Devcontainer and runtime script: `dc-system-manager.sh` (must run as `telops`)
+  - Runs as the `gnirsdc-system-manager` systemd service (container runs as `telops`)
 - Host commands: SSH to `localhost` with `/home/telops/.ssh/id_rsa` mounted into container (`--network=host`)
 
 ### EPICS connectivity
@@ -98,7 +98,7 @@ This document is for engineers maintaining the GNIRS System Manager web UI. It e
   - `--network=host` and mounted `/home/telops/.ssh` (read-only)
   - User set to `telops` UID/GID to ensure file ownership and SSH access
   - `/etc/passwd`, `/etc/group`, `/etc/shadow` mounted read-only to match user
-- `dc-system-manager.sh` enforces `telops` user at launch and ensures SSH key perms and known_hosts additions
+- `/usr/libexec/gnirsdc-data-manager/run-system-manager` (started by the service) runs the container as `telops` and adds localhost to its known_hosts
 
 ### Error handling and resilience
 - SSE client auto-reconnects with exponential backoff; PV polling continues in the background

@@ -1,0 +1,34 @@
+# GNIRS DC System Manager: the web UI, and the process that starts and stops
+# the Detector Controller (it runs /usr/local/bin/dc-start.sh and dc-stop.sh
+# over SSH as telops).
+#
+# THIS FILE IS A TEMPLATE: @IMAGE@ is replaced at RPM build time. Installed by
+# the gnirsdc-data-manager RPM and OWNED BY THE PACKAGE -- an upgrade overwrites
+# it, which is how a new release moves the host to a new image. Host-specific
+# settings go in /etc/sysconfig/gnirsdc, which survives upgrades.
+#
+# After `dnf upgrade` or `dnf downgrade gnirsdc-data-manager`:
+#   systemctl restart gnirsdc-system-manager
+#   then Restart DC from the web page (the DC keeps its old image until then).
+
+[Unit]
+Description=GNIRS DC System Manager
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutStartSec=0
+
+# The image this release pins. run-system-manager also pulls it, so it is
+# already local when the System Manager starts the gmp and gnirsdc containers
+# from the same image.
+Environment=PINNED_IMAGE=@IMAGE@
+
+ExecStart=/usr/libexec/gnirsdc-data-manager/run-system-manager
+ExecStop=/usr/bin/docker stop -t 10 system_manager_server
+
+[Install]
+WantedBy=multi-user.target

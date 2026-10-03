@@ -108,7 +108,7 @@ Prefix is `<DEFAULT_PREFIX or --top>:`. Selected PVs:
 - By default, raw files are deleted after successful FITS creation (`keep=False` in IOC). Change behavior by instantiating `DataProcessor(..., keep=True)` if needed.
 
 ### Running in Containers
-- See the existing root `README.md` for container lifecycle scripts (e.g., `dc-start.sh`, `dc-stop.sh`, `dc-status.sh`, `dc-system-manager.sh`).
+- See the existing root `README.md` for container lifecycle scripts (`dc-start.sh`, `dc-stop.sh`, `dc-status.sh`) and the `gnirsdc-system-manager` service.
 - The gnirsdm container entrypoint (`entrypoint.sh`) performs:
   - `source giapi-glue-cc/defineGiapiglueEnv.sh` to set GIAPI env.
   - `python3.9 src/gnirsdm.py --top nirs` (plus any extra args passed to the container).

@@ -1,0 +1,14 @@
+# The image gets this repo at /gnirsdc, as the old images did. Left out: git and
+# CI machinery, the RPM packaging, and local build output.
+.git
+.github
+gemini-rtsw-ci
+packaging
+deploy
+local-rpms
+# rpms/ holds build_rpm.sh output; only the recorded commit goes in the image.
+rpms/*
+!rpms/.githash
+# Local leftovers from before gnirsdc-giapi-gmp; never in git.
+giapi-glue-cc
+*.tar.gz

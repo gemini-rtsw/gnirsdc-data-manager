@@ -39,38 +39,37 @@ The GMP server runs as an OSGi (Felix) application written in Java/Scala, receiv
 
 #### GMP Server Distribution
 
-The container requires the GMP server distribution tarball:
-
-```
-gmp-server-0.2.6-SNAPSHOT.tar.gz
-```
-
-This file must be present in the repository root. It contains:
+The GMP server distribution (`gmp-server-0.2.6-SNAPSHOT`) is published by the
+[gnirsdc-giapi-gmp](https://github.com/gemini-rtsw/gnirsdc-giapi-gmp) repo: the
+tarball is a GitHub Release asset there, checksummed in its `RELEASES` file, and
+its image carries the unpacked tree. It contains:
 - OSGi Felix framework and bundles
 - GDS (Gemini Data System) modules
 - GIAPI services
 - ActiveMQ JMS broker
 - Web console
 
-**Source**: The GMP server is built from the Gemini ASPEN repository. Contact the Gemini software team for updated distributions.
+**Source**: The GMP server is built from the Gemini ASPEN repository. Contact the Gemini software team for updated distributions; a new one becomes a new release in gnirsdc-giapi-gmp.
 
-#### Base Image
+#### Image
 
-The container uses Rocky Linux 9 with Java 8:
+GMP runs from the same image as the DC (this repo's `Dockerfile`, Rocky Linux 9),
+which adds Java 8, `procps-ng`, `sudo` and the `gemdhs` user for it:
 
 ```dockerfile
-FROM rockylinux:9
-RUN dnf install -y java-1.8.0-openjdk
-ENV JAVA_HOME /usr/lib/jvm/jre-1.8.0-openjdk
+RUN dnf -y install java-1.8.0-openjdk-headless procps-ng sudo
+RUN useradd -m -u 1000 gemdhs
+COPY --from=ghcr.io/gemini-rtsw/gnirsdc-giapi-gmp:1.0.0-gitf07d23a /gmp-server-0.2.6-SNAPSHOT /usr/local/share/gmp-server
+COPY conf/gmp/ /usr/local/share/gmp-server/conf/
+ENV JAVA_HOME=/usr/lib/jvm/jre-1.8.0-openjdk
 ```
 
 ### File Structure
 
 ```
 gnirsdc-data-manager/
-├── dockerfile.gmp              # Container build file
-├── entrypoint-gmp.sh           # Container startup script
-├── gmp-server-0.2.6-SNAPSHOT.tar.gz  # GMP distribution
+├── Dockerfile                  # Image for the DC, the System Manager and GMP
+├── entrypoint-gmp.sh           # GMP container entrypoint
 ├── conf/
 │   └── gmp/
 │       ├── config.properties           # Main GMP configuration
@@ -91,51 +90,15 @@ gnirsdc-data-manager/
 │           └── ... (25+ service configuration files)
 ```
 
-### Dockerfile Breakdown
-
-The `dockerfile.gmp` builds the container in these stages:
-
-```dockerfile
-# 1. Base image with Rocky Linux 9
-FROM rockylinux:9
-
-# 2. System packages
-RUN dnf -y update && dnf -y install procps sudo
-
-# 3. Java 8 runtime (required by GMP)
-RUN dnf install -y java-1.8.0-openjdk
-ENV JAVA_HOME /usr/lib/jvm/jre-1.8.0-openjdk
-
-# 4. Create the gemdhs user (for FITS file ownership)
-RUN useradd -m gemdhs
-
-# 5. Copy GMP distribution and configuration
-RUN mkdir -p /gmp-install
-COPY gmp-server-0.2.6-SNAPSHOT.tar.gz /gmp-install
-COPY conf/gmp /gmp-install/gmp
-COPY entrypoint-gmp.sh /usr/local/bin/
-
-# 6. Set entrypoint
-CMD ["/usr/local/bin/entrypoint-gmp.sh"]
-```
-
 ### Entrypoint Script
 
-The `entrypoint-gmp.sh` script:
-
-1. Extracts the GMP distribution
-2. Creates a symlink for consistent paths
-3. Copies custom configuration files
-4. Starts the GMP server
-5. Keeps the container running
+`dc-start.sh` starts the `gmp` container from the DC image with
+`--entrypoint /gnirsdc/entrypoint-gmp.sh`. The GMP server is already unpacked
+at `/usr/local/share/gmp-server`, with `conf/gmp` copied over its `conf/` when
+the image was built, so the entrypoint only starts it:
 
 ```bash
 #!/bin/bash
-cd /gmp-install
-tar -xvf gmp-server-0.2.6-SNAPSHOT.tar.gz 
-ln -s /gmp-install/gmp-server-0.2.6-SNAPSHOT /usr/local/share/gmp-server
-cp -rf /gmp-install/gmp/* /usr/local/share/gmp-server/conf/
-
 cd /usr/local/share/gmp-server
 ./bin/gmp-server-ctl.sh start
 
@@ -240,51 +203,29 @@ Authorized EPICS channels for GMP to monitor:
 </channels>
 ```
 
-### GitLab CI/CD Build Process
+### Build Process
 
-The container is built automatically via `.gitlab-ci.yml`:
-
-```yaml
-# Build and push gmp-server image
-- |
-  docker build --build-arg REGISTRY_TOKEN=$REGISTRY_TOKEN \
-               --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" \
-               --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-               -f Dockerfile.gmp \
-               -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:latest \
-               -t registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:$CI_COMMIT_SHORT_SHA .
-- docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:latest
-- docker push registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:$CI_COMMIT_SHORT_SHA
-```
-
-Build triggers on commits to the `master` branch.
+The image is built by gemini-rtsw-ci with the rest of this repo (see the root
+README, "Building, Releasing and Deploying"); there is no separate GMP image.
 
 ### Running the Container
 
-#### Manual Build (Development)
+#### On the DC host
 
-```bash
-# From the repository root
-docker build -f dockerfile.gmp -t gmp-server .
-```
+`dc-start.sh` (run by the System Manager) starts `gmp` alongside `gnirsdc`, from
+the image the installed `gnirsdc-data-manager` RPM pins.
 
-#### Running with Docker
+#### Running with Docker (development)
 
 ```bash
 docker run -d --network=host --name gmp \
   -v /readout_data:/readout_data \
   -v /staging/perm:/staging/perm \
-  registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
+  --entrypoint /gnirsdc/entrypoint-gmp.sh \
+  ghcr.io/gemini-rtsw/gnirsdc-data-manager:latest
 ```
 
-#### Running on macOS (Development)
-
-```bash
-docker run -d --network=host --name gmp \
-  -v /Users/<username>/irdc_data/readout_data:/readout_data \
-  -v /Users/<username>/irdc_data/staging/perm:/staging/perm \
-  registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server
-```
+On macOS, `dc-mac-test.sh` starts GMP with published ports instead.
 
 #### Required Volume Mounts
 

@@ -1,12 +1,11 @@
 #!/bin/bash
-
-cd /gmp-install
-tar -xvf gmp-server-0.2.6-SNAPSHOT.tar.gz 
-ln -s /gmp-install/gmp-server-0.2.6-SNAPSHOT /usr/local/share/gmp-server
-cp -rf /gmp-install/gmp/* /usr/local/share/gmp-server/conf/
+# GMP container entrypoint (dc-start.sh runs the gmp container from the same
+# image as the DC, with this entrypoint).
+#
+# The GMP server is unpacked at /usr/local/share/gmp-server with this repo's
+# conf/gmp already copied over its conf/ when the image was built.
 
 cd /usr/local/share/gmp-server
 ./bin/gmp-server-ctl.sh start
 # Keep the script running
 while true; do sleep 1; done
-

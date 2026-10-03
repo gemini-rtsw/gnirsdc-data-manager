@@ -1,3 +1,6 @@
 giapi-glue-cc
 __pycache__
 .claude/
+rpms/
+local-rpms/
+*.tar.gz

@@ -1,10 +1,25 @@
 #!/bin/bash
+#
+# Start the Detector Controller: the gmp and gnirsdc containers.
+#
+# Installed by the gnirsdc-data-manager RPM as /usr/local/bin/dc-start.sh. The
+# System Manager runs it over SSH (as telops) for Start/Restart DC.
+#
+# THIS FILE IS A TEMPLATE: @IMAGE@ is replaced at RPM build time with the image
+# this package release pins, the same one the gnirsdc-system-manager unit runs.
+# Upgrading or downgrading the RPM therefore moves the DC to that release's
+# image on the next start. GNIRSDC_IMAGE in /etc/sysconfig/gnirsdc overrides it,
+# for testing a build that has not been released.
+
+PINNED_IMAGE="@IMAGE@"
+[ -r /etc/sysconfig/gnirsdc ] && . /etc/sysconfig/gnirsdc
+IMAGE="${GNIRSDC_IMAGE:-$PINNED_IMAGE}"
 
 echo "Starting Detector Controller Software"
 
 start_container() {
     container_name=$1
-    image_name=$2
+    entrypoint=$2
     shift 2
     additional_args="$@"
 
@@ -18,14 +33,15 @@ start_container() {
     fi
 
     # Run the container
-    echo "Running the '${container_name}' container..."
+    echo "Running the '${container_name}' container from ${IMAGE}..."
     output=$(docker run -d --network=host --privileged --name ${container_name} \
         -v /readout_data:/readout_data \
         -v /staging/perm:/staging/perm \
         -v /readout_data/conf:/gnirsdc/conf \
         -v /etc/localtime:/etc/localtime:ro \
         -v /etc/timezone:/etc/timezone:ro \
-        ${image_name} ${additional_args})
+        ${entrypoint:+--entrypoint "$entrypoint"} \
+        ${IMAGE} ${additional_args})
 
     # Check if the docker run command executed successfully
     if [ $? -eq 0 ]; then
@@ -42,7 +58,9 @@ start_container() {
 show_help() {
     echo "Usage: $0 [--help] [additional arguments for gnirsdc container]"
     echo
-    echo "This script starts Docker containers for the Detector Controller Software using the current image tag."
+    echo "This script starts Docker containers for the Detector Controller Software"
+    echo "using the image pinned by the installed gnirsdc-data-manager RPM:"
+    echo "  ${IMAGE}"
     echo
     echo "The old containers will be deleted and replaced."
     echo
@@ -57,20 +75,15 @@ if [[ "$1" == "--help" ]]; then
     exit 0
 fi
 
-# Start gmp container
-start_container "gmp" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:current"
+# GMP and the DC run from the same image; GMP just has its own entrypoint.
+start_container "gmp" /gnirsdc/entrypoint-gmp.sh
 gmp_status=$?
 
-# Start gnirsdc container with additional arguments
-start_container "gnirsdc" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:current" "$@"
+# Start gnirsdc container with additional arguments (image entrypoint)
+start_container "gnirsdc" "" "$@"
 gnirsdc_status=$?
 
-# If any of the containers failed to start, run dc-production.sh and try again
 if [ $gmp_status -ne 0 ] || [ $gnirsdc_status -ne 0 ]; then
-    echo "One or more containers failed to start. Running dc-production.sh..."
-    dc-production.sh
-
-    # Try starting the containers again
-    start_container "gmp" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gmp-server:current"
-    start_container "gnirsdc" "registry.gitlab.com/nsf-noirlab/gemini/rtsw/iocs/gnirsdc-data-manager/gnirsdc-run:current" "$@"
+    echo "One or more containers failed to start."
+    exit 1
 fi
