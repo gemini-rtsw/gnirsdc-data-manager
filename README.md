@@ -461,28 +461,31 @@ updated 2018 Nov 27 - astephens + MES
 
 ## Build Architecture
 
-Each piece is built in its own repo by gemini-rtsw-ci and published as an RPM or
-image; this repo's spec and Dockerfile pin the exact versions it uses.
+Each piece is published as an RPM in the shared rpm-repo -- built by
+gemini-rtsw-ci in its own repo, or, for the two libraries another team builds,
+packaged by hand in gnirsdc-giapi-gmp. This repo's spec pins the exact versions
+it uses.
 
 ```mermaid
 graph TD
     LIB[gnirsdc-lib repo] -->|RPM| REPO[(rpm-repo)]
     PCC[pycadcar repo] -->|RPM| REPO
-    GG[gnirsdc-giapi-gmp repo] -->|image| GGI[gnirsdc-giapi-gmp image]
+    GG[gnirsdc-giapi-gmp repo] -->|giapi-glue-cc, gmp-server RPMs, by hand| REPO
     REPO -->|BuildRequires, pinned| DEV[gnirsdc-data-manager dev image]
     DEV --> APP[application image]
-    GGI -->|COPY --from| APP
     DM[gnirsdc-data-manager repo] -->|Dockerfile, src, conf| APP
     DM -->|spec| RPM[gnirsdc-data-manager RPM]
     RPM -->|pins image tag| HOST[DC host: systemd unit + dc-* scripts]
     APP --> HOST
 ```
 
-1. gnirsdc-lib and pycadcar publish RPMs to the shared rpm-repo.
-2. This repo's build environment installs them at the versions pinned in the
-   spec; that environment is published as the dev image.
-3. The application image is built from the dev image, adds the Python packages,
-   cppyy, the GIAPI glue and GMP server (from gnirsdc-giapi-gmp), and this repo.
+1. gnirsdc-lib and pycadcar publish RPMs to the shared rpm-repo from CI;
+   giapi-glue-cc and gmp-server are registered there by hand from
+   gnirsdc-giapi-gmp.
+2. This repo's build environment installs all four at the versions pinned in
+   the spec; that environment is published as the dev image.
+3. The application image is built from the dev image and adds the Python
+   packages, cppyy and this repo.
 4. The RPM pins that image; installing it on the DC host is the deployment.
 
 
@@ -597,13 +600,17 @@ run as an artifact. See the gemini-rtsw-ci WORKFLOW.md for the full flow.
 ## What goes into the image
 
 The image is built on this repo's dev image, which contains everything the
-spec pins in `BuildRequires`: **gnirsdc-lib** (libgnirsioc) and **pycadcar**
-(pygeminirec), at the exact builds named there. The GIAPI C++ glue and the GMP
-server come from **gnirsdc-giapi-gmp**, pinned by version in the `Dockerfile`.
+spec pins in `BuildRequires`, at the exact builds named there:
 
-To move to a new gnirsdc-lib or pycadcar build, merge it in its own repo, copy
-the new version from the "BUILD DEPENDENCY VERSIONS" block of its green build
-into the spec's `BuildRequires`, and merge that here.
+- **gnirsdc-lib** (libgnirsioc) and **pycadcar** (pygeminirec), built by CI in
+  their own repos;
+- **giapi-glue-cc** (`/opt/giapi-glue-cc`) and **gmp-server**
+  (`/opt/gmp-server`), built by another team and packaged by hand in
+  gnirsdc-giapi-gmp.
+
+To move to a new build of any of them, publish it, copy its NVR (for CI-built
+ones, from the "BUILD DEPENDENCY VERSIONS" block of its green build) into the
+spec's `BuildRequires`, and merge that here.
 
 ## Versions, upgrades and rollback
 

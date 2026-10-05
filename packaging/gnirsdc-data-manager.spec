@@ -35,6 +35,9 @@ BuildRequires:  systemd-rpm-macros
 # "BUILD DEPENDENCY VERSIONS" block of a green build of each repo.
 BuildRequires:  gnirsdc-lib = 0.2.0-1.git0d7dbc3%{?dist}
 BuildRequires:  pycadcar = 0.1.0-1.git1853575%{?dist}
+# Built by another team; packaged by hand in the gnirsdc-giapi-gmp repo.
+BuildRequires:  giapi-glue-cc = 0.16-1%{?dist}
+BuildRequires:  gmp-server = 0.2.6-0.1.SNAPSHOT%{?dist}
 BuildRequires:  python3
 
 Requires:       systemd

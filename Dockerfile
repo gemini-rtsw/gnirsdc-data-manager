@@ -11,8 +11,9 @@
 #
 # BASE: this repo's dev image, which build_rpm.sh has just built locally under
 # this name. It is the build environment plus everything the spec pins in
-# BuildRequires -- notably gnirsdc-lib (libgnirsioc) and pycadcar
-# (pygeminirec) from rpm-repo -- so those come in at exactly the pinned builds.
+# BuildRequires -- gnirsdc-lib (libgnirsioc), pycadcar (pygeminirec),
+# giapi-glue-cc and gmp-server from rpm-repo -- so those come in at exactly the
+# pinned builds.
 # The el9 in this tag must match el_version in .github/workflows/ci.yml.
 FROM ghcr.io/gemini-rtsw/gnirsdc-data-manager:el9-latest-devel
 
@@ -22,14 +23,12 @@ LABEL maintainer="hawi.stecher@noirlab.edu"
 # build_rpm.sh. Everything below comes from the Rocky, EPEL and powertools repos.
 RUN rm -f /etc/yum.repos.d/rpm-repo.repo
 
-# Runtime and build tools for the pip installs below (EL9's python3 is 3.9);
-# Java 8, ps and sudo for the GMP server (gmp-server-ctl.sh, and GDS chowns FITS
-# files to gemdhs); libxcrypt-compat for libcrypt.so.1, which the GIAPI glue (a
-# Rocky 8 build) links against.
+# Build tools for the pip installs below (EL9's python3 is 3.9); sudo for the
+# GMP server (GDS chowns FITS files to gemdhs). Java 8, ps and libxcrypt-compat
+# come in with the gmp-server and giapi-glue-cc RPMs.
 RUN dnf -y install \
         python3 python3-devel python3-pip \
-        gcc-c++ make git \
-        java-1.8.0-openjdk-headless procps-ng sudo libxcrypt-compat && \
+        gcc-c++ make git sudo && \
     dnf clean all && rm -rf /var/cache/dnf
 
 # cppyy, with cppyy-cling built from source for C++11 as before: gnirsgiapi.py
@@ -75,16 +74,18 @@ RUN python3.9 -m pip install --no-cache-dir \
 # GMP image gave it, so FITS files in /staging/perm keep the same owner.
 RUN useradd -m -u 1000 gemdhs
 
-# GIAPI C++ glue and the GMP server: built by another team, published by
-# gnirsdc-giapi-gmp. Pinned to its NVR-unique tag (<version>-git<hash>).
-COPY --from=ghcr.io/gemini-rtsw/gnirsdc-giapi-gmp:1.0.0-gitf07d23a /giapi-glue-cc /gnirsdc/giapi-glue-cc
-COPY --from=ghcr.io/gemini-rtsw/gnirsdc-giapi-gmp:1.0.0-gitf07d23a /gmp-server-0.2.6-SNAPSHOT /usr/local/share/gmp-server
-COPY conf/gmp/ /usr/local/share/gmp-server/conf/
+# GIAPI C++ glue (/opt/giapi-glue-cc) and the GMP server (/opt/gmp-server),
+# built by another team, come from the giapi-glue-cc and gmp-server RPMs the
+# spec pins (packaged in the gnirsdc-giapi-gmp repo). /gnirsdc/giapi-glue-cc
+# is where entrypoint.sh and older scripts expect GIAPI; GMP gets this repo's
+# configuration over its conf/.
+RUN mkdir -p /gnirsdc && ln -s /opt/giapi-glue-cc /gnirsdc/giapi-glue-cc
+COPY conf/gmp/ /opt/gmp-server/conf/
 
 ENV JAVA_HOME=/usr/lib/jvm/jre-1.8.0-openjdk \
-    GIAPI_ROOT=/gnirsdc/giapi-glue-cc \
-    BOOST_ROOT=/gnirsdc/giapi-glue-cc/external/boost \
-    LD_LIBRARY_PATH=/usr/lib64:/usr/lib:/gnirsdc/giapi-glue-cc/external/apr/lib:/gnirsdc/giapi-glue-cc/external/apr-util/lib:/gnirsdc/giapi-glue-cc/external/activemq-cpp/lib:/gnirsdc/giapi-glue-cc/external/log4cxx/lib:/gnirsdc/giapi-glue-cc/external/cppunit/lib:/gnirsdc/giapi-glue-cc/external/curlpp/lib:/gnirsdc/giapi-glue-cc/external/curlpp/lib64:/gnirsdc/giapi-glue-cc/external/libcurl/lib:/gnirsdc/giapi-glue-cc/external/libcurl/lib64:/gnirsdc/giapi-glue-cc/install/lib
+    GIAPI_ROOT=/opt/giapi-glue-cc \
+    BOOST_ROOT=/opt/giapi-glue-cc/external/boost \
+    LD_LIBRARY_PATH=/usr/lib64:/usr/lib:/opt/giapi-glue-cc/external/apr/lib:/opt/giapi-glue-cc/external/apr-util/lib:/opt/giapi-glue-cc/external/activemq-cpp/lib:/opt/giapi-glue-cc/external/log4cxx/lib:/opt/giapi-glue-cc/external/cppunit/lib:/opt/giapi-glue-cc/external/curlpp/lib:/opt/giapi-glue-cc/external/curlpp/lib64:/opt/giapi-glue-cc/external/libcurl/lib:/opt/giapi-glue-cc/external/libcurl/lib64:/opt/giapi-glue-cc/install/lib
 
 # This repo, at /gnirsdc as before (see .dockerignore for what is left out).
 COPY . /gnirsdc

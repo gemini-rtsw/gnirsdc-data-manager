@@ -39,28 +39,28 @@ The GMP server runs as an OSGi (Felix) application written in Java/Scala, receiv
 
 #### GMP Server Distribution
 
-The GMP server distribution (`gmp-server-0.2.6-SNAPSHOT`) is published by the
-[gnirsdc-giapi-gmp](https://github.com/gemini-rtsw/gnirsdc-giapi-gmp) repo: the
-tarball is a GitHub Release asset there, checksummed in its `RELEASES` file, and
-its image carries the unpacked tree. It contains:
+The GMP server distribution (`gmp-server-0.2.6-SNAPSHOT`) is packaged as the
+`gmp-server` RPM (installed at `/opt/gmp-server`) by the
+[gnirsdc-giapi-gmp](https://github.com/gemini-rtsw/gnirsdc-giapi-gmp) repo and
+registered in rpm-repo; this repo's spec pins it. It contains:
 - OSGi Felix framework and bundles
 - GDS (Gemini Data System) modules
 - GIAPI services
 - ActiveMQ JMS broker
 - Web console
 
-**Source**: The GMP server is built from the Gemini ASPEN repository. Contact the Gemini software team for updated distributions; a new one becomes a new release in gnirsdc-giapi-gmp.
+**Source**: The GMP server is built from the Gemini ASPEN repository. Contact the Gemini software team for updated distributions; a new one is packaged as a new gmp-server release in gnirsdc-giapi-gmp.
 
 #### Image
 
-GMP runs from the same image as the DC (this repo's `Dockerfile`, Rocky Linux 9),
-which adds Java 8, `procps-ng`, `sudo` and the `gemdhs` user for it:
+GMP runs from the same image as the DC (this repo's `Dockerfile`, Rocky Linux 9).
+The `gmp-server` RPM brings Java 8 and `procps-ng` with it; the Dockerfile adds
+`sudo` and the `gemdhs` user, and puts this repo's configuration over the
+distribution's:
 
 ```dockerfile
-RUN dnf -y install java-1.8.0-openjdk-headless procps-ng sudo
 RUN useradd -m -u 1000 gemdhs
-COPY --from=ghcr.io/gemini-rtsw/gnirsdc-giapi-gmp:1.0.0-gitf07d23a /gmp-server-0.2.6-SNAPSHOT /usr/local/share/gmp-server
-COPY conf/gmp/ /usr/local/share/gmp-server/conf/
+COPY conf/gmp/ /opt/gmp-server/conf/
 ENV JAVA_HOME=/usr/lib/jvm/jre-1.8.0-openjdk
 ```
 
@@ -94,12 +94,12 @@ gnirsdc-data-manager/
 
 `dc-start.sh` starts the `gmp` container from the DC image with
 `--entrypoint /gnirsdc/entrypoint-gmp.sh`. The GMP server is already unpacked
-at `/usr/local/share/gmp-server`, with `conf/gmp` copied over its `conf/` when
-the image was built, so the entrypoint only starts it:
+at `/opt/gmp-server` (gmp-server RPM), with `conf/gmp` copied over its `conf/`
+when the image was built, so the entrypoint only starts it:
 
 ```bash
 #!/bin/bash
-cd /usr/local/share/gmp-server
+cd /opt/gmp-server
 ./bin/gmp-server-ctl.sh start
 
 # Keep container running
@@ -304,7 +304,7 @@ nc -zv localhost 61616
 #### Check GDS Configuration
 
 ```bash
-docker exec gmp cat /usr/local/share/gmp-server/conf/gds-keywords.conf
+docker exec gmp cat /opt/gmp-server/conf/gds-keywords.conf
 ```
 
 #### View OSGi Bundle Status
